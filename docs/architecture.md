@@ -17,7 +17,7 @@ silosim/
 ├── CLAUDE.md                 # rules for Claude Code
 ├── README.md
 ├── Makefile
-├── go.mod                    # module github.com/skrilexxx/silosim (change if needed)
+├── go.mod                    # module github.com/skrilexxx/silo-sim
 ├── cmd/silosim/main.go       # CLI: run, batch, report
 ├── internal/
 │   ├── config/               # scenario loading, `extends`, strict validation

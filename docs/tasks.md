@@ -17,7 +17,7 @@ Every task's **Done when** list includes, without repeating it: `make check` pas
 
 The engine runs empty ticks deterministically and writes output. No model yet.
 
-- [ ] **T0.1 Repo setup.** `go mod init`, folder layout from `docs/architecture.md`, `Makefile` (`build`, `test`, `check`, `run`), `.gitignore` (`runs/`, `bin/`), CLI skeleton with `run` that prints the resolved config.
+- [x] **T0.1 Repo setup.** (2026-10-28) `go mod init`, folder layout from `docs/architecture.md`, `Makefile` (`build`, `test`, `check`, `run`), `.gitignore` (`runs/`, `bin/`), CLI skeleton with `run` that prints the resolved config.
   - *Done when:* `make check` runs; `silosim run --scenario scenarios/baseline.yaml --dry-run` prints every parameter; a typo in a YAML key fails with the key's name.
 - [ ] **T0.2 Config.** Typed `Scenario` struct mirroring `scenarios/baseline.yaml`, strict loading, `extends`, range validation (probabilities in 0–1, ages ordered, shares summing to 1).
   - *Spec:* ODD §5 (input), §7. *Done when:* tests cover unknown key, missing key, bad range, and an `extends` override.
