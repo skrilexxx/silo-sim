@@ -18,7 +18,10 @@ func Check(w *world.World, cfg *config.Scenario) error {
 			return err
 		}
 	}
-	return reproduction(w, cfg.Lottery)
+	if err := reproduction(w, cfg.Lottery); err != nil {
+		return err
+	}
+	return work(w, cfg.Work)
 }
 
 // ODD §8: people alive = sum over zones = sum over households.
@@ -165,6 +168,40 @@ func reproduction(w *world.World, lot config.Lottery) error {
 			if conceived <= start || conceived > p.WindowEnds || conceived > w.Day || p.DueDay <= w.Day {
 				return fmt.Errorf("person %d: pregnancy conceived day %d, due %d, outside window %d–%d (today %d)",
 					id, conceived, p.DueDay, start, p.WindowEnds, w.Day)
+			}
+		}
+	}
+	return nil
+}
+
+// ODD §6.5: workers and shadows have a department; a shadow's master is a
+// living worker of the same department with at most maxShadowsPerMaster
+// shadows. Children have no department yet.
+func work(w *world.World, c config.Work) error {
+	load := make([]int, len(w.People))
+	for _, id := range w.Alive {
+		p := &w.People[id]
+		switch p.Stage {
+		case world.Child:
+			if p.Department != world.None {
+				return fmt.Errorf("child %d has department %d", id, p.Department)
+			}
+		case world.Shadow, world.Worker:
+			if p.Department < 0 || p.Department >= len(w.Depts) {
+				return fmt.Errorf("person %d (stage %d) has no valid department (%d)", id, p.Stage, p.Department)
+			}
+		}
+		if p.Stage != world.Shadow && p.Master != world.None {
+			return fmt.Errorf("person %d is not a shadow but has master %d", id, p.Master)
+		}
+		if p.Stage == world.Shadow && p.Master != world.None {
+			q := &w.People[p.Master]
+			if !q.Alive || q.Stage != world.Worker || q.Department != p.Department {
+				return fmt.Errorf("shadow %d's master %d is not a living worker of department %d", id, p.Master, p.Department)
+			}
+			load[p.Master]++
+			if load[p.Master] > c.MaxShadowsPerMaster {
+				return fmt.Errorf("master %d has %d shadows, more than %d", p.Master, load[p.Master], c.MaxShadowsPerMaster)
 			}
 		}
 	}

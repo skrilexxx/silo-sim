@@ -42,10 +42,11 @@ Five kinds of entity: people, households, floors, departments and the silo itsel
 | partnerID | int or none | Chosen partner |
 | motherID, fatherID | int or none | For family trees and inheritance of trades |
 | stage | enum | child, shadow, worker, retired |
-| department | enum or none | Set when shadowing starts |
+| department | enum or none | Set when shadowing starts; kept as a record after retirement and death |
 | masterID | int or none | The worker they shadow |
 | skill | 0–1 | Grows with experience; drives output |
 | health | 0–1 | 1 = healthy; drops with injury, illness, hunger, bad air |
+| lowHealth | int | Days in a row a worker's health has been below 0.3 (sick retirement, 6.5) |
 | implant | enum | in, removed (window open), pregnant |
 | windowEnds | int | Last tick of the 365-day conception window |
 | dueDay | int | Tick of birth if pregnant |
@@ -124,7 +125,7 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 
 12. **Lottery** — permits issued and winners drawn (6.4)
 13. **Housing** — new couples move to free homes; grown children leave home only by partnering (6.3)
-14. **Staffing** — understaffed departments flagged for the next shadow placements (6.5)
+14. **Staffing** — each department's target headcount set for the next shadow placements (6.5)
 
 ### Every 365 days
 
@@ -168,8 +169,8 @@ Day 1 is generated from the scenario file, then the model runs 50 years of warm-
 2. **People:** 10,000 people, exactly half women, chosen at random. Each age is drawn, in days, from the steady-state age distribution of the mortality rule (6.1) at health 1: the chance of being d days old is proportional to the chance of surviving d days. The start then already looks like a lived-in population.
 3. **Zones:** exactly 32% Up Top, 46% Mids, 22% Down Deep (rounded to whole people), assigned at random and independent of age and sex. The split follows from where departments sit (6.5).
 4. **Households:** in each zone, round(0.70 × adults aged 20+ / 2) couples form, each a woman and a man aged 20+. Women are taken in random order; each picks an unpaired man from her zone with weight e^(−|age gap| / 5), the age-gap rule of 6.3. Each child under 18 then, in random order, joins a random couple in their zone whose woman could have had them under the lottery rules (6.4): aged 18–40 at the birth, fewer than 3 children, and no other child less than 2 years older or younger. The woman becomes the mother and her partner the father. If no couple fits, initialization stops with an error instead of bending the rule; this never happened in 300 seeds at 10,000 people, but small test worlds (about 7% of seeds at 1,000 people) can run out of fitting couples, so tests use seeds that work. Every other adult (18+) lives alone.
-5. **Jobs:** adults 18–64 fill departments in their zone by target share; 14- to 17-year-olds become shadows, preferably in a parent's department, with a master from that department.
-6. **Skill:** set from years worked, on a saturating curve (6.5).
+5. **Jobs** (only when the work module is on): in each zone, adults 18–64 fill the departments of that zone plus General services and Porters by target share (an all-zone department's share split over the zones by allZoneSplit), rounded by largest remainder and assigned at random. People 65+ are retired with no department. 14- to 17-year-olds are placed by the shadowing rule of 6.5, in random order.
+6. **Skill:** 1 − (1 − α)^(days since the 14th birthday, counted up to 65), the same curve as daily skill growth (6.5), since shadows learn too.
 7. **Implants:** every woman starts with the implant in; no open windows, no pregnancies.
 8. **Stocks:** food for 90 days of full rations, parts for 365 days of expected use, generator condition 0.8, water and air at 1.
 
@@ -267,9 +268,11 @@ Departments have a home zone and a target share of the workforce. Their shares s
 | Administration (Mayor's office) | Up Top | 3% |
 | Sheriff | Up Top | 1% |
 
-- **Shadowing at 14:** with a 60% chance the child follows a parent's department (mother or father at random), if it has room for shadows. Otherwise they pick among departments in their zone, weighted by how far each is below target. A 5% chance allows any department in another zone. The master is a worker in that department with skill above 0.5 and the fewest shadows (at most 2).
-- **Worker at 18**, retired at 65 or after 90 days with health below 0.3.
-- **Skill:** grows each working day by α × (1 − skill), so reaching 0.8 takes about 10 years.
+- **Targets:** each month (staffing, §3 step 14) every department's target headcount is its share × the current number of workers. Shadows and retired people are not workers.
+- **Shadowing at 14:** with a 60% chance the child follows the department of a parent picked at random from those who have one (working, retired or dead), if it has room: a worker with skill above 0.5 and fewer than 2 shadows. Otherwise, with a 5% chance they pick among departments tied to another zone, else among their own zone's departments plus General services and Porters. Departments without room are skipped, and the pick is weighted by shortfall = max(0, target − workers − shadows), counted live so that every placement shrinks it at once. If every shortfall in reach is 0, the weights are each department's share of the jobs in the child's zone (an all-zone department's share × allZoneSplit for that zone). If no department in reach has room, the child shadows the department those weights pick, with no master until one is free. The master is the free worker of that department with the fewest shadows (ties at random). A shadow whose master dies, retires or leaves gets a new one the same day if one is free. A shadow keeps living at home; a job tied to another zone moves them only when they partner (6.3).
+- **Worker at 18** in the same department; the master link ends. **Retired** at 65 or after 90 days in a row with health below 0.3; the department stays on record.
+- **Skill:** grows each day by α × (1 − skill) for workers and shadows, so reaching 0.8 takes about 10 years.
+- **Trade inheritance (outcome, not a rule):** about 80% of workers end up in a parent's department, more than the 60% follow chance, because the other placements often land in a parent's department too.
 - **Output:** department output = sum of skill × health over its workers, plus 0.3 × that for each shadow.
 - **Retraining:** each month, a department below 80% of target may take workers from General services in its zone; they start at skill 0.2. This keeps critical departments staffed after deaths.
 

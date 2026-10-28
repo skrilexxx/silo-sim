@@ -63,10 +63,11 @@ type Person struct {
 	Mother     PersonID // or None
 	Father     PersonID // or None
 	Stage      Stage
-	Department int      // index into World.Depts, or None
+	Department int      // index into World.Depts, or None; kept after retirement and death as a record
 	Master     PersonID // or None
 	Skill      float64  // 0–1
 	Health     float64  // 0–1
+	LowHealth  int      // consecutive days a worker's health has been below sickRetireHealth
 	Implant    Implant
 	WindowEnds Tick     // last tick of the conception window
 	DueDay     Tick     // birth day if pregnant

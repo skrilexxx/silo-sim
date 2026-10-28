@@ -34,6 +34,9 @@ func town(t *testing.T, people ...person) (*world.World, *Module) {
 		w.People = append(w.People, world.Person{ID: id, Sex: p.sex, Alive: true, BirthDay: world.Tick(-p.age * year),
 			Household: world.HouseholdID(i), Partner: world.None, Mother: world.None, Father: world.None,
 			Department: p.dept, Master: world.None, Health: 1})
+		if p.dept != world.None {
+			w.People[i].Stage = world.Worker
+		}
 		w.Alive = append(w.Alive, id)
 		w.Households = append(w.Households, world.Household{ID: world.HouseholdID(i), Floor: int(p.zone) + 1, Members: []world.PersonID{id}})
 	}

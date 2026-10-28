@@ -188,7 +188,7 @@ func TestAliveShuffledEveryTickAndReproducible(t *testing.T) {
 		w := &world.World{Floors: []world.Floor{{Number: 1, Zone: world.Mids, Homes: 1}}}
 		var members []world.PersonID
 		for i := range 20 {
-			w.People = append(w.People, world.Person{ID: world.PersonID(i), Alive: true, Health: 1, Partner: world.None})
+			w.People = append(w.People, world.Person{ID: world.PersonID(i), Alive: true, Health: 1, Partner: world.None, Department: world.None, Master: world.None})
 			w.Alive = append(w.Alive, world.PersonID(i))
 			members = append(members, world.PersonID(i))
 		}
@@ -240,7 +240,7 @@ func (b breaker) Steps() []Step {
 func TestInvariantsRunDuringTheRun(t *testing.T) {
 	newWorld := func() *world.World {
 		return &world.World{
-			People:     []world.Person{{Alive: true, Health: 1, Partner: world.None}},
+			People:     []world.Person{{Alive: true, Health: 1, Partner: world.None, Department: world.None, Master: world.None}},
 			Alive:      []world.PersonID{0},
 			Floors:     []world.Floor{{Number: 1, Zone: world.Mids, Homes: 1}},
 			Households: []world.Household{{Floor: 1, Members: []world.PersonID{0}}},

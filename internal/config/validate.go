@@ -136,6 +136,15 @@ func (s *Scenario) Validate() error {
 		}
 	}
 
+	// Department zones name a zone or "all" (works in every zone).
+	for i, d := range s.Work.Departments {
+		switch d.Zone {
+		case "upTop", "mids", "downDeep", "all":
+		default:
+			add("work.departments[%d].zone = %q, must be upTop, mids, downDeep or all", i, d.Zone)
+		}
+	}
+
 	// Fewer homes than households would leave people homeless on day 1.
 	if s.Init.HomeCapacityMargin < 1 {
 		add("init.homeCapacityMargin = %v, must be at least 1", s.Init.HomeCapacityMargin)
