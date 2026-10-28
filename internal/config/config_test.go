@@ -106,6 +106,7 @@ func TestBadRangeFailsWithKeyName(t *testing.T) {
 		{"gompertzA: 0.0002", "gompertzA: 0", "mortality.gompertzA = 0, must be greater than 0"},
 		{"gompertzB: 0.085", "gompertzB: 0", "mortality.gompertzB = 0, must be greater than 0"},
 		{"floorsPerZone: 48", "floorsPerZone: 0", "init.floorsPerZone = 0, must be greater than 0"},
+		{"name: medical,", "name: doctors,", `work.departments has no "medical", which the rules need`},
 		{"zone: downDeep, share: 0.16", "zone: bottom, share: 0.16", `work.departments[2].zone = "bottom", must be upTop, mids, downDeep or all`},
 		{"maternalDeathBase: 0.002", "maternalDeathBase: 0.6", "health.maternalDeathBase = 0.6 gives a maternal death risk of 1.2"},
 		{"injuryChance: 0.0002", "injuryChance: 0.6", "health.injuryChance × largest health.injuryFactor = 1.2"},

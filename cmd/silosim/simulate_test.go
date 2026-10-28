@@ -94,7 +94,7 @@ func TestSameSeedGivesIdenticalDaily(t *testing.T) {
 func TestUnbuiltModuleFails(t *testing.T) {
 	cfg := loadInto(t, "../../scenarios/baseline.yaml")
 	_, err := simulate(cfg)
-	if err == nil || !strings.Contains(err.Error(), `module "health" is not implemented yet`) {
+	if err == nil || !strings.Contains(err.Error(), `module "resources" is not implemented yet`) {
 		t.Errorf("got %v", err)
 	}
 }

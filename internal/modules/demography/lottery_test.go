@@ -139,7 +139,7 @@ func TestPermitsBeyondEligibleAllWin(t *testing.T) {
 func openAll(w *world.World, m *Module) {
 	for i := range w.People {
 		if p := &w.People[i]; p.Sex == world.Female {
-			p.Implant, p.WindowEnds = world.WindowOpen, world.Tick(m.cfg.Lottery.WindowDays)
+			p.Implant, p.WindowEnds, p.PermitDay = world.WindowOpen, world.Tick(m.cfg.Lottery.WindowDays), 0
 		}
 	}
 }
@@ -234,9 +234,9 @@ func TestPartnerDeathAndWindows(t *testing.T) {
 	openAll(w, m)
 	// Woman 2 is pregnant: window drawn day −215, conceived day −170, due 100.
 	w.Day = 50
-	w.People[2].Implant, w.People[2].WindowEnds = world.Pregnant, 150
+	w.People[2].Implant, w.People[2].WindowEnds, w.People[2].PermitDay = world.Pregnant, 150, -215
 	w.People[2].DueDay, w.People[2].BabyFather = 100, 3
-	w.People[0].WindowEnds = 300 // woman 0's window: drawn day −65
+	w.People[0].WindowEnds, w.People[0].PermitDay = 300, -65 // woman 0's window: drawn day −65
 	for _, id := range []world.PersonID{1, 3} {
 		if err := m.die(w, stream(t), id); err != nil {
 			t.Fatal(err)
@@ -252,5 +252,132 @@ func TestPartnerDeathAndWindows(t *testing.T) {
 	days(t, w, m, 50)
 	if len(w.People) != 5 || w.People[4].Father != 3 {
 		t.Errorf("child of the dead father: %+v", w.People[len(w.People)-1])
+	}
+}
+
+// withMedical gives the world a Medical department at the given coverage.
+func withMedical(w *world.World, cov float64) {
+	w.Depts = []world.Department{{Name: "medical", Coverage: cov}}
+}
+
+// T2.3 done-when: at Medical coverage 0.5 the queue delays windows. Ten
+// winners: ⌊0.5 × 10⌋ = 5 get their implant out on the draw day; of the 5
+// left, ⌊2.5⌋ = 2 next month, and so on. Each window starts on its
+// removal day. At coverage 1 nobody waits.
+func TestRemovalQueue(t *testing.T) {
+	w, m := couples(t, 10, 25)
+	withMedical(w, 0.5)
+	w.Day = 30
+	r := stream(t)
+	opened := func() (n int) {
+		for c := range 10 {
+			if w.People[2*c].Implant == world.WindowOpen {
+				n++
+			}
+		}
+		return n
+	}
+	var perMonth []int
+	for range 4 {
+		before := opened()
+		if err := m.lottery(w, r); err != nil {
+			t.Fatal(err)
+		}
+		perMonth = append(perMonth, opened()-before)
+		if err := invariants.Check(w, m.cfg); err != nil {
+			t.Fatal(err)
+		}
+		w.Day += 30
+	}
+	t.Logf("windows opened per month at coverage 0.5: %v", perMonth)
+	if perMonth[0] != 5 || perMonth[1] != 2 || perMonth[2] != 1 || perMonth[3] != 1 {
+		t.Errorf("opened per month %v, want [5 2 1 1]", perMonth)
+	}
+	waiting := 0
+	for c := range 10 {
+		p := w.People[2*c]
+		switch {
+		case p.Implant == world.Queued:
+			waiting++
+		case p.PermitDay != 30 || p.WindowEnds < 30+365 || (p.WindowEnds-365)%30 != 0:
+			t.Errorf("woman %d: permit day %d, window ends %d; want permit 30 and a window from her removal day", 2*c, p.PermitDay, p.WindowEnds)
+		}
+	}
+	if waiting != 1 {
+		t.Errorf("%d winners still waiting after 4 months, want 1", waiting)
+	}
+
+	w, m = couples(t, 10, 25)
+	withMedical(w, 1)
+	w.Day = 30
+	m.lottery(w, r)
+	if n := opened(); n != 10 {
+		t.Errorf("at coverage 1, %d of 10 windows opened on the draw day", n)
+	}
+}
+
+// Waiting winners count as open windows in E: with 10 waiting (E = 8) and
+// a gap of 12 people, round((12 − 8) / 12) = 0 new permits, not 1.
+func TestQueuedCountInE(t *testing.T) {
+	w, m := couples(t, 11, 25)
+	withMedical(w, 0)
+	for c := range 10 {
+		w.People[2*c].Implant, w.People[2*c].PermitDay = world.Queued, 0
+	}
+	m.cfg.Lottery.TargetPopulation = len(w.Alive) + 12
+	w.Day = 30
+	m.lottery(w, stream(t))
+	if w.People[20].Implant != world.ImplantIn {
+		t.Error("a permit was issued although the waiting winners cover the gap")
+	}
+}
+
+func TestPartnerDeathCancelsQueuedPermit(t *testing.T) {
+	w, m := couples(t, 1, 25)
+	w.People[0].Implant = world.Queued
+	if err := m.die(w, stream(t), 1); err != nil {
+		t.Fatal(err)
+	}
+	if w.People[0].Implant != world.ImplantIn {
+		t.Error("a widow kept her place in the removal queue")
+	}
+}
+
+// ODD §6.2: maternal death risk is maternalDeathBase × (2 − coverage). With
+// a base of 0.5 and no Medical the risk is 1: the mother dies at the birth
+// and the child lives, staying with the father.
+func TestMaternalDeath(t *testing.T) {
+	w, m := couples(t, 1, 25)
+	withMedical(w, 0)
+	m.cfg.Health.MaternalDeathBase = 0.5
+	w.People[0].Implant, w.People[0].DueDay, w.People[0].BabyFather = world.Pregnant, 1, 1
+	w.People[0].WindowEnds = 100 // drawn day −265, conceived day −269: inside
+	w.People[0].PermitDay = -265
+	days(t, w, m, 1)
+	if w.People[0].Alive || !w.People[2].Alive {
+		t.Fatalf("mother alive %v, child alive %v; want the mother dead and the child alive", w.People[0].Alive, w.People[2].Alive)
+	}
+	if h := w.Households[0].Members; len(h) != 2 || h[0] != 1 || h[1] != 2 {
+		t.Errorf("household %v, want the father and the child", h)
+	}
+
+	// At full coverage and the baseline base the risk is 0.002: 1,000
+	// births give about 2 deaths.
+	w, m = couples(t, 1000, 25)
+	withMedical(w, 1)
+	for c := range 1000 {
+		p := &w.People[2*c]
+		p.Implant, p.DueDay, p.BabyFather, p.WindowEnds, p.PermitDay = world.Pregnant, 1, world.PersonID(2*c+1), 100, -265
+	}
+	days(t, w, m, 1)
+	dead := 0
+	for c := range 1000 {
+		if !w.People[2*c].Alive {
+			dead++
+		}
+	}
+	t.Logf("maternal deaths in 1,000 births at full coverage: %d (expected %.0f)", dead, 1000*m.cfg.Health.MaternalDeathBase)
+	if dead > 10 {
+		t.Errorf("%d maternal deaths in 1,000 births at risk 0.002", dead)
 	}
 }

@@ -70,15 +70,19 @@ func TestViolationsAreCaught(t *testing.T) {
 		{"person 2 is male but has implant state 1", func(w *world.World) {
 			w.People[2].Sex, w.People[2].Implant = world.Male, world.WindowOpen
 		}},
-		{"person 0 has an open window without a male partner", func(w *world.World) {
+		{"person 0 has a permit without a male partner", func(w *world.World) {
 			w.People[0].Implant, w.People[0].WindowEnds = world.WindowOpen, 365
+			w.People[0].BirthDay = -25 * 365
 		}},
-		{"person 0 got a window on day 0 while not eligible (aged 0, 0 children)", func(w *world.World) {
+		{"person 0 won a permit on day 0 while not eligible (aged 0, 0 children)", func(w *world.World) {
 			w.People[0].Implant, w.People[0].WindowEnds = world.WindowOpen, 365
 			w.People[2].Sex = world.Male
 			w.People[0].Partner, w.People[2].Partner = 2, 0
 		}},
-		{"person 0: window 0–365 is open on day 365", func(w *world.World) {
+		{"person 0: permit day 5 is after today 0", func(w *world.World) {
+			w.People[0].Implant, w.People[0].PermitDay = world.Queued, 5
+		}},
+		{"person 0: window 0–365 (permit day 0) is open on day 365", func(w *world.World) {
 			w.Day = 365
 			w.People[0].Implant, w.People[0].WindowEnds = world.WindowOpen, 365
 		}},

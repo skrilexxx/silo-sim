@@ -50,7 +50,11 @@ const (
 	ImplantIn  Implant = iota
 	WindowOpen         // implant removed, conception window running
 	Pregnant
+	Queued // permit won, waiting for Medical to remove the implant (ODD §6.2)
 )
+
+// Clamp01 keeps a 0–1 variable in range (docs/architecture.md, Core types).
+func Clamp01(x float64) float64 { return max(0, min(1, x)) }
 
 // ODD §2: Person. Age is never stored; it follows from BirthDay and the day.
 type Person struct {
@@ -69,6 +73,7 @@ type Person struct {
 	Health     float64  // 0–1
 	LowHealth  int      // consecutive days a worker's health has been below sickRetireHealth
 	Implant    Implant
+	PermitDay  Tick     // day she won the lottery (meaningful while queued, open or pregnant)
 	WindowEnds Tick     // last tick of the conception window
 	DueDay     Tick     // birth day if pregnant
 	BabyFather PersonID // partner at conception, recorded for the birth; or None

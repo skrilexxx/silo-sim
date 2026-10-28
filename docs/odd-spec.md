@@ -47,7 +47,8 @@ Five kinds of entity: people, households, floors, departments and the silo itsel
 | skill | 0–1 | Grows with experience; drives output |
 | health | 0–1 | 1 = healthy; drops with injury, illness, hunger, bad air |
 | lowHealth | int | Days in a row a worker's health has been below 0.3 (sick retirement, 6.5) |
-| implant | enum | in, removed (window open), pregnant |
+| implant | enum | in, queued (permit won, waiting for Medical), removed (window open), pregnant |
+| permitDay | int | Tick she won the lottery |
 | windowEnds | int | Last tick of the 365-day conception window |
 | dueDay | int | Tick of birth if pregnant |
 | babyFather | int or none | Partner at conception, recorded as the child's father |
@@ -209,11 +210,11 @@ With A = 0.0002 and B = 0.085, half of people reach about 67 before health effec
 
 ### 6.2 Health and Medical
 
-Health runs from 0 to 1 and changes every day: damage from hunger, bad air, injuries and illness, and recovery that depends on how well Medical is staffed.
+Health runs from 0 to 1 and changes every day for every living person, in the tick's shuffled order: damage from hunger, bad air, injuries and illness, then recovery that depends on how well Medical is staffed, then a clamp to 0–1.
 
 - **Hunger:** −d\_hunger × (1 − intake/need)
 - **Bad air:** −d\_air × (1 − airQuality)
-- **Work injury:** daily chance by department (Mechanical ×2, Farms ×1, others ×0.5); an injury costs 0.3 health
+- **Work injury:** for workers and shadows, daily chance 0.0002 × the department factor (Mechanical ×2, Farms ×1, others ×0.5); an injury costs 0.3 health
 - **Illness:** small daily chance; costs 0.15 health
 - **Recovery:** +r × medicalCoverage, capped at 1
 
@@ -221,7 +222,9 @@ Health runs from 0 to 1 and changes every day: damage from hunger, bad air, inju
 medicalCoverage = \min\left(1, \frac{MedicalOutput}{0.84 \times MedicalDay1TargetHeadcount}\right)
 ```
 
-Medical also performs implant removals for lottery winners. If coverage is below 1, winners wait in a queue, which delays births when the silo is short of doctors. Mothers face a small death risk at birth, higher when coverage is low.
+Until rations exist (6.7) intake equals need, so hunger does no damage; air starts at 1 (§5 step 8) and stays there until life support exists (6.6).
+
+Medical also performs implant removals for lottery winners. Winners join a queue; right after each monthly draw, Medical removes the implants of the oldest ⌊medicalCoverage × waiting⌋ winners (oldest permit first), and the rest wait for the next month. At coverage 1 nobody waits; at 0.5 about half wait a month, which delays births when the silo is short of doctors. A winner whose partner dies while she waits loses the permit. Mothers face a death risk at each birth of 0.002 × (2 − medicalCoverage); the child lives. Where there is no Medical department (the work module is off), coverage counts as 1.
 
 ### 6.3 Partnering and housing
 
@@ -247,7 +250,7 @@ D₃₀ counts deaths since the last lottery; round is half away from zero. Unus
 
 - **Eligible couples:** woman and man, woman aged 18–40 in whole years (up to her 41st birthday), fewer than 3 children born (alive or not), her last birth at least 2 years ago, no open window or pregnancy. Couples still waiting for a home are eligible.
 - **Draw:** winners are picked uniformly at random, without replacement; if fewer couples are eligible than there are permits, all of them win. (The covert-denial rule from the show arrives with the dissent modules; here the draw is fair.)
-- **Window:** Medical removes the implant (6.2); the couple has the 365 days after the draw. If her partner dies while the window is open, it closes and the implant goes back in.
+- **Window:** winners join Medical's removal queue (6.2); the couple has the 365 days after the removal. Women still waiting count as open windows in E. If her partner dies while she waits or while the window is open, the permit or window ends and the implant stays or goes back in.
 - **Conception:** daily chance 0.0044, which gives about an 80% chance within the year. Her partner is recorded as the father.
 - **Birth:** 270 days after conception the child is born into the mother's household: a girl with chance 0.5, health 1. The father is the partner recorded at conception, even if he has died since; a pregnancy goes on after his death. The implant goes back in. If the window ends without a pregnancy, the implant goes back in.
 

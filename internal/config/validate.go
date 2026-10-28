@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"slices"
 	"strings"
 )
 
@@ -142,6 +143,14 @@ func (s *Scenario) Validate() error {
 		case "upTop", "mids", "downDeep", "all":
 		default:
 			add("work.departments[%d].zone = %q, must be upTop, mids, downDeep or all", i, d.Zone)
+		}
+	}
+
+	// Rules name these departments: retraining draws from General (6.5),
+	// injuries weigh Mechanical and Farms, Medical gives coverage (6.2).
+	for _, name := range []string{"general", "medical", "mechanical", "farms"} {
+		if !slices.ContainsFunc(s.Work.Departments, func(d Department) bool { return d.Name == name }) {
+			add("work.departments has no %q, which the rules need", name)
 		}
 	}
 

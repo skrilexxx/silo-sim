@@ -150,18 +150,31 @@ func reproduction(w *world.World, lot config.Lottery) error {
 			return fmt.Errorf("person %d is male but has implant state %d", id, p.Implant)
 		}
 		start := p.WindowEnds - world.Tick(lot.WindowDays)
-		switch p.Implant {
-		case world.WindowOpen:
-			if w.Day < start || w.Day >= p.WindowEnds {
-				return fmt.Errorf("person %d: window %d–%d is open on day %d", id, start, p.WindowEnds, w.Day)
+		eligible := func() error {
+			years := int((p.PermitDay - p.BirthDay) / year)
+			spaced := p.Children == 0 || p.PermitDay-p.LastBirth >= world.Tick(lot.MinYoungestAgeYears)*year
+			if years < lot.MotherAgeMin || years > lot.MotherAgeMax || p.Children >= lot.MaxChildren || !spaced {
+				return fmt.Errorf("person %d won a permit on day %d while not eligible (aged %d, %d children)", id, p.PermitDay, years, p.Children)
 			}
 			if p.Partner == world.None || w.People[p.Partner].Sex != world.Male {
-				return fmt.Errorf("person %d has an open window without a male partner", id)
+				return fmt.Errorf("person %d has a permit without a male partner", id)
 			}
-			years := int((start - p.BirthDay) / year)
-			spaced := p.Children == 0 || start-p.LastBirth >= world.Tick(lot.MinYoungestAgeYears)*year
-			if years < lot.MotherAgeMin || years > lot.MotherAgeMax || p.Children >= lot.MaxChildren || !spaced {
-				return fmt.Errorf("person %d got a window on day %d while not eligible (aged %d, %d children)", id, start, years, p.Children)
+			return nil
+		}
+		switch p.Implant {
+		case world.Queued:
+			if p.PermitDay > w.Day {
+				return fmt.Errorf("person %d: permit day %d is after today %d", id, p.PermitDay, w.Day)
+			}
+			if err := eligible(); err != nil {
+				return err
+			}
+		case world.WindowOpen:
+			if w.Day < start || w.Day >= p.WindowEnds || start < p.PermitDay {
+				return fmt.Errorf("person %d: window %d–%d (permit day %d) is open on day %d", id, start, p.WindowEnds, p.PermitDay, w.Day)
+			}
+			if err := eligible(); err != nil {
+				return err
 			}
 		case world.Pregnant:
 			conceived := p.DueDay - world.Tick(lot.PregnancyDays)

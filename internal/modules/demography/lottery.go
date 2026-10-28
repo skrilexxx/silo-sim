@@ -1,7 +1,9 @@
 package demography
 
 import (
+	"cmp"
 	"math"
+	"slices"
 
 	"github.com/skrilexxx/silo-sim/internal/config"
 	"github.com/skrilexxx/silo-sim/internal/engine"
@@ -27,10 +29,9 @@ func Permits(deaths30, alive, pregnant, openWindows int, lot config.Lottery) int
 }
 
 // ODD §6.4: the lottery, every 30 days. N permits go to couples drawn
-// uniformly from the eligible ones (all of them if fewer). A winner's
-// implant is removed at once and her window runs for windowDays from
-// tomorrow. Medical coverage is taken as 1 until health (T2.3) adds the
-// removal queue.
+// uniformly from the eligible ones (all of them if fewer). Winners join
+// Medical's removal queue (removals). Women still waiting count as open
+// windows in E, so a queue does not make the lottery issue more permits.
 func (m *Module) lottery(w *world.World, r *rng.Stream) error {
 	pregnant, open := 0, 0
 	m.pool = m.pool[:0]
@@ -38,7 +39,7 @@ func (m *Module) lottery(w *world.World, r *rng.Stream) error {
 		switch w.People[id].Implant {
 		case world.Pregnant:
 			pregnant++
-		case world.WindowOpen:
+		case world.WindowOpen, world.Queued:
 			open++
 		}
 		if Eligible(w, id, w.Day, m.cfg.Lottery) {
@@ -54,10 +55,45 @@ func (m *Module) lottery(w *world.World, r *rng.Stream) error {
 		j := r.IntRange(i, len(m.pool)-1)
 		m.pool[i], m.pool[j] = m.pool[j], m.pool[i]
 		p := &w.People[m.pool[i]]
+		p.Implant, p.PermitDay = world.Queued, w.Day
+	}
+	m.removals(w)
+	return nil
+}
+
+// ODD §6.2: implant removals, right after each draw. Medical removes the
+// implants of the oldest ⌊medicalCoverage × waiting⌋ winners (oldest
+// permit first, then lowest ID); the rest wait for the next month. Each
+// removal opens a window of windowDays from tomorrow. At coverage 1 nobody
+// waits.
+func (m *Module) removals(w *world.World) {
+	m.pool = m.pool[:0]
+	for _, id := range w.Alive {
+		if w.People[id].Implant == world.Queued {
+			m.pool = append(m.pool, id)
+		}
+	}
+	slices.SortFunc(m.pool, func(a, b world.PersonID) int {
+		return cmp.Or(cmp.Compare(w.People[a].PermitDay, w.People[b].PermitDay), cmp.Compare(a, b))
+	})
+	n := int(medicalCoverage(w) * float64(len(m.pool)))
+	for _, id := range m.pool[:n] {
+		p := &w.People[id]
 		p.Implant = world.WindowOpen
 		p.WindowEnds = w.Day + world.Tick(m.cfg.Lottery.WindowDays)
 	}
-	return nil
+}
+
+// medicalCoverage is the Medical department's coverage, or 1 if there is
+// no Medical department (the work module is off: tasks.md, milestone 1
+// stubs).
+func medicalCoverage(w *world.World) float64 {
+	for _, d := range w.Depts {
+		if d.Name == "medical" {
+			return d.Coverage
+		}
+	}
+	return 1
 }
 
 // ODD §6.4: an eligible couple is a woman and a man; she is aged
@@ -99,16 +135,22 @@ func (m *Module) reproduction(w *world.World, r *rng.Stream) error {
 			}
 		case world.Pregnant:
 			if w.Day == p.DueDay {
-				m.birth(w, r, id)
+				if err := m.birth(w, r, id); err != nil {
+					return err
+				}
 			}
 		}
 	}
+	// Mothers who died giving birth leave Alive now, as in the death step.
+	w.Alive = slices.DeleteFunc(w.Alive, func(id world.PersonID) bool { return !w.People[id].Alive })
 	return nil
 }
 
 // birth adds the child to the mother's household (ODD §6.4). The father
-// is the partner at conception, even if he has died since.
-func (m *Module) birth(w *world.World, r *rng.Stream, mother world.PersonID) {
+// is the partner at conception, even if he has died since. ODD §6.2: the
+// mother then dies with maternalDeathBase × (2 − medicalCoverage); the
+// child lives.
+func (m *Module) birth(w *world.World, r *rng.Stream, mother world.PersonID) error {
 	sex := world.Male
 	if r.Bernoulli(m.cfg.Lottery.GirlShare) {
 		sex = world.Female
@@ -127,4 +169,8 @@ func (m *Module) birth(w *world.World, r *rng.Stream, mother world.PersonID) {
 	hh.Members = append(hh.Members, id)
 	w.People = append(w.People, child) // may move People: mo is not used after this
 	w.Alive = append(w.Alive, id)
+	if r.Bernoulli(m.cfg.Health.MaternalDeathBase * (2 - medicalCoverage(w))) {
+		return m.die(w, r, mother)
+	}
+	return nil
 }

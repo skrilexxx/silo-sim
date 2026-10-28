@@ -49,7 +49,7 @@ Demography only. Until later milestones, stub what other modules provide: health
   - *Spec:* ODD §6.5, §5 steps 5–6. *Done when:* after 50 years each department is within ±15% of target; ~60% of placements follow a parent's department (test with tolerance; the share of workers in a parent's department is logged as an outcome); a master never has more than 2 shadows.
 - [x] **T2.2 Output, coverage, retraining.** (2026-10-28) Department output, the shared coverage formula (0.6 × target headcount), monthly retraining from General services.
   - *Spec:* ODD §6.5, coverage rule in §6.6. *Done when:* a fully staffed department at average skill and health has output / need ≈ 1.1, so coverage 1 (unit test); retraining lifts a department from 70% to above 80% of target within a few months.
-- [ ] **T2.3 Health and Medical.** Daily health changes (hunger and air still stubbed at "fine"), injuries by department, illness, recovery scaled by Medical coverage, maternal death risk, implant-removal queue when coverage < 1. Mortality now uses real health.
+- [x] **T2.3 Health and Medical.** (2026-10-28) Daily health changes (hunger and air still stubbed at "fine"), injuries by department, illness, recovery scaled by Medical coverage, maternal death risk, implant-removal queue when coverage < 1. Mortality now uses real health.
   - *Spec:* ODD §6.2. *Done when:* with Medical removed (target 0) average health falls and deaths rise (test); with full Medical, average health stays above 0.9; the queue delays windows when coverage is 0.5.
 
 ## Milestone 3 — Resources

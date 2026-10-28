@@ -63,8 +63,9 @@ func (m *Module) deaths(w *world.World, r *rng.Stream) error {
 }
 
 // ODD §6.1: on a death the partner becomes unpartnered and may pair again;
-// a widow's open conception window closes (ODD §6.4), though a pregnancy
-// already under way goes on.
+// a widow's open conception window closes, or her permit is lost if she is
+// still waiting for the removal (ODD §6.4), though a pregnancy already
+// under way goes on.
 // If an adult still lives in the household, the children stay with them
 // (their other parent, or a step-parent). Otherwise the children move
 // together to a random household in the same zone with a living adult. A
@@ -79,7 +80,7 @@ func (m *Module) die(w *world.World, r *rng.Stream, id world.PersonID) error {
 	if p.Partner != world.None {
 		q := &w.People[p.Partner]
 		q.Partner = world.None
-		if q.Implant == world.WindowOpen {
+		if q.Implant == world.WindowOpen || q.Implant == world.Queued {
 			q.Implant = world.ImplantIn
 		}
 	}
