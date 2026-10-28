@@ -36,7 +36,7 @@ Demography only. Until later milestones, stub what other modules provide: health
   - *Spec:* ODD §5 steps 1–4, 7. *Done when:* invariants pass on day 1; zone split within 1% of config; age histogram within 2 percentage points of the stationary distribution in every 5-year band; every child's mother was 18–40 at the birth (lottery limits; ODD §5 step 4).
 - [x] **T1.2 Mortality.** (2026-10-28) Gompertz hazard with infant term and health multiplier; death handling (partner freed, orphans rehomed, person removed from `Alive`). Job vacancy moved to T2.1, since no jobs exist before it.
   - *Spec:* ODD §6.1. *Done when:* statistical test: 100,000 simulated lives with health 1 have median age at death 65–69; orphan rehoming keeps every child under 18 in a household in the same zone.
-- [ ] **T1.3 Partnering and housing.** Search rate, weighted choice, monthly housing moves, home capacity queue.
+- [x] **T1.3 Partnering and housing.** (2026-10-28) Search rate, weighted choice, monthly housing moves, home capacity queue.
   - *Spec:* ODD §6.3, §5 step 1 (home capacity). *Done when:* partnerships always symmetric; no floor over capacity; unit test of the weights (same-zone pair chosen ~4× as often as a cross-zone pair with equal age gap).
 - [ ] **T1.4 Lottery and reproduction.** Monthly permits by the formula, eligibility, uniform draw, 365-day window, daily conception chance, 270-day pregnancy, birth into the household, implant back in.
   - *Spec:* ODD §6.4. *Done when:* statistical test: share of windows ending in pregnancy is 78–82% over 10,000 windows; no pregnancy without a window (invariant); permit formula unit-tested on hand-picked numbers.

@@ -98,6 +98,7 @@ type Partnering struct {
 	SearchRate           float64 `yaml:"searchRate"`
 	SameZoneWeight       float64 `yaml:"sameZoneWeight"`
 	SameDepartmentWeight float64 `yaml:"sameDepartmentWeight"`
+	SameSexWeight        float64 `yaml:"sameSexWeight"`
 	AgeGapScaleYears     float64 `yaml:"ageGapScaleYears"`
 }
 

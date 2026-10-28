@@ -123,6 +123,14 @@ type Silo struct {
 	Mayor              PersonID   // or None
 }
 
+// HousingRequest is a couple waiting to move into a home of their own
+// (ODD §6.3). Zone is chosen the first month housing handles them.
+type HousingRequest struct {
+	A, B    PersonID
+	Zone    Zone
+	ZoneSet bool
+}
+
 type World struct {
 	Day        Tick // 0 before the first tick; tick t sets Day = t
 	People     []Person
@@ -131,4 +139,6 @@ type World struct {
 	Floors     []Floor // Floors[i] is floor number i+1
 	Depts      []Department
 	Silo       Silo
+
+	HousingQueue []HousingRequest // oldest first
 }

@@ -13,7 +13,21 @@ import (
 	"github.com/skrilexxx/silo-sim/internal/world"
 )
 
-// Done-when: over 20 years of the full day-1 silo with deaths only, every
+// deathsOnly runs just the demography module's death step, so a test of
+// the T1.2 rules is not mixed with partnering and housing.
+type deathsOnly struct{ *demography.Module }
+
+func (d deathsOnly) Steps() []engine.Step {
+	var out []engine.Step
+	for _, s := range d.Module.Steps() {
+		if s.Phase == engine.PhaseDeaths {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// T1.2 done-when: over 20 years of the full day-1 silo with deaths only, every
 // child under 18 always lives in a household with an adult, in the zone
 // they started in. Invariants run every tick.
 func TestOrphansStayHousedInZone(t *testing.T) {
@@ -37,7 +51,7 @@ func TestOrphansStayHousedInZone(t *testing.T) {
 		startZone[id], startHH[id] = zone(id), w.People[id].Household
 	}
 
-	e, err := engine.New(cfg, w, []engine.Module{demography.New()})
+	e, err := engine.New(cfg, w, []engine.Module{deathsOnly{demography.New()}})
 	if err != nil {
 		t.Fatal(err)
 	}

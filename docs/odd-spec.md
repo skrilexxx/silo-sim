@@ -121,7 +121,7 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 ### Every 30 days
 
 12. **Lottery** — permits issued and winners drawn (6.4)
-13. **Housing** — new couples and grown children move to free homes (6.3)
+13. **Housing** — new couples move to free homes; grown children leave home only by partnering (6.3)
 14. **Staffing** — understaffed departments flagged for the next shadow placements (6.5)
 
 ### Every 365 days
@@ -221,12 +221,13 @@ Medical also performs implant removals for lottery winners. If coverage is below
 
 ### 6.3 Partnering and housing
 
-Partners are chosen freely. Each day, each unpartnered adult (18+) starts looking with a small chance (on average about every 3 years) and picks from the other unpartnered adults with weights:
+Partners are chosen freely. Each day, each unpartnered adult (18+), in the tick's shuffled order, starts looking with a small chance (on average about every 3 years) and at once pairs with someone picked from all other unpartnered adults in the silo, with weights:
 
-- same zone ×4, same department ×2
+- same zone ×4, same department ×2, same sex ×0.05
 - an age-gap penalty: weight × e^(−|age gap| / 5)
+- close relatives are never picked: parent, child, or sibling (sharing a mother or a father)
 
-Any couple can form; only a woman–man couple can enter the birth lottery. Each month new couples move into a free home in the zone of whichever partner's department is tied to a zone (Mechanical, IT, Judicial); otherwise one of the two zones at random. If no home is free, they wait in a queue. Young adults stay in their parents' household until they partner. Partnering and job placement are the only ways a person changes zone, which makes zone mobility measurable.
+Any couple can form, so about 5% of new couples are same-sex; only a woman–man couple can enter the birth lottery. New couples join a housing queue. Each month the queue is handled oldest first. The first time a couple is handled it gets a target zone: the zone of a partner whose department has a zone (every department but General services and Porters); if both partners have one and they differ, one of the two at random; if neither, one of the two partners' current zones at random. The couple then moves into a random free home in that zone (a floor's homes minus the households living there), or keeps waiting, living apart, if none is free; a couple waiting for one zone never blocks couples waiting for another. A couple broken by a death leaves the queue. Moving starts a new household: from each household a partner leaves, children under 18 come along if they are a partner's own children, or if the partners were the only adults there, so no child is left without an adult. Homes left empty are free at once for the rest of the queue. Young adults stay in their parents' household until they partner. Partnering and job placement are the only ways a person changes zone, which makes zone mobility measurable.
 
 ### 6.4 Lottery and reproduction
 
@@ -333,7 +334,7 @@ Every number the model uses, in one place. Each one becomes a field in the scena
 | Coverage need | 0.6 × target headcount, every department | Full staff gives coverage ≈ 1.1 | 6.2 |
 | Maternal death | 0.002 × (2 − coverage) | Guess | 6.2 |
 | Partner search rate | 0.0009 per day (about every 3 years) | Calibrate | 6.3 |
-| Partner weights | Same zone ×4, same department ×2, age scale 5 years | Guess | 6.3 |
+| Partner weights | Same zone ×4, same department ×2, same sex ×0.05, age scale 5 years | Guess; same sex: calibrate | 6.3 |
 | Max permits per month | 40 | Guess | 6.4 |
 | Conception window | 365 days | Show | 6.4 |
 | Daily conception chance | 0.0044 | About 80% within a year, real-world | 6.4 |

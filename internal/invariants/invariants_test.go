@@ -12,7 +12,7 @@ import (
 // and Down Deep.
 func tiny() *world.World {
 	w := &world.World{
-		Floors: []world.Floor{{Number: 1, Zone: world.UpTop}, {Number: 2, Zone: world.DownDeep}},
+		Floors: []world.Floor{{Number: 1, Zone: world.UpTop, Homes: 1}, {Number: 2, Zone: world.DownDeep, Homes: 2}},
 		Silo:   world.Silo{GeneratorCondition: 0.8, WaterSupply: 1, AirQuality: 1},
 	}
 	for i := range 3 {
@@ -57,6 +57,7 @@ func TestViolationsAreCaught(t *testing.T) {
 			w.Households[0].Members = []world.PersonID{0, 2}
 			w.Households[1].Members = nil
 		}},
+		{"floor 1 holds 1 households but has 0 homes", func(w *world.World) { w.Floors[0].Homes = 0 }},
 		{"person 0's partner 1 is not alive", func(w *world.World) { w.People[0].Partner = 1 }},
 		{"person 0 is their own partner", func(w *world.World) { w.People[0].Partner = 0 }},
 		{"person 0's partner 2 has partner -1", func(w *world.World) { w.People[0].Partner = 2 }},

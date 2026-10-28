@@ -12,7 +12,7 @@ import (
 
 // Check runs every invariant and returns the first violation.
 func Check(w *world.World) error {
-	for _, check := range []func(*world.World) error{countsAgree, oneHousehold, partnerships, unitRanges} {
+	for _, check := range []func(*world.World) error{countsAgree, oneHousehold, homeCapacity, partnerships, unitRanges} {
 		if err := check(w); err != nil {
 			return err
 		}
@@ -90,6 +90,22 @@ func oneHousehold(w *world.World) error {
 	for _, id := range w.Alive {
 		if count[id] != 1 {
 			return fmt.Errorf("person %d is in %d households", id, count[id])
+		}
+	}
+	return nil
+}
+
+// ODD §8: no floor holds more households than it has homes.
+func homeCapacity(w *world.World) error {
+	used := make([]int, len(w.Floors))
+	for _, h := range w.Households {
+		if len(h.Members) > 0 {
+			used[h.Floor-1]++ // floor validity is checked by countsAgree
+		}
+	}
+	for i, f := range w.Floors {
+		if used[i] > f.Homes {
+			return fmt.Errorf("floor %d holds %d households but has %d homes", f.Number, used[i], f.Homes)
 		}
 	}
 	return nil

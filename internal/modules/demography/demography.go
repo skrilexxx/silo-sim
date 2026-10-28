@@ -10,9 +10,15 @@ import (
 	"github.com/skrilexxx/silo-sim/internal/world"
 )
 
-// Module is the demography module. Its steps so far: deaths (§6.1).
+// Module is the demography module. Its steps so far: deaths (§6.1),
+// partnering and housing (§6.3).
 type Module struct {
 	cfg *config.Scenario
+
+	// Reused buffers, so the daily steps allocate nothing.
+	pool    []world.PersonID
+	poolZ   []world.Zone
+	weights []float64
 }
 
 func New() *Module { return &Module{} }
@@ -26,7 +32,11 @@ func (m *Module) Init(_ *world.World, cfg *config.Scenario, _ *rng.Stream) error
 }
 
 func (m *Module) Steps() []engine.Step {
-	return []engine.Step{{Phase: engine.PhaseDeaths, Run: m.deaths}}
+	return []engine.Step{
+		{Phase: engine.PhaseDeaths, Run: m.deaths},
+		{Phase: engine.PhasePartnering, Run: m.partnering},
+		{Phase: engine.PhaseHousing, Run: m.housing},
+	}
 }
 
 // ODD §6.1: mortality. Each living person, in this tick's shuffled order,

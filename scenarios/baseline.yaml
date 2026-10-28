@@ -55,6 +55,7 @@ partnering:                       # ODD §6.3
   searchRate: 0.0009              # calibrate; ≈ one search every 3 years
   sameZoneWeight: 4.0
   sameDepartmentWeight: 2.0
+  sameSexWeight: 0.05             # calibrate; ≈ 5% of new couples are same-sex
   ageGapScaleYears: 5.0
 
 lottery:                          # ODD §6.4

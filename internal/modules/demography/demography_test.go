@@ -72,7 +72,8 @@ func singles(n int, ageYears, health float64) *world.World {
 	for i := range n {
 		id := world.PersonID(i)
 		w.People = append(w.People, world.Person{ID: id, Alive: true, BirthDay: world.Tick(-ageYears * year),
-			Household: world.HouseholdID(i), Partner: world.None, Mother: world.None, Father: world.None, Health: health})
+			Household: world.HouseholdID(i), Partner: world.None, Mother: world.None, Father: world.None,
+			Department: world.None, Master: world.None, Health: health})
 		w.Alive = append(w.Alive, id)
 		w.Households = append(w.Households, world.Household{ID: world.HouseholdID(i), Floor: 1, Members: []world.PersonID{id}})
 	}
@@ -87,7 +88,8 @@ func TestDeathStepRate(t *testing.T) {
 	const n = 20_000
 	for _, health := range []float64{1, 0.5} {
 		w := singles(n, 70, health)
-		e, err := engine.New(cfg, w, []engine.Module{New()})
+		m := New()
+		e, err := engine.New(cfg, w, []engine.Module{deathsOnly{m}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -108,6 +110,11 @@ func TestDeathStepRate(t *testing.T) {
 	}
 }
 
+// deathsOnly runs just the death step.
+type deathsOnly struct{ *Module }
+
+func (d deathsOnly) Steps() []engine.Step { return d.Module.Steps()[:1] }
+
 // family builds, on Mids floor 1: household 0 with a woman (0), a man (1)
 // and two children (2, 3); household 1 with one adult (4). Up Top floor 2:
 // household 2 with one adult (5).
@@ -117,7 +124,8 @@ func family(t *testing.T) (*world.World, *Module) {
 	add := func(sex world.Sex, ageYears int, hh world.HouseholdID) world.PersonID {
 		id := world.PersonID(len(w.People))
 		w.People = append(w.People, world.Person{ID: id, Sex: sex, Alive: true, BirthDay: world.Tick(-ageYears * year),
-			Household: hh, Partner: world.None, Mother: world.None, Father: world.None, Health: 1})
+			Household: hh, Partner: world.None, Mother: world.None, Father: world.None,
+			Department: world.None, Master: world.None, Health: 1})
 		w.Alive = append(w.Alive, id)
 		return id
 	}
