@@ -23,7 +23,7 @@ The engine runs empty ticks deterministically and writes output. No model yet.
   - *Spec:* ODD §5 (input), §7. *Done when:* tests cover unknown key, missing key, bad range, and an `extends` override.
 - [x] **T0.3 RNG.** (2026-10-28) `internal/rng` with PCG streams per module name (fixed constants), plus helpers: `Bernoulli(p)`, `IntRange`, `WeightedIndex`, `Shuffle`.
   - *Done when:* same seed → same sequence; different stream → different sequence; a test proves adding a draw on stream A does not change stream B.
-- [ ] **T0.4 World and engine.** `world` types (ODD §2), `engine` with `schedule.go`, the `Module` interface, tick loop with `Every`, warm-up handling, shuffle of `Alive`.
+- [x] **T0.4 World and engine.** (2026-10-28) `world` types (ODD §2), `engine` with `schedule.go`, the `Module` interface, tick loop with `Every`, warm-up handling, shuffle of `Alive`.
   - *Done when:* a fake test module registering steps at phases 7 and 2 runs them in order 2, 7; a 30-day step runs on days 30, 60…; two modules on the same phase fail at startup.
 - [ ] **T0.5 Output and invariants framework.** `output` writers (`daily.csv` with day + population only for now, `run.json`), `invariants` package with the checks that already make sense (counts agree, 0–1 ranges), golden-test harness with `-update`.
   - *Done when:* a 10-year empty run writes files; two runs with the same seed give identical `daily.csv`.

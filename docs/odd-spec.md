@@ -92,7 +92,7 @@ Five kinds of entity: people, households, floors, departments and the silo itsel
 | rationShares | Share of distributed food per zone (policy) |
 | governanceMode | appointment or election |
 | mayorID | Current Mayor |
-| rng | One seeded random number generator |
+| rng | One seed; one random stream per module (see §4) |
 
 ### Scales
 

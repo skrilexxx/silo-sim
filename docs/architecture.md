@@ -79,7 +79,7 @@ Rules for state:
 The ODD schedule (§3) interleaves submodels: generator → life support → food → rations → work → health → deaths → … A module therefore does not "run" as one block. It registers **steps**, and the engine runs all steps in the fixed order defined in one file.
 
 ```go
-// engine/schedule.go — the ONLY place the order lives. Mirrors ODD §3 step numbers.
+// engine/schedule.go — the ONLY place the order and frequency live. Mirrors ODD §3 step numbers.
 type Phase int
 const (
     PhaseGenerator    Phase = 1
@@ -109,8 +109,7 @@ type Module interface {
 }
 
 type Step struct {
-    Phase Phase
-    Every int                                  // 1, 30 or 365
+    Phase Phase                                // how often it runs comes from the phase (schedule.go)
     Run   func(w *world.World, r *rng.Stream) error
 }
 ```
@@ -119,10 +118,10 @@ The engine:
 
 1. Loads the scenario, builds the module list from `modules:`, checks `Requires`.
 2. Runs `initpop`, then each module's `Init`.
-3. Collects all steps, sorts them by `Phase` (two modules may not register the same phase), and loops over ticks.
-4. Before each tick's person-level steps, shuffles `Alive` with the engine's own stream (ODD §3: random order each tick).
+3. Collects all steps, sorts them by `Phase` (two modules may not register the same phase), and loops over ticks. Days run 1…N; a phase that runs every 30 or 365 days runs on days that are multiples of that number. Frequency belongs to the phase, not the step, because ODD §3 fixes it per phase.
+4. At the start of each tick, shuffles `Alive` with the engine's own stream (ODD §3: random order each tick).
 5. Runs invariants every `output.invariantEvery` ticks (every tick in tests).
-6. Discards output during warm-up unless `output.logWarmup: true`.
+6. Skips the output phases (logging, snapshot) during warm-up unless `output.logWarmup: true`.
 
 A step that is disabled because its module is off simply does not run. Modules must not reach into other modules' internals; they share state only through `world.World`. If a step needs a value from a module that is off (for example food intake when `resources` is off), the scenario is invalid and loading fails. The baseline always runs all five.
 
