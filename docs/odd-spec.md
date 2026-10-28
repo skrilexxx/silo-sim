@@ -201,7 +201,7 @@ Each day each person dies with a probability from a Gompertz hazard (risk of dea
 h(a) = A e^{B a} + h_{infant}[a < 1], \quad p_{day} = 1 - \exp\left(-\frac{h(a)\,(1 + k_h (1 - health))}{365}\right)
 ```
 
-With A = 0.0002 and B = 0.085, half of people reach about 67 before health effects. On a death: the partner becomes unpartnered and may pair again; children under 18 stay with the remaining parent, or move to a household in the same zone if none is left; the job becomes a vacancy.
+With A = 0.0002 and B = 0.085, half of people reach about 67 before health effects. Deaths are drawn person by person in the tick's shuffled order and handled at once. On a death: the partner becomes unpartnered and may pair again; if an adult (18+) still lives in the household, the children under 18 stay with them (their other parent, or a step-parent); otherwise all the children in that household move together to a random household in the same zone with at least one living adult, and if there is none the run stops with an error. A household left with no members is dissolved, which frees its home. The job becomes a vacancy (6.5).
 
 ### 6.2 Health and Medical
 

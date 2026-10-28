@@ -73,10 +73,12 @@ type Person struct {
 	Children   int
 }
 
-// ODD §2: Household. Its zone follows from its floor.
+// ODD §2: Household. Its zone follows from its floor. A household whose
+// last member leaves is dissolved: no members and Floor = None, which
+// frees its home. IDs are never reused.
 type Household struct {
 	ID      HouseholdID
-	Floor   int // floor number, 1-based: World.Floors[Floor-1]
+	Floor   int // floor number, 1-based: World.Floors[Floor-1]; None if dissolved
 	Members []PersonID
 }
 

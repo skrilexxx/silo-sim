@@ -8,6 +8,6 @@ seed: 1
 warmupYears: 0
 years: 20
 population: 1000       # used once the day-1 population exists (T1.1)
-modules: []            # grows as modules are built; each addition changes the hash
+modules: [demography]  # grows as modules are built; each addition changes the hash
 output:
   invariantEvery: 1    # tests check invariants every tick

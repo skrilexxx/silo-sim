@@ -34,7 +34,7 @@ Demography only. Until later milestones, stub what other modules provide: health
 
 - [x] **T1.1 Day-1 population.** (2026-10-28) `initpop`: floors and zones, 10,000 people with ages from the stationary distribution of the mortality rule, zones, households, couples, children placed with plausible mothers, implants in.
   - *Spec:* ODD §5 steps 1–4, 7. *Done when:* invariants pass on day 1; zone split within 1% of config; age histogram within 2 percentage points of the stationary distribution in every 5-year band; every child's mother was 18–40 at the birth (lottery limits; ODD §5 step 4).
-- [ ] **T1.2 Mortality.** Gompertz hazard with infant term and health multiplier; death handling (partner freed, orphans rehomed, job vacated, person removed from `Alive`).
+- [x] **T1.2 Mortality.** (2026-10-28) Gompertz hazard with infant term and health multiplier; death handling (partner freed, orphans rehomed, person removed from `Alive`). Job vacancy moved to T2.1, since no jobs exist before it.
   - *Spec:* ODD §6.1. *Done when:* statistical test: 100,000 simulated lives with health 1 have median age at death 65–69; orphan rehoming keeps every child under 18 in a household in the same zone.
 - [ ] **T1.3 Partnering and housing.** Search rate, weighted choice, monthly housing moves, home capacity queue.
   - *Spec:* ODD §6.3, §5 step 1 (home capacity). *Done when:* partnerships always symmetric; no floor over capacity; unit test of the weights (same-zone pair chosen ~4× as often as a cross-zone pair with equal age gap).
@@ -45,7 +45,7 @@ Demography only. Until later milestones, stub what other modules provide: health
 
 ## Milestone 2 — Work and health
 
-- [ ] **T2.1 Departments and life stages.** Department table from config, child → shadow at 14 → worker at 18 → retired at 65 or on long ill health; shadow placement (parent's trade, understaffed departments, cross-zone chance); masters.
+- [ ] **T2.1 Departments and life stages.** Department table from config, job vacated on death (ODD §6.1), child → shadow at 14 → worker at 18 → retired at 65 or on long ill health; shadow placement (parent's trade, understaffed departments, cross-zone chance); masters.
   - *Spec:* ODD §6.5, §5 step 5. *Done when:* after 50 years each department is within ±15% of target; ~60% of workers are in a parent's department (test with tolerance); a master never has more than 2 shadows.
 - [ ] **T2.2 Skill, output, coverage, retraining.** Skill growth, department output, the shared coverage formula (0.6 × target headcount), monthly retraining from General services.
   - *Spec:* ODD §6.5, coverage rule in §6.6. *Done when:* a fully staffed department at average skill and health has coverage ≈ 1.1 (unit test); retraining lifts a department from 70% to above 80% of target within a few months.

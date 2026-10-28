@@ -67,8 +67,8 @@ func TestTenYearEmptyRunWritesFiles(t *testing.T) {
 	if rows := len(lines) - 1; rows != 10*365 {
 		t.Errorf("daily.csv has %d rows, want %d", rows, 10*365)
 	}
-	if lines[1] != "366,1000" || lines[len(lines)-1] != "4015,1000" {
-		t.Errorf("rows run from %q to %q, want 366,1000 to 4015,1000", lines[1], lines[len(lines)-1])
+	if !strings.HasPrefix(lines[1], "366,") || !strings.HasPrefix(lines[len(lines)-1], "4015,") {
+		t.Errorf("rows run from %q to %q, want days 366 to 4015", lines[1], lines[len(lines)-1])
 	}
 
 	var info output.RunInfo
@@ -94,7 +94,7 @@ func TestSameSeedGivesIdenticalDaily(t *testing.T) {
 func TestUnbuiltModuleFails(t *testing.T) {
 	cfg := loadInto(t, "../../scenarios/baseline.yaml")
 	_, err := simulate(cfg)
-	if err == nil || !strings.Contains(err.Error(), `module "demography" is not implemented yet`) {
+	if err == nil || !strings.Contains(err.Error(), `module "health" is not implemented yet`) {
 		t.Errorf("got %v", err)
 	}
 }

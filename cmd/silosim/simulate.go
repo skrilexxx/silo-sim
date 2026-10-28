@@ -11,6 +11,7 @@ import (
 	"github.com/skrilexxx/silo-sim/internal/config"
 	"github.com/skrilexxx/silo-sim/internal/engine"
 	"github.com/skrilexxx/silo-sim/internal/initpop"
+	"github.com/skrilexxx/silo-sim/internal/modules/demography"
 	"github.com/skrilexxx/silo-sim/internal/output"
 	"github.com/skrilexxx/silo-sim/internal/rng"
 )
@@ -84,7 +85,10 @@ func run1(cfg *config.Scenario, dir string, modules []engine.Module) error {
 
 // newModule builds a model module by its scenario name.
 func newModule(name string) (engine.Module, error) {
-	// Model modules join here as they are built (T1.2 onwards).
+	switch name {
+	case "demography":
+		return demography.New(), nil
+	}
 	return nil, fmt.Errorf("module %q is not implemented yet", name)
 }
 

@@ -16,8 +16,10 @@ func tiny() *world.World {
 		Silo:   world.Silo{GeneratorCondition: 0.8, WaterSupply: 1, AirQuality: 1},
 	}
 	for i := range 3 {
-		w.People = append(w.People, world.Person{ID: world.PersonID(i), Alive: i != 1, Health: 1, Skill: 0.5})
+		w.People = append(w.People, world.Person{ID: world.PersonID(i), Alive: i != 1, Health: 1, Skill: 0.5, Partner: world.None})
 	}
+	w.People[0].Household, w.People[2].Household = 0, 1
+	w.People[1].Household = 1 // the dead keep their last household as a record
 	w.Alive = []world.PersonID{2, 0}
 	w.Households = []world.Household{
 		{ID: 0, Floor: 1, Members: []world.PersonID{0}},
@@ -51,6 +53,13 @@ func TestViolationsAreCaught(t *testing.T) {
 		{"person 0 health = NaN", func(w *world.World) { w.People[0].Health = math.NaN() }},
 		{"silo air quality = 1.2, outside 0–1", func(w *world.World) { w.Silo.AirQuality = 1.2 }},
 		{"silo generator condition = -1", func(w *world.World) { w.Silo.GeneratorCondition = -1 }},
+		{"household 0 holds person 2, whose household is 1", func(w *world.World) {
+			w.Households[0].Members = []world.PersonID{0, 2}
+			w.Households[1].Members = nil
+		}},
+		{"person 0's partner 1 is not alive", func(w *world.World) { w.People[0].Partner = 1 }},
+		{"person 0 is their own partner", func(w *world.World) { w.People[0].Partner = 0 }},
+		{"person 0's partner 2 has partner -1", func(w *world.World) { w.People[0].Partner = 2 }},
 	}
 	for _, c := range cases {
 		w := tiny()
@@ -59,6 +68,36 @@ func TestViolationsAreCaught(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("got %v, want an error containing %q", err, c.want)
 		}
+	}
+}
+
+// Breakages the counts check would catch first, so oneHousehold is called
+// directly to prove it catches them on its own.
+func TestOneHousehold(t *testing.T) {
+	cases := []struct {
+		want   string
+		break_ func(w *world.World)
+	}{
+		{"household 1 holds person 1, who is not alive", func(w *world.World) {
+			w.Households[1].Members = []world.PersonID{2, 1}
+		}},
+		{"person 2 is in 0 households", func(w *world.World) { w.Households[1].Members = nil }},
+	}
+	for _, c := range cases {
+		w := tiny()
+		c.break_(w)
+		if err := oneHousehold(w); err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("got %v, want an error containing %q", err, c.want)
+		}
+	}
+}
+
+// A dissolved household (no members) is skipped, whatever its floor.
+func TestDissolvedHouseholdSkipped(t *testing.T) {
+	w := tiny()
+	w.Households = append(w.Households, world.Household{ID: 2, Floor: world.None})
+	if err := Check(w); err != nil {
+		t.Errorf("dissolved household checked: %v", err)
 	}
 }
 
