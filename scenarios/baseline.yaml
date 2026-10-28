@@ -1,0 +1,125 @@
+# Baseline scenario: Silo 18 running normally under the Pact.
+# This file is the COMPLETE default parameter set. Every number in ODD §7 is here.
+# Other scenarios start with `extends: baseline.yaml` and override only what changes.
+# Values marked "calibrate" are starting points for milestone 6 (docs/tasks.md).
+# Units: probabilities and rates are per day unless the key says otherwise.
+
+name: baseline
+seed: 42
+warmupYears: 50
+years: 200
+population: 10000                 # day-1 size (ODD §5)
+modules: [demography, health, work, resources, governance]
+
+output:
+  dir: runs
+  logWarmup: false
+  invariantEvery: 365             # ticks between invariant checks in normal runs (tests: every tick)
+
+init:                             # ODD §5
+  zoneSplit: { upTop: 0.32, mids: 0.46, downDeep: 0.22 }
+  pairedShareOfAdults: 0.70       # adults 20+ living as couples on day 1
+  homeCapacityMargin: 1.15        # homes per zone = 1.15 × households needed
+  farmFloors: 20                  # mostly in the Mids
+  mechanicalFloors: 12            # the lowest floors
+  foodStockDays: 90
+  partsStockDays: 365
+  generatorCondition: 0.8
+
+mortality:                        # ODD §6.1
+  gompertzA: 0.0002               # per year
+  gompertzB: 0.085                # per year; median death ≈ 67 at health 1
+  infantHazard: 0.02              # extra yearly hazard in the first year of life
+  healthMultiplier: 2.0           # k_h
+
+health:                           # ODD §6.2
+  hungerDamage: 0.02              # calibrate; per day at zero intake
+  airDamage: 0.05                 # calibrate; per day at zero air
+  injuryChance: 0.0002
+  injuryFactor: { mechanical: 2.0, farms: 1.0, other: 0.5 }
+  injuryCost: 0.3
+  illnessChance: 0.0005
+  illnessCost: 0.15
+  recoveryRate: 0.01              # calibrate; per day at full Medical coverage
+  maternalDeathBase: 0.002        # risk = base × (2 − medicalCoverage)
+
+coverage:                         # ODD §6.6, shared by every department
+  needFactor: 0.6                 # need = 0.6 × target headcount
+
+partnering:                       # ODD §6.3
+  minAge: 18
+  searchRate: 0.0009              # calibrate; ≈ one search every 3 years
+  sameZoneWeight: 4.0
+  sameDepartmentWeight: 2.0
+  ageGapScaleYears: 5.0
+
+lottery:                          # ODD §6.4
+  targetPopulation: 10000
+  maxPermitsPerMonth: 40
+  openWindowWeight: 0.8           # E = pregnant + 0.8 × open windows
+  windowDays: 365
+  conceptionChance: 0.0044        # ≈ 80% within a 365-day window
+  pregnancyDays: 270
+  motherAgeMin: 18
+  motherAgeMax: 40
+  maxChildren: 3
+  minYoungestAgeYears: 2
+
+work:                             # ODD §6.5
+  shadowAge: 14
+  workerAge: 18
+  retireAge: 65
+  sickRetireDays: 90
+  sickRetireHealth: 0.3
+  followParentChance: 0.6
+  crossZoneChance: 0.05
+  maxShadowsPerMaster: 2
+  masterMinSkill: 0.5
+  skillGrowth: 0.00044            # skill += α × (1 − skill) per working day
+  shadowOutputFactor: 0.3
+  retrainBelowShare: 0.8          # of target headcount
+  retrainStartSkill: 0.2
+  # People in "all zones" departments are spread so the total split matches init.zoneSplit.
+  allZoneSplit: { upTop: 0.36, mids: 0.40, downDeep: 0.24 }
+  departments:                    # order is fixed and used as the department index
+    - { name: farms,          zone: mids,     share: 0.30 }
+    - { name: general,        zone: all,      share: 0.20 }   # cafeterias, crafts, cleaning
+    - { name: mechanical,     zone: downDeep, share: 0.16 }   # includes the water plant
+    - { name: supply,         zone: mids,     share: 0.06 }
+    - { name: judicial,       zone: upTop,    share: 0.06 }   # includes Security
+    - { name: porters,        zone: all,      share: 0.05 }
+    - { name: education,      zone: upTop,    share: 0.05 }
+    - { name: medical,        zone: upTop,    share: 0.04 }
+    - { name: it,             zone: upTop,    share: 0.04 }
+    - { name: administration, zone: upTop,    share: 0.03 }   # Mayor's office
+    - { name: sheriff,        zone: upTop,    share: 0.01 }
+
+resources:                        # ODD §6.6
+  generatorWear: 0.0004           # calibrate
+  repairRate: 0.002               # ρ; condition settles at 1 − wear/ρ = 0.8 at full coverage
+  failureBase: 0.002              # calibrate; f₀ × (1 − c)² ≈ 3 failures per century at c = 0.8
+  outageMinDays: 3
+  outageMaxDays: 14
+  failureConditionDrop: 0.1
+  backupPower: 0.2
+  capacityMargin: 1.3             # capacity = 1.3 × day-1 power demand
+  powerDemandPerPerson: 1.0       # abstract units
+  powerDemandPerFarmFloor: 150.0
+  airRecoveryShare: 0.333         # air moves this share of the gap toward powerFactor each day
+  kcalPerFarmUnit: 16000          # calibrate to a ~5% food surplus
+  partsPerDayFullCoverage: 1.2    # Supply production at coverage 1
+  partsPerRepairDay: 1.0
+  partsPerFailure: 30.0
+
+rations:                          # ODD §6.7
+  adultKcal: 2200
+  childAgeBelow: 14
+  childNeedShare: 0.6
+  rationingBelowDays: 30
+  rationingShare: 0.9
+  weights: { upTop: 1.0, mids: 1.0, downDeep: 1.0 }   # policy lever; 1.0 everywhere = equal
+
+governance:                       # ODD §6.8
+  mode: appointment               # or: election
+  term: 5y                        # or: life
+  ownZoneVote: 0.8
