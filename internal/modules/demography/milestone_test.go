@@ -21,8 +21,9 @@ import (
 // parallel; each run is still one goroutine (CLAUDE.md, Determinism).
 //
 // Targets (docs/tasks.md T1.5, ODD §8): population within 9,000–11,000 in
-// at least 9 of 10 seeds; median age 30–40. The largest year-to-year
-// change in births is logged as well (ODD §8: under 30%).
+// at least 9 of 10 seeds; median age 30–40. Also logged: the ODD §8
+// births-shock metric (largest change between consecutive 5-year totals of
+// births, target under 30%) and, for comparison, the largest yearly change.
 func TestMilestone1(t *testing.T) {
 	if os.Getenv("SILOSIM_MILESTONE") == "" {
 		t.Skip("set SILOSIM_MILESTONE=1 (make milestone1)")
@@ -90,11 +91,23 @@ func runMilestone(t *testing.T, seed uint64) {
 	for i := 1; i < len(births); i++ {
 		maxChange = max(maxChange, math.Abs(float64(births[i]-births[i-1]))/float64(births[i-1]))
 	}
+	var blocks []int // 5-year totals
+	for i := 0; i+5 <= len(births); i += 5 {
+		sum := 0
+		for _, b := range births[i : i+5] {
+			sum += b
+		}
+		blocks = append(blocks, sum)
+	}
+	shock := 0.0
+	for i := 1; i < len(blocks); i++ {
+		shock = max(shock, math.Abs(float64(blocks[i]-blocks[i-1]))/float64(blocks[i-1]))
+	}
 
 	popOK := minPop >= 9000 && maxPop <= 11000
-	t.Logf("seed %2d: population %d–%d (final %d) %s | median age %.1f–%.1f %s | births/year %d–%d, largest yearly change %.1f%% | %.0fs",
+	t.Logf("seed %2d: population %d–%d (final %d) %s | median age %.1f–%.1f %s | births/year %d–%d | 5-year births shock %.1f%% %s (yearly %.1f%%) | %.0fs",
 		seed, minPop, maxPop, len(w.Alive), mark(popOK), minMed, maxMed, mark(minMed >= 30 && maxMed <= 40),
-		slices.Min(births), slices.Max(births), 100*maxChange, time.Since(start).Seconds())
+		slices.Min(births), slices.Max(births), 100*shock, mark(shock < 0.30), 100*maxChange, time.Since(start).Seconds())
 }
 
 func mark(ok bool) string {

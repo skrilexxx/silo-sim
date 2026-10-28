@@ -397,11 +397,13 @@ A run is only trusted if its invariants hold and its outputs hit the calibration
 | --- | --- | --- |
 | Stable population | Population over the 200 measured years | Always within 9,000–11,000 |
 | Plausible ages | Median age | 30–40 |
-| No demographic shocks | Largest year-to-year change in births | Under 30% after warm-up |
+| No demographic shocks | Largest change between consecutive 5-year totals of births | Under 30% after warm-up |
 | Balanced resources | Days with rationing | Under 5% of days |
 | Rare crises | Generator failures | 1–6 per century |
 | Staffed departments | Department below 50% of target | Never for more than a year |
 | Persistent zones | Share of Mechanical workers living Down Deep | Above 90% |
+
+Births are summed over 5-year blocks because single years are too noisy to judge: with about 150 births a year, randomness alone gives a largest year-to-year change of 31–46% over 200 years (10th–90th percentile of 1,000 simulated runs of pure Poisson noise), so a yearly target of 30% would fail on noise, not on booms. On 5-year totals the same pure noise gives a median of 12% and never more than 26% in 1,000 runs, so a change above 30% points to a real boom or collapse.
 
 **How to calibrate:** sweep the parameters marked "Calibrate" in section 7, run 100 seeds per setting, keep the setting that hits all targets, and record the result in a calibration log. If no setting works, the rule is wrong, not the number; fix the rule in this spec first, then the code.
 
