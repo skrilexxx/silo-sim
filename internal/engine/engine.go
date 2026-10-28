@@ -34,6 +34,7 @@ type boundStep struct {
 }
 
 type Engine struct {
+	cfg        *config.Scenario
 	w          *world.World
 	steps      []boundStep // sorted by phase
 	shuffle    *rng.Stream // the engine's own stream, for the order of Alive
@@ -52,6 +53,7 @@ func New(cfg *config.Scenario, w *world.World, modules []Module) (*Engine, error
 		return nil, err
 	}
 	e := &Engine{
+		cfg:        cfg,
 		w:          w,
 		shuffle:    shuffle,
 		days:       world.Tick((cfg.WarmupYears + cfg.Years) * DaysPerYear),
@@ -138,7 +140,7 @@ func (e *Engine) Tick() error {
 	// Checked after the whole tick, so a step may pass through a
 	// temporary state (a death half-handled) between phases.
 	if int(w.Day)%e.checkEvery == 0 {
-		if err := invariants.Check(w); err != nil {
+		if err := invariants.Check(w, e.cfg); err != nil {
 			return fmt.Errorf("day %d: invariant broken: %w", w.Day, err)
 		}
 	}

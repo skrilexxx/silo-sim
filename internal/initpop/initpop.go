@@ -98,6 +98,7 @@ func (b *builder) people() {
 			Father:     world.None,
 			Department: world.None,
 			Master:     world.None,
+			BabyFather: world.None,
 			Health:     1,
 		}
 	}
@@ -258,6 +259,9 @@ func (b *builder) placeChildren(z world.Zone, couples []couple) error {
 		child.Mother, child.Father = c.woman, mother.Partner
 		child.Household = c.hh
 		mother.Children++
+		if mother.Children == 1 || child.BirthDay > mother.LastBirth {
+			mother.LastBirth = child.BirthDay
+		}
 		c.kids = append(c.kids, kid)
 		hh := &b.w.Households[c.hh]
 		hh.Members = append(hh.Members, kid)

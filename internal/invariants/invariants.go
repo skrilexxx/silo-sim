@@ -7,17 +7,18 @@ package invariants
 import (
 	"fmt"
 
+	"github.com/skrilexxx/silo-sim/internal/config"
 	"github.com/skrilexxx/silo-sim/internal/world"
 )
 
 // Check runs every invariant and returns the first violation.
-func Check(w *world.World) error {
+func Check(w *world.World, cfg *config.Scenario) error {
 	for _, check := range []func(*world.World) error{countsAgree, oneHousehold, homeCapacity, partnerships, unitRanges} {
 		if err := check(w); err != nil {
 			return err
 		}
 	}
-	return nil
+	return reproduction(w, cfg.Lottery)
 }
 
 // ODD §8: people alive = sum over zones = sum over households.
@@ -126,6 +127,45 @@ func partnerships(w *world.World) error {
 		}
 		if w.People[q].Partner != id {
 			return fmt.Errorf("person %d's partner %d has partner %d", id, q, w.People[q].Partner)
+		}
+	}
+	return nil
+}
+
+// ODD §8: no pregnancy without an open window; windows only for eligible
+// couples. A window's start is WindowEnds − windowDays (the day of the
+// draw), and conception is DueDay − pregnancyDays. Eligibility is
+// re-implemented here on purpose, independent of the lottery's own code.
+func reproduction(w *world.World, lot config.Lottery) error {
+	year := world.Tick(365) // days per year; engine.DaysPerYear would be an import cycle
+	for _, id := range w.Alive {
+		p := &w.People[id]
+		if p.Implant == world.ImplantIn {
+			continue
+		}
+		if p.Sex != world.Female {
+			return fmt.Errorf("person %d is male but has implant state %d", id, p.Implant)
+		}
+		start := p.WindowEnds - world.Tick(lot.WindowDays)
+		switch p.Implant {
+		case world.WindowOpen:
+			if w.Day < start || w.Day >= p.WindowEnds {
+				return fmt.Errorf("person %d: window %d–%d is open on day %d", id, start, p.WindowEnds, w.Day)
+			}
+			if p.Partner == world.None || w.People[p.Partner].Sex != world.Male {
+				return fmt.Errorf("person %d has an open window without a male partner", id)
+			}
+			years := int((start - p.BirthDay) / year)
+			spaced := p.Children == 0 || start-p.LastBirth >= world.Tick(lot.MinYoungestAgeYears)*year
+			if years < lot.MotherAgeMin || years > lot.MotherAgeMax || p.Children >= lot.MaxChildren || !spaced {
+				return fmt.Errorf("person %d got a window on day %d while not eligible (aged %d, %d children)", id, start, years, p.Children)
+			}
+		case world.Pregnant:
+			conceived := p.DueDay - world.Tick(lot.PregnancyDays)
+			if conceived <= start || conceived > p.WindowEnds || conceived > w.Day || p.DueDay <= w.Day {
+				return fmt.Errorf("person %d: pregnancy conceived day %d, due %d, outside window %d–%d (today %d)",
+					id, conceived, p.DueDay, start, p.WindowEnds, w.Day)
+			}
 		}
 	}
 	return nil

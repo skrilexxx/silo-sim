@@ -11,10 +11,11 @@ import (
 	"github.com/skrilexxx/silo-sim/internal/world"
 )
 
-// T1.3 done-when: the full day-1 silo runs 20 years with deaths,
-// partnering and housing, invariants checked every tick (partnerships
-// symmetric, no floor over capacity, every person in one household).
-func TestSiloPartnersAndHouses(t *testing.T) {
+// T1.3/T1.4 done-when: the full day-1 silo runs 20 years with all of
+// demography (deaths, partnering, housing, lottery, reproduction),
+// invariants checked every tick: partnerships symmetric, no floor over
+// capacity, every person in one household, no pregnancy without a window.
+func TestSiloDemography(t *testing.T) {
 	cfg, err := config.Load("../../../scenarios/baseline.yaml")
 	if err != nil {
 		t.Fatal(err)
@@ -56,14 +57,20 @@ func TestSiloPartnersAndHouses(t *testing.T) {
 			maxQueue = max(maxQueue, len(w.HousingQueue))
 		}
 	}
-	moved := 0
+	moved, survivors := 0, 0
 	for _, id := range w.Alive {
+		if int(id) >= len(startZone) {
+			continue // born during the run
+		}
+		survivors++
 		if w.Floors[w.Households[w.People[id].Household].Floor-1].Zone != startZone[id] {
 			moved++
 		}
 	}
-	t.Logf("20 years: %d new couples (%.1f%% same-sex); queue after housing averaged %.1f, max %d; %d of %d survivors changed zone",
-		len(seen), 100*float64(sameSex)/float64(len(seen)), float64(queueSum)/float64(months), maxQueue, moved, len(w.Alive))
+	born := len(w.People) - len(startZone)
+	t.Logf("20 years: population %d → %d, %d births", len(startZone), len(w.Alive), born)
+	t.Logf("20 years: %d new couples (%.1f%% same-sex); queue after housing averaged %.1f, max %d; %d of %d day-1 survivors changed zone",
+		len(seen), 100*float64(sameSex)/float64(len(seen)), float64(queueSum)/float64(months), maxQueue, moved, survivors)
 	if len(seen) == 0 {
 		t.Error("no couple formed in 20 years")
 	}

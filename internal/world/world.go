@@ -68,9 +68,11 @@ type Person struct {
 	Skill      float64  // 0–1
 	Health     float64  // 0–1
 	Implant    Implant
-	WindowEnds Tick // last tick of the conception window
-	DueDay     Tick // birth day if pregnant
-	Children   int
+	WindowEnds Tick     // last tick of the conception window
+	DueDay     Tick     // birth day if pregnant
+	BabyFather PersonID // partner at conception, recorded for the birth; or None
+	Children   int      // children born, alive or not
+	LastBirth  Tick     // day of her most recent birth (meaningful if Children > 0)
 }
 
 // ODD §2: Household. Its zone follows from its floor. A household whose

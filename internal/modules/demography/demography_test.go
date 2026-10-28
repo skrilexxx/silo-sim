@@ -159,7 +159,7 @@ func kill(t *testing.T, w *world.World, m *Module, ids ...world.PersonID) {
 		}
 	}
 	w.Alive = slices.DeleteFunc(w.Alive, func(id world.PersonID) bool { return !w.People[id].Alive })
-	if err := invariants.Check(w); err != nil {
+	if err := invariants.Check(w, m.cfg); err != nil {
 		t.Fatal(err)
 	}
 }

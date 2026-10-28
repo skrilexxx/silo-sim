@@ -5,8 +5,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/skrilexxx/silo-sim/internal/config"
 	"github.com/skrilexxx/silo-sim/internal/world"
 )
+
+// lot holds the lottery rules the reproduction invariant needs.
+var lot = &config.Scenario{Lottery: config.Lottery{
+	WindowDays: 365, PregnancyDays: 270, MotherAgeMin: 18, MotherAgeMax: 40, MaxChildren: 3, MinYoungestAgeYears: 2,
+}}
 
 // tiny builds a valid world: 3 people (one dead) in 2 households, Up Top
 // and Down Deep.
@@ -30,7 +36,7 @@ func tiny() *world.World {
 
 func TestValidWorldPasses(t *testing.T) {
 	for _, w := range []*world.World{{}, tiny()} {
-		if err := Check(w); err != nil {
+		if err := Check(w, lot); err != nil {
 			t.Errorf("valid world failed: %v", err)
 		}
 	}
@@ -60,12 +66,30 @@ func TestViolationsAreCaught(t *testing.T) {
 		{"floor 1 holds 1 households but has 0 homes", func(w *world.World) { w.Floors[0].Homes = 0 }},
 		{"person 0's partner 1 is not alive", func(w *world.World) { w.People[0].Partner = 1 }},
 		{"person 0 is their own partner", func(w *world.World) { w.People[0].Partner = 0 }},
+		{"person 2 is male but has implant state 1", func(w *world.World) {
+			w.People[2].Sex, w.People[2].Implant = world.Male, world.WindowOpen
+		}},
+		{"person 0 has an open window without a male partner", func(w *world.World) {
+			w.People[0].Implant, w.People[0].WindowEnds = world.WindowOpen, 365
+		}},
+		{"person 0 got a window on day 0 while not eligible (aged 0, 0 children)", func(w *world.World) {
+			w.People[0].Implant, w.People[0].WindowEnds = world.WindowOpen, 365
+			w.People[2].Sex = world.Male
+			w.People[0].Partner, w.People[2].Partner = 2, 0
+		}},
+		{"person 0: window 0–365 is open on day 365", func(w *world.World) {
+			w.Day = 365
+			w.People[0].Implant, w.People[0].WindowEnds = world.WindowOpen, 365
+		}},
+		{"person 0: pregnancy conceived day 0, due 270, outside window 0–365", func(w *world.World) {
+			w.People[0].Implant, w.People[0].WindowEnds, w.People[0].DueDay = world.Pregnant, 365, 270
+		}},
 		{"person 0's partner 2 has partner -1", func(w *world.World) { w.People[0].Partner = 2 }},
 	}
 	for _, c := range cases {
 		w := tiny()
 		c.break_(w)
-		err := Check(w)
+		err := Check(w, lot)
 		if err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("got %v, want an error containing %q", err, c.want)
 		}
@@ -97,7 +121,7 @@ func TestOneHousehold(t *testing.T) {
 func TestDissolvedHouseholdSkipped(t *testing.T) {
 	w := tiny()
 	w.Households = append(w.Households, world.Household{ID: 2, Floor: world.None})
-	if err := Check(w); err != nil {
+	if err := Check(w, lot); err != nil {
 		t.Errorf("dissolved household checked: %v", err)
 	}
 }
@@ -106,7 +130,7 @@ func TestDissolvedHouseholdSkipped(t *testing.T) {
 func TestDeadPeopleNotRangeChecked(t *testing.T) {
 	w := tiny()
 	w.People[1].Health = 5
-	if err := Check(w); err != nil {
+	if err := Check(w, lot); err != nil {
 		t.Errorf("dead person's health was checked: %v", err)
 	}
 }

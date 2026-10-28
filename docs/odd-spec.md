@@ -49,7 +49,9 @@ Five kinds of entity: people, households, floors, departments and the silo itsel
 | implant | enum | in, removed (window open), pregnant |
 | windowEnds | int | Last tick of the 365-day conception window |
 | dueDay | int | Tick of birth if pregnant |
-| children | int | Number of children born |
+| babyFather | int or none | Partner at conception, recorded as the child's father |
+| children | int | Number of children born, alive or not |
+| lastBirth | int | Tick of her most recent birth |
 
 ### Household
 
@@ -239,11 +241,13 @@ N = \mathrm{clamp}\left(\mathrm{round}\left(D_{30} + \frac{T - P - E}{12}\right)
 
 D₃₀ = deaths in the last 30 days, T = target (10,000), P = people alive.
 
-- **Eligible couples:** woman and man, woman aged 18–40, fewer than 3 children, youngest child at least 2, no open window or pregnancy.
-- **Draw:** winners are picked uniformly at random. (The covert-denial rule from the show arrives with the dissent modules; here the draw is fair.)
-- **Window:** Medical removes the implant (6.2); the couple has 365 days.
-- **Conception:** daily chance 0.0044, which gives about an 80% chance within the year.
-- **Birth:** 270 days after conception; the child joins the household; the implant goes back in. If the window ends without a pregnancy, the implant goes back in.
+D₃₀ counts deaths since the last lottery; round is half away from zero. Unused permits are not carried over.
+
+- **Eligible couples:** woman and man, woman aged 18–40 in whole years (up to her 41st birthday), fewer than 3 children born (alive or not), her last birth at least 2 years ago, no open window or pregnancy. Couples still waiting for a home are eligible.
+- **Draw:** winners are picked uniformly at random, without replacement; if fewer couples are eligible than there are permits, all of them win. (The covert-denial rule from the show arrives with the dissent modules; here the draw is fair.)
+- **Window:** Medical removes the implant (6.2); the couple has the 365 days after the draw. If her partner dies while the window is open, it closes and the implant goes back in.
+- **Conception:** daily chance 0.0044, which gives about an 80% chance within the year. Her partner is recorded as the father.
+- **Birth:** 270 days after conception the child is born into the mother's household: a girl with chance 0.5, health 1. The father is the partner recorded at conception, even if he has died since; a pregnancy goes on after his death. The implant goes back in. If the window ends without a pregnancy, the implant goes back in.
 
 ### 6.5 Work and shadowing
 
@@ -339,6 +343,7 @@ Every number the model uses, in one place. Each one becomes a field in the scena
 | Conception window | 365 days | Show | 6.4 |
 | Daily conception chance | 0.0044 | About 80% within a year, real-world | 6.4 |
 | Pregnancy | 270 days | Real-world | 6.4 |
+| Girls at birth | 50% | Matches the day-1 split | 6.4 |
 | Eligibility | Woman 18–40, fewer than 3 children, youngest at least 2 | Guess | 6.4 |
 | Shadow / worker / retire age | 14 / 18 / 65 | Guess from the show | 6.5 |
 | Follow a parent's trade | 60% | Guess | 6.5 |

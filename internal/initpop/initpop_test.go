@@ -44,7 +44,7 @@ func zoneOf(w *world.World, p *world.Person) world.Zone {
 func TestInvariantsHoldOnDay1(t *testing.T) {
 	cfg := baseline(t)
 	w := build(t, cfg, 42)
-	if err := invariants.Check(w); err != nil {
+	if err := invariants.Check(w, cfg); err != nil {
 		t.Fatalf("day 0: %v", err)
 	}
 	cfg.WarmupYears, cfg.Years = 0, 1
@@ -287,7 +287,7 @@ func TestBuildsForManySeeds(t *testing.T) {
 			if err != nil {
 				t.Fatalf("population %d, seed %d: %v", run.pop, seed, err)
 			}
-			if err := invariants.Check(w); err != nil {
+			if err := invariants.Check(w, cfg); err != nil {
 				t.Fatalf("population %d, seed %d: %v", run.pop, seed, err)
 			}
 		}

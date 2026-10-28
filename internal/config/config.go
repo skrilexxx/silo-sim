@@ -113,6 +113,7 @@ type Lottery struct {
 	MotherAgeMax        int     `yaml:"motherAgeMax"`
 	MaxChildren         int     `yaml:"maxChildren"`
 	MinYoungestAgeYears int     `yaml:"minYoungestAgeYears"`
+	GirlShare           float64 `yaml:"girlShare"`
 }
 
 type Work struct {

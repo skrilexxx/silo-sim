@@ -136,7 +136,7 @@ func housed(t *testing.T, w *world.World, m *Module) {
 	if err := m.housing(w, stream(t)); err != nil {
 		t.Fatal(err)
 	}
-	if err := invariants.Check(w); err != nil {
+	if err := invariants.Check(w, m.cfg); err != nil {
 		t.Fatal(err)
 	}
 }

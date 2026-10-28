@@ -69,6 +69,7 @@ lottery:                          # ODD §6.4
   motherAgeMax: 40
   maxChildren: 3
   minYoungestAgeYears: 2
+  girlShare: 0.5                  # chance a newborn is a girl
 
 work:                             # ODD §6.5
   shadowAge: 14

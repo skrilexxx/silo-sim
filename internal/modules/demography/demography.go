@@ -10,10 +10,11 @@ import (
 	"github.com/skrilexxx/silo-sim/internal/world"
 )
 
-// Module is the demography module. Its steps so far: deaths (§6.1),
-// partnering and housing (§6.3).
+// Module is the demography module: deaths (§6.1), partnering and housing
+// (§6.3), lottery and reproduction (§6.4).
 type Module struct {
-	cfg *config.Scenario
+	cfg      *config.Scenario
+	deaths30 int // deaths since the last lottery (D30 in ODD §6.4)
 
 	// Reused buffers, so the daily steps allocate nothing.
 	pool    []world.PersonID
@@ -34,7 +35,9 @@ func (m *Module) Init(_ *world.World, cfg *config.Scenario, _ *rng.Stream) error
 func (m *Module) Steps() []engine.Step {
 	return []engine.Step{
 		{Phase: engine.PhaseDeaths, Run: m.deaths},
+		{Phase: engine.PhaseReproduction, Run: m.reproduction},
 		{Phase: engine.PhasePartnering, Run: m.partnering},
+		{Phase: engine.PhaseLottery, Run: m.lottery},
 		{Phase: engine.PhaseHousing, Run: m.housing},
 	}
 }
@@ -59,7 +62,9 @@ func (m *Module) deaths(w *world.World, r *rng.Stream) error {
 	return nil
 }
 
-// ODD §6.1: on a death the partner becomes unpartnered and may pair again.
+// ODD §6.1: on a death the partner becomes unpartnered and may pair again;
+// a widow's open conception window closes (ODD §6.4), though a pregnancy
+// already under way goes on.
 // If an adult still lives in the household, the children stay with them
 // (their other parent, or a step-parent). Otherwise the children move
 // together to a random household in the same zone with a living adult. A
@@ -70,8 +75,13 @@ func (m *Module) deaths(w *world.World, r *rng.Stream) error {
 func (m *Module) die(w *world.World, r *rng.Stream, id world.PersonID) error {
 	p := &w.People[id]
 	p.Alive = false
+	m.deaths30++
 	if p.Partner != world.None {
-		w.People[p.Partner].Partner = world.None
+		q := &w.People[p.Partner]
+		q.Partner = world.None
+		if q.Implant == world.WindowOpen {
+			q.Implant = world.ImplantIn
+		}
 	}
 
 	hh := &w.Households[p.Household]

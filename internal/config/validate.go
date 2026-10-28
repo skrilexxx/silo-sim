@@ -40,6 +40,7 @@ func (s *Scenario) Validate() error {
 		{"partnering.searchRate", s.Partnering.SearchRate},
 		{"lottery.openWindowWeight", s.Lottery.OpenWindowWeight},
 		{"lottery.conceptionChance", s.Lottery.ConceptionChance},
+		{"lottery.girlShare", s.Lottery.GirlShare},
 		{"work.sickRetireHealth", s.Work.SickRetireHealth},
 		{"work.followParentChance", s.Work.FollowParentChance},
 		{"work.crossZoneChance", s.Work.CrossZoneChance},

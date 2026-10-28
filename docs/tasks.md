@@ -38,7 +38,7 @@ Demography only. Until later milestones, stub what other modules provide: health
   - *Spec:* ODD §6.1. *Done when:* statistical test: 100,000 simulated lives with health 1 have median age at death 65–69; orphan rehoming keeps every child under 18 in a household in the same zone.
 - [x] **T1.3 Partnering and housing.** (2026-10-28) Search rate, weighted choice, monthly housing moves, home capacity queue.
   - *Spec:* ODD §6.3, §5 step 1 (home capacity). *Done when:* partnerships always symmetric; no floor over capacity; unit test of the weights (same-zone pair chosen ~4× as often as a cross-zone pair with equal age gap).
-- [ ] **T1.4 Lottery and reproduction.** Monthly permits by the formula, eligibility, uniform draw, 365-day window, daily conception chance, 270-day pregnancy, birth into the household, implant back in.
+- [x] **T1.4 Lottery and reproduction.** (2026-10-28) Monthly permits by the formula, eligibility, uniform draw, 365-day window, daily conception chance, 270-day pregnancy, birth into the household, implant back in.
   - *Spec:* ODD §6.4. *Done when:* statistical test: share of windows ending in pregnancy is 78–82% over 10,000 windows; no pregnancy without a window (invariant); permit formula unit-tested on hand-picked numbers.
 - [ ] **T1.5 Milestone check.** Run 10 seeds × 200 years (after warm-up) with demography only.
   - *Done when:* population stays within 9,000–11,000 in at least 9 of 10 seeds; median age 30–40. If not, stop and discuss the rule before tuning numbers. Write the result into `docs/calibration-log.md`.
