@@ -21,7 +21,7 @@ The engine runs empty ticks deterministically and writes output. No model yet.
   - *Done when:* `make check` runs; `silosim run --scenario scenarios/baseline.yaml --dry-run` prints every parameter; a typo in a YAML key fails with the key's name.
 - [x] **T0.2 Config.** (2026-10-28) Typed `Scenario` struct mirroring `scenarios/baseline.yaml`, strict loading, `extends`, range validation (probabilities in 0–1, ages ordered, shares summing to 1).
   - *Spec:* ODD §5 (input), §7. *Done when:* tests cover unknown key, missing key, bad range, and an `extends` override.
-- [ ] **T0.3 RNG.** `internal/rng` with PCG streams per module name (fixed constants), plus helpers: `Bernoulli(p)`, `IntRange`, `WeightedIndex`, `Shuffle`.
+- [x] **T0.3 RNG.** (2026-10-28) `internal/rng` with PCG streams per module name (fixed constants), plus helpers: `Bernoulli(p)`, `IntRange`, `WeightedIndex`, `Shuffle`.
   - *Done when:* same seed → same sequence; different stream → different sequence; a test proves adding a draw on stream A does not change stream B.
 - [ ] **T0.4 World and engine.** `world` types (ODD §2), `engine` with `schedule.go`, the `Module` interface, tick loop with `Every`, warm-up handling, shuffle of `Alive`.
   - *Done when:* a fake test module registering steps at phases 7 and 2 runs them in order 2, 7; a 30-day step runs on days 30, 60…; two modules on the same phase fail at startup.
