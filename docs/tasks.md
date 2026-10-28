@@ -19,7 +19,7 @@ The engine runs empty ticks deterministically and writes output. No model yet.
 
 - [x] **T0.1 Repo setup.** (2026-10-28) `go mod init`, folder layout from `docs/architecture.md`, `Makefile` (`build`, `test`, `check`, `run`), `.gitignore` (`runs/`, `bin/`), CLI skeleton with `run` that prints the resolved config.
   - *Done when:* `make check` runs; `silosim run --scenario scenarios/baseline.yaml --dry-run` prints every parameter; a typo in a YAML key fails with the key's name.
-- [ ] **T0.2 Config.** Typed `Scenario` struct mirroring `scenarios/baseline.yaml`, strict loading, `extends`, range validation (probabilities in 0–1, ages ordered, shares summing to 1).
+- [x] **T0.2 Config.** (2026-10-28) Typed `Scenario` struct mirroring `scenarios/baseline.yaml`, strict loading, `extends`, range validation (probabilities in 0–1, ages ordered, shares summing to 1).
   - *Spec:* ODD §5 (input), §7. *Done when:* tests cover unknown key, missing key, bad range, and an `extends` override.
 - [ ] **T0.3 RNG.** `internal/rng` with PCG streams per module name (fixed constants), plus helpers: `Bernoulli(p)`, `IntRange`, `WeightedIndex`, `Shuffle`.
   - *Done when:* same seed → same sequence; different stream → different sequence; a test proves adding a draw on stream A does not change stream B.

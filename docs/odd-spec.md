@@ -315,6 +315,8 @@ How a Mayor is chosen and how long they serve are two separate settings. In the 
 
 Every number the model uses, in one place. Each one becomes a field in the scenario file with this default; "Calibrate" means the value is a starting point to tune in the first calibration task, not something to defend.
 
+**Ranges checked at load.** No parameter may be negative. These must lie in [0, 1]: every daily chance and percentage; α, ρ, f₀ and the air recovery share (so the updates in 6.5 and 6.6 cannot overshoot); every amount subtracted from, or compared with, a 0–1 variable (injury and illness cost, condition drop, wear, start skill, master skill, sick-retire health); hunger and air damage; recovery; the open-window weight; the shadow output factor; the retraining threshold. Also maternalDeathBase ≤ 0.5 and injuryChance × the largest injury factor ≤ 1, so every derived daily probability stays ≤ 1. These must be strictly greater than 0, because they are divisors or define quantities that must exist: the coverage need factor, every department share, adult kcal, the age-gap scale, power demand per person, the capacity margin, kcal per farm unit, target and starting population, window, pregnancy and minimum outage length, and the invariant interval. invariantEvery is an integer ≥ 1. Ages are ordered (shadow < worker < retire, mother min < max), outage min ≤ max, and zone splits and department shares each sum to 1.
+
 | Parameter | Default | Basis | Used in |
 | --- | --- | --- | --- |
 | Target population | 10,000 | Show | 6.4 |

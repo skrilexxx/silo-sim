@@ -137,8 +137,8 @@ A step that is disabled because its module is off simply does not run. Modules m
 ## Configuration
 
 - `scenarios/baseline.yaml` is the **complete** parameter set; every number in ODD §7 appears there with a comment pointing to the ODD section.
-- Other scenarios start with `extends: baseline.yaml` and override only what changes.
-- Loading is strict: unknown keys fail (`yaml.Decoder.KnownFields(true)`), missing keys fail, out-of-range values fail with a message naming the key.
+- Other scenarios start with `extends: baseline.yaml` and override only what changes. The path is relative to the child file. Sections merge key by key, so `rations: { weights: { upTop: 1.5 } }` changes one weight and keeps the rest; lists (`modules`, `departments`) replace the parent's list whole. Chains are allowed; loops fail.
+- Loading is strict: unknown keys fail (`yaml.Decoder.KnownFields(true)`, checked in each file), missing keys fail (checked after merging), out-of-range values fail with a message naming the key. Range rules are listed in ODD §7. All problems are reported at once.
 - Modules read parameters only from the typed config struct. **No numbers in module code** except 0, 1 and unit conversions (365 days a year).
 
 ## Outputs

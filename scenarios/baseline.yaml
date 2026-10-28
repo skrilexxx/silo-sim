@@ -1,6 +1,8 @@
 # Baseline scenario: Silo 18 running normally under the Pact.
 # This file is the COMPLETE default parameter set. Every number in ODD §7 is here.
 # Other scenarios start with `extends: baseline.yaml` and override only what changes.
+#   The path is relative to the child file. Sections merge key by key; lists
+#   (modules, departments) replace the parent's list whole.
 # Values marked "calibrate" are starting points for milestone 6 (docs/tasks.md).
 # Units: probabilities and rates are per day unless the key says otherwise.
 

@@ -4,13 +4,21 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"reflect"
+	"slices"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
 type Scenario struct {
+	// Extends names a parent scenario, relative to this file's folder.
+	// It is cleared once the parent has been merged in.
+	Extends     string     `yaml:"extends,omitempty"`
 	Name        string     `yaml:"name"`
 	Seed        uint64     `yaml:"seed"`
 	WarmupYears int        `yaml:"warmupYears"`
@@ -161,27 +169,137 @@ type Governance struct {
 	OwnZoneVote float64 `yaml:"ownZoneVote"`
 }
 
-// Load reads and strictly parses a scenario file.
+// Load reads a scenario file, merges in its `extends` parents, and checks
+// that no key is unknown, none is missing, and every value is in range.
 func Load(path string) (*Scenario, error) {
+	root, err := loadNode(path, nil)
+	if err != nil {
+		return nil, err
+	}
+	if errs := missingKeys(root, reflect.TypeFor[Scenario](), ""); len(errs) > 0 {
+		return nil, fmt.Errorf("%s: %w", path, errors.Join(errs...))
+	}
+	var s Scenario
+	if err := root.Decode(&s); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	s.Extends = ""
+	if err := s.Validate(); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return &s, nil
+}
+
+// loadNode returns the file's top-level mapping with all parents merged
+// underneath it. chain holds the files already visited, to catch loops.
+func loadNode(path string, chain []string) (*yaml.Node, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	if slices.Contains(chain, abs) {
+		return nil, fmt.Errorf("extends loop: %s", strings.Join(append(chain, abs), " -> "))
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	s, err := Parse(data)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
-	}
-	return s, nil
-}
 
-// Parse decodes YAML into a Scenario. Unknown keys are errors, so a typo
-// fails loudly instead of silently leaving a parameter at zero.
-func Parse(data []byte) (*Scenario, error) {
+	// Decoding each file on its own with KnownFields catches unknown keys
+	// and wrong types, with the right file name and line in the message.
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	dec.KnownFields(true)
-	var s Scenario
-	if err := dec.Decode(&s); err != nil {
+	var own Scenario
+	if err := dec.Decode(&own); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	root := doc.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return nil, fmt.Errorf("%s: top level must be a mapping", path)
+	}
+	if own.Extends == "" {
+		return root, nil
+	}
+	parent, err := loadNode(filepath.Join(filepath.Dir(path), own.Extends), append(chain, abs))
+	if err != nil {
 		return nil, err
 	}
-	return &s, nil
+	merge(parent, root)
+	return parent, nil
+}
+
+// merge writes src over dst. Mappings merge key by key, so a child can
+// override one value deep inside a section. Anything else, lists included,
+// replaces the parent's value whole.
+func merge(dst, src *yaml.Node) {
+	for i := 0; i < len(src.Content); i += 2 {
+		key, val := src.Content[i], src.Content[i+1]
+		if key.Value == "extends" {
+			continue
+		}
+		old := lookup(dst, key.Value)
+		switch {
+		case old == nil:
+			dst.Content = append(dst.Content, key, val)
+		case old.Kind == yaml.MappingNode && val.Kind == yaml.MappingNode:
+			merge(old, val)
+		default:
+			*old = *val
+		}
+	}
+}
+
+// lookup returns the value under key in a mapping node, or nil.
+func lookup(m *yaml.Node, key string) *yaml.Node {
+	if m == nil || m.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i < len(m.Content); i += 2 {
+		if m.Content[i].Value == key {
+			return m.Content[i+1]
+		}
+	}
+	return nil
+}
+
+// missingKeys reports every struct field with no key in the YAML. A field
+// tagged omitempty is optional. Without this check a forgotten key would
+// silently become zero.
+func missingKeys(n *yaml.Node, t reflect.Type, path string) []error {
+	var errs []error
+	switch t.Kind() {
+	case reflect.Struct:
+		for i := range t.NumField() {
+			name, opts, _ := strings.Cut(t.Field(i).Tag.Get("yaml"), ",")
+			if opts == "omitempty" {
+				continue
+			}
+			key := joinPath(path, name)
+			child := lookup(n, name)
+			if child == nil {
+				errs = append(errs, fmt.Errorf("missing key %s", key))
+				continue
+			}
+			errs = append(errs, missingKeys(child, t.Field(i).Type, key)...)
+		}
+	case reflect.Slice:
+		if n.Kind == yaml.SequenceNode {
+			for i, item := range n.Content {
+				errs = append(errs, missingKeys(item, t.Elem(), fmt.Sprintf("%s[%d]", path, i))...)
+			}
+		}
+	}
+	return errs
+}
+
+func joinPath(path, name string) string {
+	if path == "" {
+		return name
+	}
+	return path + "." + name
 }
