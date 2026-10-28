@@ -220,6 +220,11 @@ func unitRanges(w *world.World) error {
 			return fmt.Errorf("person %d skill = %v, outside 0–1", id, p.Skill)
 		}
 	}
+	for _, d := range w.Depts {
+		if !in01(d.Coverage) {
+			return fmt.Errorf("department %s coverage = %v, outside 0–1", d.Name, d.Coverage)
+		}
+	}
 	s := &w.Silo
 	for _, v := range []struct {
 		name string

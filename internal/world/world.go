@@ -108,7 +108,8 @@ type Department struct {
 	TargetShare float64
 	Headcount   int
 	Shadows     int
-	Output      float64 // this tick: sum of worker skill × health
+	Output      float64 // this tick: worker skill × health, plus shadowOutputFactor × shadow skill × health
+	Coverage    float64 // 0–1: min(1, Output / need), ODD §6.6
 }
 
 // ODD §2: Silo, the global state.

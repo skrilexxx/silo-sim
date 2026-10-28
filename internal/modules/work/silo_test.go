@@ -119,7 +119,7 @@ func TestFiftyYears(t *testing.T) {
 		target := dep.TargetShare * float64(workers)
 		dev := float64(dep.Headcount)/target - 1
 		worst = max(worst, math.Abs(dev))
-		t.Logf("%-15s %4d workers, target %6.1f (%+.1f%%), %3d shadows", dep.Name, dep.Headcount, target, 100*dev, dep.Shadows)
+		t.Logf("%-15s %4d workers, target %6.1f (%+.1f%%), %3d shadows, coverage %.2f", dep.Name, dep.Headcount, target, 100*dev, dep.Shadows, dep.Coverage)
 		if math.Abs(dev) > 0.15 {
 			t.Errorf("%s: %d workers, target %.1f (%+.1f%%)", dep.Name, dep.Headcount, target, 100*dev)
 		}

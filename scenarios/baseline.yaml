@@ -48,7 +48,7 @@ health:                           # ODD §6.2
   maternalDeathBase: 0.002        # risk = base × (2 − medicalCoverage)
 
 coverage:                         # ODD §6.6, shared by every department
-  needFactor: 0.6                 # need = 0.6 × target headcount
+  needFactor: 0.84                # calibrate; need = 0.84 × day-1 target headcount, so full staff gives ≈ 1.1
 
 partnering:                       # ODD §6.3
   minAge: 18

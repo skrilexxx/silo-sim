@@ -79,7 +79,8 @@ Five kinds of entity: people, households, floors, departments and the silo itsel
 | zone | Where it works and where its workers live |
 | targetShare | Share of the workforce it needs |
 | headcount, shadows | Current workers and apprentices |
-| output | Effective work this tick: sum of worker skill × health |
+| output | Effective work this tick: worker skill × health, plus 0.3 × skill × health per shadow |
+| coverage | 0–1: min(1, output / need), 6.6 |
 
 ### Silo (global state)
 
@@ -217,7 +218,7 @@ Health runs from 0 to 1 and changes every day: damage from hunger, bad air, inju
 - **Recovery:** +r × medicalCoverage, capped at 1
 
 ```latex
-medicalCoverage = \min\left(1, \frac{MedicalOutput}{0.6 \times MedicalTargetHeadcount}\right)
+medicalCoverage = \min\left(1, \frac{MedicalOutput}{0.84 \times MedicalDay1TargetHeadcount}\right)
 ```
 
 Medical also performs implant removals for lottery winners. If coverage is below 1, winners wait in a queue, which delays births when the silo is short of doctors. Mothers face a small death risk at birth, higher when coverage is low.
@@ -273,8 +274,8 @@ Departments have a home zone and a target share of the workforce. Their shares s
 - **Worker at 18** in the same department; the master link ends. **Retired** at 65 or after 90 days in a row with health below 0.3; the department stays on record.
 - **Skill:** grows each day by α × (1 − skill) for workers and shadows, so reaching 0.8 takes about 10 years.
 - **Trade inheritance (outcome, not a rule):** about 80% of workers end up in a parent's department, more than the 60% follow chance, because the other placements often land in a parent's department too.
-- **Output:** department output = sum of skill × health over its workers, plus 0.3 × that for each shadow.
-- **Retraining:** each month, a department below 80% of target may take workers from General services in its zone; they start at skill 0.2. This keeps critical departments staffed after deaths.
+- **Output:** department output = the sum of skill × health over its workers, plus 0.3 × skill × health for each shadow. Computed daily (§3 step 5), before the day's skill growth.
+- **Retraining:** each month, after the targets are set, each department other than General services with fewer than 80% of its target workers takes General workers living in its zone (any zone for Porters, which work everywhere), drawn at random, until it reaches 80%, as long as General keeps at least 80% of its own target. Departments are handled in table order. Retrained workers restart at skill 0.2, and their shadows get new masters. This keeps critical departments staffed after deaths.
 
 ### 6.6 Resources
 
@@ -288,7 +289,7 @@ The generator is the root of the loop: it powers the farms, the water pumps and 
 - **Food:** production = farm output × kcal per unit of farm output × powerFactor, added to the stock.
 - **Parts:** measured in days of normal use. Supply makes 1.2 units a day × supplyCoverage (scavenging and recycling); each repair day uses 1 unit; each failure uses 30 more.
 
-mechanicalCoverage = min(1, Mechanical output / Mechanical need), the same shape as medicalCoverage. Every coverage uses the same need: 0.6 × the department's target headcount, so a fully staffed department at average skill and health gives coverage of about 1.1, and shortages start to bite at about 90% staffing.
+mechanicalCoverage = min(1, Mechanical output / Mechanical need), the same shape as medicalCoverage. Every coverage uses the same need: 0.84 × the department's day-1 target headcount (its share of the day-1 workers). The need is fixed, so losing workers across the silo lowers every coverage, not only an imbalance between departments. The silo's average skill × health is about 0.92 (measured over 50 years with health 1), so a fully staffed department has output / need ≈ 1.1, coverage is capped at 1, and shortages start to bite at about 90% staffing.
 
 ```text
 Mechanical (staff, parts) -> Generator (condition, outages) -> Power
@@ -338,7 +339,7 @@ Every number the model uses, in one place. Each one becomes a field in the scena
 | Injury chance | 0.0002 per day, × department factor | Guess | 6.2 |
 | Illness chance | 0.0005 per day | Guess | 6.2 |
 | Recovery r | 0.01 per day at full coverage | Calibrate | 6.2 |
-| Coverage need | 0.6 × target headcount, every department | Full staff gives coverage ≈ 1.1 | 6.2 |
+| Coverage need | 0.84 × day-1 target headcount, every department | Calibrate: full staff gives output / need ≈ 1.1 at the measured skill × health 0.92 | 6.2, 6.6 |
 | Maternal death | 0.002 × (2 − coverage) | Guess | 6.2 |
 | Partner search rate | 0.0009 per day (about every 3 years) | Calibrate | 6.3 |
 | Partner weights | Same zone ×4, same department ×2, same sex ×0.05, age scale 5 years | Guess; same sex: calibrate | 6.3 |

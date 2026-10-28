@@ -110,7 +110,7 @@ func TestBadRangeFailsWithKeyName(t *testing.T) {
 		{"maternalDeathBase: 0.002", "maternalDeathBase: 0.6", "health.maternalDeathBase = 0.6 gives a maternal death risk of 1.2"},
 		{"injuryChance: 0.0002", "injuryChance: 0.6", "health.injuryChance × largest health.injuryFactor = 1.2"},
 		// Strictly positive keys, each set to 0.
-		{"needFactor: 0.6", "needFactor: 0", "coverage.needFactor = 0, must be greater than 0"},
+		{"needFactor: 0.84", "needFactor: 0", "coverage.needFactor = 0, must be greater than 0"},
 		{"adultKcal: 2200", "adultKcal: 0", "rations.adultKcal = 0, must be greater than 0"},
 		{"ageGapScaleYears: 5.0", "ageGapScaleYears: 0", "partnering.ageGapScaleYears = 0, must be greater than 0"},
 		{"powerDemandPerPerson: 1.0", "powerDemandPerPerson: 0", "resources.powerDemandPerPerson = 0, must be greater than 0"},

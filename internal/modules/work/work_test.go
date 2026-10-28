@@ -56,7 +56,9 @@ func newTiny(t *testing.T) *tiny {
 	m.cfg, m.c = cfg, cfg.Work
 	for _, d := range m.c.Departments {
 		w.Depts = append(w.Depts, world.Department{Name: d.Name, Zone: parseZone(d.Zone), TargetShare: d.Share})
+		m.need = append(m.need, 1) // tests of coverage set their own
 	}
+	m.general = general
 	return &tiny{t: t, w: w, m: m}
 }
 
@@ -103,7 +105,7 @@ func (tw *tiny) staffed() {
 		}
 		tw.master(d, z)
 	}
-	if err := tw.m.staffing(tw.w, nil); err != nil {
+	if err := tw.m.staffing(tw.w, stream(tw.t)); err != nil {
 		tw.t.Fatal(err)
 	}
 }
@@ -112,7 +114,7 @@ func TestSkillGrowth(t *testing.T) {
 	tw := newTiny(t)
 	id := tw.add(world.Worker, 30*year, world.Mids, farms, 0.5)
 	kid := tw.add(world.Child, 5*year, world.Mids, world.None, 0)
-	tw.m.skillGrowth(tw.w, nil)
+	tw.m.skillGrowth(tw.w)
 	alpha := tw.m.c.SkillGrowth
 	if got, want := tw.w.People[id].Skill, 0.5+alpha*0.5; math.Abs(got-want) > 1e-15 {
 		t.Errorf("skill after a day %v, want %v", got, want)
@@ -123,7 +125,7 @@ func TestSkillGrowth(t *testing.T) {
 	// ODD §6.5: from 0, about 0.8 after 10 years of work.
 	tw.w.People[id].Skill = 0
 	for range 10 * year {
-		tw.m.skillGrowth(tw.w, nil)
+		tw.m.skillGrowth(tw.w)
 	}
 	t.Logf("skill after 10 years from 0: %.3f", tw.w.People[id].Skill)
 	if s := tw.w.People[id].Skill; s < 0.79 || s > 0.81 {
@@ -270,7 +272,7 @@ func TestStaffingShortfall(t *testing.T) {
 		tw.add(world.Worker, 30*year, world.Mids, general, 0.9)
 	}
 	tw.add(world.Shadow, 15*year, world.Mids, general, 0.1)
-	if err := tw.m.staffing(tw.w, nil); err != nil {
+	if err := tw.m.staffing(tw.w, stream(tw.t)); err != nil {
 		t.Fatal(err)
 	}
 	// 10 workers: farms target 3.0 (has 7), general 2.0 (has 3 + 1 shadow),
