@@ -73,7 +73,7 @@ type Person struct {
 // ODD §2: Household. Its zone follows from its floor.
 type Household struct {
 	ID      HouseholdID
-	Floor   int
+	Floor   int // floor number, 1-based: World.Floors[Floor-1]
 	Members []PersonID
 }
 
@@ -125,7 +125,7 @@ type World struct {
 	People     []Person
 	Alive      []PersonID // living people, reshuffled every tick (ODD §3)
 	Households []Household
-	Floors     []Floor
+	Floors     []Floor // Floors[i] is floor number i+1
 	Depts      []Department
 	Silo       Silo
 }

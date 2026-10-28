@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/skrilexxx/silo-sim/internal/config"
+	"github.com/skrilexxx/silo-sim/internal/invariants"
 	"github.com/skrilexxx/silo-sim/internal/rng"
 	"github.com/skrilexxx/silo-sim/internal/world"
 )
@@ -39,6 +40,7 @@ type Engine struct {
 	days       world.Tick
 	warmupDays world.Tick
 	logWarmup  bool
+	checkEvery int // run the invariants on days that are multiples of this
 }
 
 // New checks the module set, runs each module's Init in the given order,
@@ -55,6 +57,10 @@ func New(cfg *config.Scenario, w *world.World, modules []Module) (*Engine, error
 		days:       world.Tick((cfg.WarmupYears + cfg.Years) * DaysPerYear),
 		warmupDays: world.Tick(cfg.WarmupYears * DaysPerYear),
 		logWarmup:  cfg.Output.LogWarmup,
+		checkEvery: cfg.Output.InvariantEvery,
+	}
+	if e.checkEvery < 1 {
+		return nil, fmt.Errorf("output.invariantEvery = %d, must be at least 1", e.checkEvery)
 	}
 
 	var names []string
@@ -127,6 +133,13 @@ func (e *Engine) Tick() error {
 		}
 		if err := s.Run(w, s.stream); err != nil {
 			return fmt.Errorf("day %d, phase %d (%s), module %s: %w", w.Day, s.Phase, s.Phase, s.module, err)
+		}
+	}
+	// Checked after the whole tick, so a step may pass through a
+	// temporary state (a death half-handled) between phases.
+	if int(w.Day)%e.checkEvery == 0 {
+		if err := invariants.Check(w); err != nil {
+			return fmt.Errorf("day %d: invariant broken: %w", w.Day, err)
 		}
 	}
 	return nil

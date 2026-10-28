@@ -41,7 +41,9 @@ func (f fake) Steps() []Step {
 }
 
 func scenario(warmupYears, years int) *config.Scenario {
-	return &config.Scenario{Seed: 42, WarmupYears: warmupYears, Years: years}
+	cfg := &config.Scenario{Seed: 42, WarmupYears: warmupYears, Years: years}
+	cfg.Output.InvariantEvery = 1 // tests check every tick
+	return cfg
 }
 
 func mustNew(t *testing.T, cfg *config.Scenario, w *world.World, mods ...Module) *Engine {
@@ -183,10 +185,14 @@ func TestStepErrorStopsRun(t *testing.T) {
 
 func TestAliveShuffledEveryTickAndReproducible(t *testing.T) {
 	run := func() [][]world.PersonID {
-		w := &world.World{}
+		w := &world.World{Floors: []world.Floor{{Number: 1, Zone: world.Mids}}}
+		var members []world.PersonID
 		for i := range 20 {
+			w.People = append(w.People, world.Person{ID: world.PersonID(i), Alive: true, Health: 1})
 			w.Alive = append(w.Alive, world.PersonID(i))
+			members = append(members, world.PersonID(i))
 		}
+		w.Households = []world.Household{{Floor: 1, Members: members}}
 		e := mustNew(t, scenario(0, 1), w)
 		var orders [][]world.PersonID
 		for range 3 {
@@ -212,5 +218,55 @@ func TestAliveShuffledEveryTickAndReproducible(t *testing.T) {
 	}
 	if slices.Equal(a[0], a[1]) || slices.Equal(a[1], a[2]) {
 		t.Error("order did not change between ticks")
+	}
+}
+
+// breaker is a module whose health step pushes a person's health above 1
+// on one day.
+type breaker struct{ on world.Tick }
+
+func (b breaker) Name() string                                           { return "health" }
+func (b breaker) Requires() []string                                     { return nil }
+func (b breaker) Init(*world.World, *config.Scenario, *rng.Stream) error { return nil }
+func (b breaker) Steps() []Step {
+	return []Step{{Phase: PhaseHealth, Run: func(w *world.World, _ *rng.Stream) error {
+		if w.Day == b.on {
+			w.People[0].Health = 1.5
+		}
+		return nil
+	}}}
+}
+
+func TestInvariantsRunDuringTheRun(t *testing.T) {
+	newWorld := func() *world.World {
+		return &world.World{
+			People:     []world.Person{{Alive: true, Health: 1}},
+			Alive:      []world.PersonID{0},
+			Floors:     []world.Floor{{Number: 1, Zone: world.Mids}},
+			Households: []world.Household{{Floor: 1, Members: []world.PersonID{0}}},
+		}
+	}
+
+	e := mustNew(t, scenario(0, 1), newWorld(), breaker{on: 3})
+	err := e.Run()
+	want := "day 3: invariant broken: person 0 health = 1.5, outside 0–1"
+	if err == nil || err.Error() != want {
+		t.Errorf("checking every tick: got %v, want %q", err, want)
+	}
+
+	// Checked only every 30 days, the same break is found on day 30.
+	cfg := scenario(0, 1)
+	cfg.Output.InvariantEvery = 30
+	e = mustNew(t, cfg, newWorld(), breaker{on: 3})
+	if err := e.Run(); err == nil || !strings.HasPrefix(err.Error(), "day 30:") {
+		t.Errorf("checking every 30 days: got %v, want an error on day 30", err)
+	}
+}
+
+func TestInvariantIntervalMustBePositive(t *testing.T) {
+	cfg := scenario(0, 1)
+	cfg.Output.InvariantEvery = 0
+	if _, err := New(cfg, &world.World{}, nil); err == nil {
+		t.Error("invariantEvery = 0 accepted")
 	}
 }

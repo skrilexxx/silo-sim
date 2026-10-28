@@ -53,13 +53,18 @@ func run(args []string) error {
 		}
 	})
 
-	out, err := yaml.Marshal(cfg)
+	if *dryRun {
+		out, err := yaml.Marshal(cfg)
+		if err != nil {
+			return err
+		}
+		_, err = os.Stdout.Write(out)
+		return err
+	}
+	dir, err := simulate(cfg)
 	if err != nil {
 		return err
 	}
-	os.Stdout.Write(out)
-	if !*dryRun {
-		fmt.Fprintln(os.Stderr, "silosim: no engine yet (T0.4); only the config was printed")
-	}
+	fmt.Println("wrote", dir)
 	return nil
 }

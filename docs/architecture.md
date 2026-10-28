@@ -170,7 +170,7 @@ A progress line in the terminal is enough. A live terminal dashboard (for exampl
 | Unit tests | Each submodel on a tiny hand-built world (5–50 people), checking the rule in ODD §6 | Every task |
 | Statistical tests | Rules with known expected rates, e.g. conception within a 365-day window ≈ 80% over 10,000 trials; median death age 65–69 with health 1 | When the submodel is written |
 | Invariants | ODD §8 list, as functions `func(w *world.World) error` | Every tick in tests, every year in runs |
-| Golden test | 1,000 people, 20 years, seed 1: SHA-256 of `daily.csv` stored in `testdata/golden/` | Every `make check`; update only with `go test ./... -update` and a reason in the commit message |
+| Golden test | 1,000 people, 20 years, seed 1: SHA-256 of `daily.csv` stored in `testdata/golden/` | Every `make check`; update only with `make update-golden` (runs `go test ./cmd/silosim -run TestGolden -update`; `go test ./... -update` fails in packages without the flag) and a reason in the commit message |
 | Calibration | 100 seeds, `silosim report` | Milestone 6 |
 
 The golden test is the main guard against silent changes: any change to model behaviour changes the hash, so it can never happen by accident.

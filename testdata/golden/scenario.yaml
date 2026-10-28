@@ -1,0 +1,13 @@
+# Golden run: the guard against silent behaviour changes (docs/architecture.md, Testing).
+# The SHA-256 of this run's daily.csv is stored in daily.sha256; any change to model
+# behaviour changes it. Regenerate only on purpose: make update-golden, with the reason
+# in the commit message.
+extends: ../../scenarios/baseline.yaml
+name: golden
+seed: 1
+warmupYears: 0
+years: 20
+population: 1000       # used once the day-1 population exists (T1.1)
+modules: []            # grows as modules are built; each addition changes the hash
+output:
+  invariantEvery: 1    # tests check invariants every tick

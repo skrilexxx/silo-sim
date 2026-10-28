@@ -57,7 +57,7 @@ Agent-based simulation of Silo 18 (from the TV series *Silo*) in Go. The current
 make build                                   # bin/silosim
 make test                                    # go test ./...
 make check                                   # build + vet + test + golden
-go test ./... -update                        # regenerate golden hash (only with a reason)
+make update-golden                           # regenerate golden hash (only with a reason)
 bin/silosim run --scenario scenarios/baseline.yaml --seed 42
 bin/silosim batch --scenario scenarios/baseline.yaml --seeds 1-100 --out runs/batch-001
 bin/silosim report --batch runs/batch-001
