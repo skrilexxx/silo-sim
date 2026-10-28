@@ -22,6 +22,8 @@ func streamID(name string) (uint64, bool) {
 		return 6, true
 	case "output":
 		return 7, true // draws nothing today; every module gets a stream
+	case "initpop":
+		return 8, true
 	}
 	return 0, false
 }

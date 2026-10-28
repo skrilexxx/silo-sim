@@ -52,7 +52,9 @@ type Output struct {
 }
 
 type Init struct {
+	FloorsPerZone       int     `yaml:"floorsPerZone"`
 	ZoneSplit           Zones   `yaml:"zoneSplit"`
+	PairedMinAge        int     `yaml:"pairedMinAge"`
 	PairedShareOfAdults float64 `yaml:"pairedShareOfAdults"`
 	HomeCapacityMargin  float64 `yaml:"homeCapacityMargin"`
 	FarmFloors          int     `yaml:"farmFloors"`

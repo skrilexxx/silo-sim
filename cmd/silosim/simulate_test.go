@@ -67,8 +67,8 @@ func TestTenYearEmptyRunWritesFiles(t *testing.T) {
 	if rows := len(lines) - 1; rows != 10*365 {
 		t.Errorf("daily.csv has %d rows, want %d", rows, 10*365)
 	}
-	if lines[1] != "366,0" || lines[len(lines)-1] != "4015,0" {
-		t.Errorf("rows run from %q to %q, want 366,0 to 4015,0", lines[1], lines[len(lines)-1])
+	if lines[1] != "366,1000" || lines[len(lines)-1] != "4015,1000" {
+		t.Errorf("rows run from %q to %q, want 366,1000 to 4015,1000", lines[1], lines[len(lines)-1])
 	}
 
 	var info output.RunInfo

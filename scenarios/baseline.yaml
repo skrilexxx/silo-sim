@@ -19,10 +19,12 @@ output:
   invariantEvery: 365             # ticks between invariant checks in normal runs (tests: every tick)
 
 init:                             # ODD §5
+  floorsPerZone: 48               # 3 zones × 48 = 144 floors
   zoneSplit: { upTop: 0.32, mids: 0.46, downDeep: 0.22 }
+  pairedMinAge: 20                # day-1 couples are formed from adults this age or older
   pairedShareOfAdults: 0.70       # adults 20+ living as couples on day 1
   homeCapacityMargin: 1.15        # homes per zone = 1.15 × households needed
-  farmFloors: 20                  # mostly in the Mids
+  farmFloors: 20                  # spread evenly through the Mids
   mechanicalFloors: 12            # the lowest floors
   foodStockDays: 90
   partsStockDays: 365

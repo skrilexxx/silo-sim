@@ -20,6 +20,11 @@ func New(seed uint64, name string) (*Stream, error) {
 	return &Stream{r: rand.New(rand.NewPCG(seed, id))}, nil
 }
 
+// Float64 returns a uniform number in [0, 1).
+func (s *Stream) Float64() float64 {
+	return s.r.Float64()
+}
+
 // Bernoulli reports true with probability p: never for p ≤ 0, always for p ≥ 1.
 func (s *Stream) Bernoulli(p float64) bool {
 	return s.r.Float64() < p

@@ -66,7 +66,7 @@ Five kinds of entity: people, households, floors, departments and the silo itsel
 | number | 1–144 |
 | zone | Up Top, Mids or Down Deep |
 | homes | Housing capacity in households (0 on pure work floors) |
-| function | Residential, farm, mechanical, administrative or mixed |
+| function | Residential, farm or mechanical (farm and mechanical floors are pure work floors) |
 
 ### Department
 
@@ -162,10 +162,10 @@ Day 1 is generated from the scenario file, then the model runs 50 years of warm-
 
 ### Generating day 1
 
-1. **Floors:** levels 1–48 Up Top, 49–96 Mids, 97–144 Down Deep. Mark about 20 farm floors (mostly Mids), the lowest 12 floors as Mechanical, a few administrative floors Up Top; the rest residential or mixed. Home capacity per zone is set to about 115% of the households that zone needs, so moving is possible.
-2. **People:** 10,000 people, half women. Ages are drawn from the age distribution the mortality rule (6.1) produces in a steady state, so the start already looks like a lived-in population.
-3. **Zones:** 32% Up Top, 46% Mids, 22% Down Deep, which follows from where departments sit (6.5).
-4. **Households:** within each zone, about 70% of adults aged 20+ are paired as couples. Children under 18 go to a couple whose mother was 18–45 at the child's birth; single adults live alone.
+1. **Floors:** 3 × 48 floors: 1–48 Up Top, 49–96 Mids, 97–144 Down Deep. The 20 farm floors are spread evenly through the Mids (farm floor i, for i = 0…19, is floor 49 + ⌊i × 48 / 20⌋, i.e. 49, 51, 53, 56, …); the lowest 12 floors are Mechanical; every other floor is residential. Farm and Mechanical floors are pure work floors with no homes. Each zone gets ⌈1.15 × its households⌉ homes, spread as evenly as possible over its residential floors, and each household takes a random free home in its zone, so moving is possible.
+2. **People:** 10,000 people, exactly half women, chosen at random. Each age is drawn, in days, from the steady-state age distribution of the mortality rule (6.1) at health 1: the chance of being d days old is proportional to the chance of surviving d days. The start then already looks like a lived-in population.
+3. **Zones:** exactly 32% Up Top, 46% Mids, 22% Down Deep (rounded to whole people), assigned at random and independent of age and sex. The split follows from where departments sit (6.5).
+4. **Households:** in each zone, round(0.70 × adults aged 20+ / 2) couples form, each a woman and a man aged 20+. Women are taken in random order; each picks an unpaired man from her zone with weight e^(−|age gap| / 5), the age-gap rule of 6.3. Each child under 18 then, in random order, joins a random couple in their zone whose woman could have had them under the lottery rules (6.4): aged 18–40 at the birth, fewer than 3 children, and no other child less than 2 years older or younger. The woman becomes the mother and her partner the father. If no couple fits, initialization stops with an error instead of bending the rule; this never happened in 300 seeds at 10,000 people, but small test worlds (about 7% of seeds at 1,000 people) can run out of fitting couples, so tests use seeds that work. Every other adult (18+) lives alone.
 5. **Jobs:** adults 18–64 fill departments in their zone by target share; 14- to 17-year-olds become shadows, preferably in a parent's department, with a master from that department.
 6. **Skill:** set from years worked, on a saturating curve (6.5).
 7. **Implants:** every woman starts with the implant in; no open windows, no pregnancies.
@@ -315,7 +315,7 @@ How a Mayor is chosen and how long they serve are two separate settings. In the 
 
 Every number the model uses, in one place. Each one becomes a field in the scenario file with this default; "Calibrate" means the value is a starting point to tune in the first calibration task, not something to defend.
 
-**Ranges checked at load.** No parameter may be negative. These must lie in [0, 1]: every daily chance and percentage; α, ρ, f₀ and the air recovery share (so the updates in 6.5 and 6.6 cannot overshoot); every amount subtracted from, or compared with, a 0–1 variable (injury and illness cost, condition drop, wear, start skill, master skill, sick-retire health); hunger and air damage; recovery; the open-window weight; the shadow output factor; the retraining threshold. Also maternalDeathBase ≤ 0.5 and injuryChance × the largest injury factor ≤ 1, so every derived daily probability stays ≤ 1. These must be strictly greater than 0, because they are divisors or define quantities that must exist: the coverage need factor, every department share, adult kcal, the age-gap scale, power demand per person, the capacity margin, kcal per farm unit, target and starting population, window, pregnancy and minimum outage length, and the invariant interval. invariantEvery is an integer ≥ 1. Ages are ordered (shadow < worker < retire, mother min < max), outage min ≤ max, and zone splits and department shares each sum to 1.
+**Ranges checked at load.** No parameter may be negative. These must lie in [0, 1]: every daily chance and percentage; α, ρ, f₀ and the air recovery share (so the updates in 6.5 and 6.6 cannot overshoot); every amount subtracted from, or compared with, a 0–1 variable (injury and illness cost, condition drop, wear, start skill, master skill, sick-retire health); hunger and air damage; recovery; the open-window weight; the shadow output factor; the retraining threshold. Also maternalDeathBase ≤ 0.5 and injuryChance × the largest injury factor ≤ 1, so every derived daily probability stays ≤ 1. These must be strictly greater than 0, because they are divisors or define quantities that must exist: Gompertz A and B (so the day-1 age table ends), floors per zone, the coverage need factor, every department share, adult kcal, the age-gap scale, power demand per person, the capacity margin, kcal per farm unit, target and starting population, window, pregnancy and minimum outage length, and the invariant interval. invariantEvery is an integer ≥ 1. Ages are ordered (shadow < worker < retire, mother min < max, partnering min age ≤ day-1 pairing age), outage min ≤ max, farm and Mechanical floors each fewer than the floors per zone (every zone keeps a residential floor), the home capacity margin is at least 1, and zone splits and department shares each sum to 1.
 
 | Parameter | Default | Basis | Used in |
 | --- | --- | --- | --- |
@@ -356,6 +356,8 @@ Every number the model uses, in one place. Each one becomes a field in the scena
 | Food need | 2,200 kcal adult; 60% under 14 | Real-world | 6.7 |
 | Rationing | Below 30 days of stock, hand out 90% | Guess | 6.7 |
 | Starting stocks | Food 90 days, parts 365 days, condition 0.8 | Guess | 5 |
+| Day-1 layout | 48 floors per zone; 20 farm floors, 12 Mechanical; homes 1.15 × households | Show (144 floors), guess | 5 |
+| Day-1 couples | 70% of adults aged 20+ | Guess | 5 |
 | Mayor term | 5 years, or life (toggle) | Guess | 6.8 |
 | Vote for own zone | 80% | Guess | 6.8 |
 

@@ -10,8 +10,9 @@ import (
 
 	"github.com/skrilexxx/silo-sim/internal/config"
 	"github.com/skrilexxx/silo-sim/internal/engine"
+	"github.com/skrilexxx/silo-sim/internal/initpop"
 	"github.com/skrilexxx/silo-sim/internal/output"
-	"github.com/skrilexxx/silo-sim/internal/world"
+	"github.com/skrilexxx/silo-sim/internal/rng"
 )
 
 // simulate runs one scenario and writes its files to
@@ -57,13 +58,18 @@ func simulate(cfg *config.Scenario) (string, error) {
 }
 
 func run1(cfg *config.Scenario, dir string, modules []engine.Module) error {
+	r, err := rng.New(cfg.Seed, "initpop")
+	if err != nil {
+		return err
+	}
+	w, err := initpop.Build(cfg, r)
+	if err != nil {
+		return err
+	}
 	daily, err := output.NewDaily(dir)
 	if err != nil {
 		return err
 	}
-	// The day-1 population (initpop) arrives in T1.1; until then the world
-	// starts empty.
-	w := &world.World{}
 	e, err := engine.New(cfg, w, append(modules, daily))
 	if err != nil {
 		daily.Close()

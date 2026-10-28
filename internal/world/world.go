@@ -24,6 +24,9 @@ const (
 	AllZones // a department that works in every zone (General services, Porters)
 )
 
+// NumZones counts the residential zones: UpTop, Mids, DownDeep.
+const NumZones = int(DownDeep) + 1
+
 type Sex int8
 
 const (
@@ -81,10 +84,8 @@ type FloorFunction int8
 
 const (
 	Residential FloorFunction = iota
-	Farm
-	Mechanical
-	Administrative
-	Mixed
+	Farm                      // pure work floor, no homes
+	Mechanical                // pure work floor, no homes
 )
 
 // ODD §2: Floor.

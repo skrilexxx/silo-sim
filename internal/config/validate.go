@@ -81,6 +81,9 @@ func (s *Scenario) Validate() error {
 		key string
 		v   float64
 	}{
+		{"mortality.gompertzA", s.Mortality.GompertzA},
+		{"mortality.gompertzB", s.Mortality.GompertzB},
+		{"init.floorsPerZone", float64(s.Init.FloorsPerZone)},
 		{"coverage.needFactor", s.Coverage.NeedFactor},
 		{"rations.adultKcal", s.Rations.AdultKcal},
 		{"partnering.ageGapScaleYears", s.Partnering.AgeGapScaleYears},
@@ -117,11 +120,24 @@ func (s *Scenario) Validate() error {
 		{"work.workerAge", "work.retireAge", s.Work.WorkerAge, s.Work.RetireAge, true},
 		{"lottery.motherAgeMin", "lottery.motherAgeMax", s.Lottery.MotherAgeMin, s.Lottery.MotherAgeMax, true},
 		{"resources.outageMinDays", "resources.outageMaxDays", s.Resources.OutageMinDays, s.Resources.OutageMaxDays, false},
+		{"partnering.minAge", "init.pairedMinAge", s.Partnering.MinAge, s.Init.PairedMinAge, false},
+		// Each zone must keep at least one residential floor.
+		{"init.farmFloors", "init.floorsPerZone", s.Init.FarmFloors, s.Init.FloorsPerZone, true},
+		{"init.mechanicalFloors", "init.floorsPerZone", s.Init.MechanicalFloors, s.Init.FloorsPerZone, true},
 	}
 	for _, o := range ordered {
 		if o.low > o.high || (o.strict && o.low == o.high) {
-			add("%s (%d) must be below %s (%d)", o.lowKey, o.low, o.highKey, o.high)
+			rel := "below"
+			if !o.strict {
+				rel = "at most"
+			}
+			add("%s (%d) must be %s %s (%d)", o.lowKey, o.low, rel, o.highKey, o.high)
 		}
+	}
+
+	// Fewer homes than households would leave people homeless on day 1.
+	if s.Init.HomeCapacityMargin < 1 {
+		add("init.homeCapacityMargin = %v, must be at least 1", s.Init.HomeCapacityMargin)
 	}
 
 	// Splits of people across zones and departments must account for everyone.

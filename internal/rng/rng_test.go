@@ -79,7 +79,7 @@ func TestUnknownStreamFails(t *testing.T) {
 
 func TestStreamIDsAreDistinct(t *testing.T) {
 	var seen []uint64
-	for _, name := range []string{"engine", "demography", "health", "work", "resources", "governance", "output"} {
+	for _, name := range []string{"engine", "demography", "health", "work", "resources", "governance", "output", "initpop"} {
 		id, ok := streamID(name)
 		if !ok || slices.Contains(seen, id) {
 			t.Errorf("stream %q: id %d missing or reused", name, id)

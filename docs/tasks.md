@@ -32,8 +32,8 @@ The engine runs empty ticks deterministically and writes output. No model yet.
 
 Demography only. Until later milestones, stub what other modules provide: health = 1, food intake = need, Medical coverage = 1.
 
-- [ ] **T1.1 Day-1 population.** `initpop`: floors and zones, 10,000 people with ages from the stationary distribution of the mortality rule, zones, households, couples, children placed with plausible mothers, implants in.
-  - *Spec:* ODD §5 steps 1–4, 7. *Done when:* invariants pass on day 1; zone split within 1% of config; age histogram within 2 percentage points of the stationary distribution in every 5-year band; every child's mother was 18–45 at the birth.
+- [x] **T1.1 Day-1 population.** (2026-10-28) `initpop`: floors and zones, 10,000 people with ages from the stationary distribution of the mortality rule, zones, households, couples, children placed with plausible mothers, implants in.
+  - *Spec:* ODD §5 steps 1–4, 7. *Done when:* invariants pass on day 1; zone split within 1% of config; age histogram within 2 percentage points of the stationary distribution in every 5-year band; every child's mother was 18–40 at the birth (lottery limits; ODD §5 step 4).
 - [ ] **T1.2 Mortality.** Gompertz hazard with infant term and health multiplier; death handling (partner freed, orphans rehomed, job vacated, person removed from `Alive`).
   - *Spec:* ODD §6.1. *Done when:* statistical test: 100,000 simulated lives with health 1 have median age at death 65–69; orphan rehoming keeps every child under 18 in a household in the same zone.
 - [ ] **T1.3 Partnering and housing.** Search rate, weighted choice, monthly housing moves, home capacity queue.
