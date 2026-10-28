@@ -22,7 +22,8 @@ func tiny() *world.World {
 		Silo:   world.Silo{GeneratorCondition: 0.8, WaterSupply: 1, AirQuality: 1},
 	}
 	for i := range 3 {
-		w.People = append(w.People, world.Person{ID: world.PersonID(i), Alive: i != 1, Health: 1, Skill: 0.5, Partner: world.None})
+		w.People = append(w.People, world.Person{ID: world.PersonID(i), Alive: i != 1, Health: 1, Skill: 0.5,
+			Partner: world.None, Department: world.None, Master: world.None})
 	}
 	w.People[0].Household, w.People[2].Household = 0, 1
 	w.People[1].Household = 1 // the dead keep their last household as a record
