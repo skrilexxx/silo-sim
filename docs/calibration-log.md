@@ -115,3 +115,30 @@ After that, health stays at 0 for good. The population falls to 643 by year 100.
 
 1. *Food production is far above need.* The stock grows by about 150 days' worth a year, so farms make about 40% more than the silo eats. ODD §7 wants about a 5% surplus (kcalPerFarmUnit, marked "Calibrate"; scaling 16,000 by 1.05 / 1.41 suggests about 12,000). With this surplus, rations and hunger never come into play in the baseline, so the stability check doesn't test the hunger part of the loop yet. That's left for T6.1. Lowering the surplus will put hunger into the loop health → Mechanical → power → food, so `make stability` should be rerun then.
 2. *Runtime:* 42–43 s for a 100-year run when it has a core to itself (38 s before rations), and about 195 s with 8 runs sharing the machine.
+
+## 2026-10-29 — First full report: 10 seeds, all modules (T5.3)
+
+**Code:** branch `t5.3` (T5.3, on top of T5.2). **Setup:** `scenarios/baseline.yaml` unchanged, all five modules, seeds 1–10, 50 warm-up + 200 measured years.
+**Command:** `bin/silosim batch --scenario scenarios/baseline.yaml --seeds 1-10 --out runs/batch-t53`, then `bin/silosim report --batch runs/batch-t53`.
+
+| Seed | Population | Median age | Births shock | Rationing | Failures / century | Longest < 50% | Mechanical Down Deep (min) |
+| ---: | --- | --- | ---: | ---: | ---: | --- | ---: |
+| 1 | 9,728–9,824 | 31.5–33.6 | 11.9% | 0.0% | 2.0 | 0 d | 79.9% |
+| 2 | 9,720–9,817 | 31.8–33.3 | 9.0% | 0.0% | 2.0 | 0 d | 81.3% |
+| 3 | 9,721–9,825 | 31.9–33.1 | 11.7% | 0.0% | 3.0 | 0 d | 80.7% |
+| 4 | 9,719–9,828 | 31.5–33.5 | 11.8% | 0.0% | 3.5 | 0 d | 80.5% |
+| 5 | 9,721–9,823 | 32.1–33.2 | 9.6% | 0.0% | 4.5 | 0 d | 80.8% |
+| 6 | 0–9,817 | 0.0–78.1 | 100% | 0.0% | 52.5 | 949 d (sheriff) | 0.0% |
+| 7 | 9,722–9,827 | 31.6–33.7 | 14.0% | 0.0% | 3.0 | 0 d | 80.5% |
+| 8 | 9,710–9,831 | 31.9–33.3 | 12.7% | 0.0% | 2.5 | 0 d | 80.5% |
+| 9 | 9,715–9,818 | 31.2–34.1 | 9.9% | 0.0% | 2.5 | 0 d | 81.9% |
+| 10 | 9,719–9,828 | 31.9–33.2 | 10.2% | 0.0% | 3.5 | 0 d | 81.2% |
+
+**Result:** six patterns pass in 9 or 10 of 10 seeds. "Persistent zones" fails in all 10.
+
+**Observations**
+
+1. *Seed 6 collapses in year 107 (day 39,026).* Two failures came 515 days apart, on days 38,511 and 39,026. The first left c at 0.69, and it had only climbed back to 0.75 when the second dropped it to 0.65. Mechanical coverage had also slipped to 0.955, so even a well-kept generator was giving slightly less power than needed. After the second 4-day outage: powerFactor 0.80 → air 0.73 → health 0.87 → Mechanical 0.84 → powerFactor 0.67, and so on. Health hit 0 by day 39,105. 90 days later the entire workforce took sick retirement (§6.5) on day 39,181, which can't be undone, and the silo emptied. This is the tipping point noted in the T3.2a entry. The 100-year stability check stopped before year 107, so it never saw it. A fix needs a rule or parameter change: Mechanical staffing margin, recovery vs air damage, capacity margin, or whether a whole workforce can sick-retire.
+2. *Mechanical workers living Down Deep: about 80–82%, not above 90%.* The share is 100% on day 1, about 82% by the end of warm-up, and stays at 80–85% for the whole run. My unverified explanation is the housing rule (§6.3). A couple whose partners both have zoned departments picks one of the two zones at random, so about half of the Mechanical workers who partner with, say, a Farms worker move out of Down Deep. Cross-zone shadows (5%) add a little more. This needs a spec decision, either on the housing rule or on the target.
+3. *No rationing in any seed.* This is the food surplus from the T3.3 entry.
+4. *Runtime:* 325 s per run with 10 runs on 8 cores, against 86 s for a run that has a machine to itself. This is for T5.4.

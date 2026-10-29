@@ -5,6 +5,7 @@ package report
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -51,14 +52,14 @@ type Seed struct {
 }
 
 // Load reads every run folder in batch (one with a run.json), sorted by
-// name.
+// seed.
 func Load(batch string) ([]Seed, error) {
 	entries, err := os.ReadDir(batch)
 	if err != nil {
 		return nil, err
 	}
 	var seeds []Seed
-	for _, e := range entries { // ReadDir sorts by name
+	for _, e := range entries {
 		dir := filepath.Join(batch, e.Name())
 		if _, err := os.Stat(filepath.Join(dir, "run.json")); !e.IsDir() || err != nil {
 			continue
@@ -72,6 +73,7 @@ func Load(batch string) ([]Seed, error) {
 	if len(seeds) == 0 {
 		return nil, fmt.Errorf("%s holds no runs", batch)
 	}
+	slices.SortFunc(seeds, func(a, b Seed) int { return cmp.Compare(a.Seed, b.Seed) })
 	return seeds, nil
 }
 
@@ -178,6 +180,9 @@ func (s *Seed) daily(path string, warmup int) error {
 		blocks = blocks[:len(blocks)-1] // an unfinished block is not compared
 	}
 	for i := 1; i < len(blocks); i++ {
+		if blocks[i-1] == 0 {
+			continue // after a drop to no births at all, already counted as 100%
+		}
 		s.BirthsShock = max(s.BirthsShock, math.Abs(float64(blocks[i]-blocks[i-1]))/float64(blocks[i-1]))
 	}
 	return nil
