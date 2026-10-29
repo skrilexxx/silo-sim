@@ -12,7 +12,9 @@ import (
 	"github.com/skrilexxx/silo-sim/internal/config"
 )
 
-const usage = "usage: silosim run --scenario FILE [--seed N] [--dry-run]"
+const usage = `usage:
+  silosim run   --scenario FILE [--seed N] [--dry-run]
+  silosim batch --scenario FILE --seeds FIRST-LAST --out DIR [--workers N]`
 
 func main() {
 	if len(os.Args) < 2 {
@@ -23,6 +25,8 @@ func main() {
 	switch os.Args[1] {
 	case "run":
 		err = run(os.Args[2:])
+	case "batch":
+		err = batch(os.Args[2:])
 	default:
 		err = fmt.Errorf("unknown command %q\n%s", os.Args[1], usage)
 	}
