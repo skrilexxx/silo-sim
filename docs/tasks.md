@@ -74,7 +74,7 @@ Demography only. Until later milestones, stub what other modules provide: health
 - [x] **T5.2 Batch runner.** (2026-10-29) `silosim batch` with `--seeds 1-100` and `--workers`, one goroutine per run, one folder per seed.
   - *Done when:* batch output for seed 7 is identical to a single `run` with seed 7.
 - [x] **T5.3 Report.** (2026-10-29) `silosim report` computes every ODD §8 calibration target per seed and prints pass/fail with the share of seeds passing.
-- [ ] **T5.4 Performance.** Benchmark a 250-year run; profile; fix hot spots.
+- [x] **T5.4 Performance.** (2026-10-29) Benchmark a 250-year run; profile; fix hot spots.
   - *Done when:* one full run under 60 seconds on your laptop.
 
 ## Milestone 6 — Calibration

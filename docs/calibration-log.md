@@ -200,3 +200,25 @@ After that, health stays at 0 for good. The population falls to 643 by year 100.
 1. *Persistent zones passes with a thin margin: 91.4–92.6% against the 90% target.* A stay chance of 0.85–0.9 would give more room if 100 seeds show some dips below 90%.
 2. *Still no rationing anywhere.* The food surplus from the T3.3 entry remains, so hunger is still untested in the loop. That's for T6.1.
 3. *Only 10 seeds.* The ODD §1 definition of done asks for 90 of 100.
+
+## 2026-10-29 — Performance (T5.4)
+
+Not a calibration run. Recorded here because batch times set how many seeds calibration can afford.
+
+**Changes, none of which changes a result:** every output file of a 250-year seed-42 run is byte-identical before and after, and the golden hash is unchanged.
+1. **Death chance at health 1 from a table by age in days:** the same formula, computed once per age. About 97% of people are at health exactly 1 on any day, so most of the daily `exp` calls go away.
+2. **The dead are removed from `Alive` only on days someone died.**
+3. **Health skips the per-person zone lookup when no zone is short of food.**
+4. **Work output and skill growth in one pass instead of two.**
+5. **`Person` fields reordered** so the ones read every day (health, skill, department, birthday, household, partner, master, flags) share the first 44 bytes, and the struct went from 120 to 96 bytes. Every step visits people in shuffled order, so memory access, not arithmetic, sets the pace.
+
+Tried and dropped: profile-guided optimisation (`default.pgo`), no measurable gain.
+
+**Timings** (one full run, 50 + 200 years, seed 42; `make bench`). This laptop runs the `powersave` governor alongside other programs, so the same binary varies by ±30% (67 s and 98 s back to back).
+
+| When | Old code | New code |
+| --- | ---: | ---: |
+| Same machine state, back to back | 132 s | 70 s |
+| 60-year runs, alternated 3× | 25–36 s | 16–23 s |
+
+The new code is about 1.5–1.9× faster. Against the 90 s the old code took on a quieter machine earlier today, that is about 48–60 s. It still needs one timing on a quiet machine to confirm the under-60 s target.

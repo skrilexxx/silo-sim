@@ -16,6 +16,11 @@ type Module struct {
 	cfg      *config.Scenario
 	deaths30 int // deaths since the last lottery (D30 in ODD §6.4)
 
+	// healthy[d] is DeathChance at health 1 for someone d days old, built
+	// as ages are reached. Most people are at health exactly 1, and the
+	// table gives them the very same number without the two exp calls.
+	healthy []float64
+
 	// Reused buffers, so the daily steps allocate nothing.
 	pool    []world.PersonID
 	poolZ   []world.Zone
@@ -47,10 +52,10 @@ func (m *Module) Steps() []engine.Step {
 // once (ODD §3, asynchronous updating), so a later death in the same tick
 // sees its effects.
 func (m *Module) deaths(w *world.World, r *rng.Stream) error {
+	before := m.deaths30
 	for _, id := range w.Alive {
 		p := &w.People[id]
-		age := float64(w.Day-p.BirthDay) / engine.DaysPerYear
-		if r.Bernoulli(DeathChance(age, p.Health, m.cfg.Mortality)) {
+		if r.Bernoulli(m.deathChance(w.Day-p.BirthDay, p.Health)) {
 			if err := m.die(w, r, id); err != nil {
 				return err
 			}
@@ -58,8 +63,28 @@ func (m *Module) deaths(w *world.World, r *rng.Stream) error {
 	}
 	// Removed after the loop, not during it, so the loop's order is the
 	// tick's shuffled order throughout.
-	w.Alive = slices.DeleteFunc(w.Alive, func(id world.PersonID) bool { return !w.People[id].Alive })
+	m.removeDead(w, before)
 	return nil
+}
+
+// removeDead drops the dead from Alive, if anyone died since deaths30 was
+// before (die counts every death there).
+func (m *Module) removeDead(w *world.World, before int) {
+	if m.deaths30 != before {
+		w.Alive = slices.DeleteFunc(w.Alive, func(id world.PersonID) bool { return !w.People[id].Alive })
+	}
+}
+
+// deathChance is DeathChance for an age in days, from the table at
+// health 1.
+func (m *Module) deathChance(days world.Tick, health float64) float64 {
+	if health != 1 {
+		return DeathChance(float64(days)/engine.DaysPerYear, health, m.cfg.Mortality)
+	}
+	for int(days) >= len(m.healthy) {
+		m.healthy = append(m.healthy, DeathChance(float64(len(m.healthy))/engine.DaysPerYear, 1, m.cfg.Mortality))
+	}
+	return m.healthy[days]
 }
 
 // ODD §6.1: on a death the partner becomes unpartnered and may pair again;

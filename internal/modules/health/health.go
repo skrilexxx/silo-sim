@@ -59,13 +59,18 @@ func (m *Module) health(w *world.World, r *rng.Stream) error {
 	recovery := m.c.RecoveryRate * w.Depts[medical].Coverage
 	air := m.c.AirDamage * (1 - w.Silo.AirQuality)
 	var hunger [world.NumZones]float64
+	hungry := false // no zone short of food: skip the zone lookup per person
 	for z := range world.NumZones {
 		hunger[z] = m.c.HungerDamage * max(0, 1-w.Silo.Intake[z])
+		hungry = hungry || hunger[z] > 0
 	}
 
 	for _, id := range w.Alive {
 		p := &w.People[id]
-		h := p.Health - air - hunger[w.Floors[w.Households[p.Household].Floor-1].Zone]
+		h := p.Health - air
+		if hungry {
+			h -= hunger[w.Floors[w.Households[p.Household].Floor-1].Zone]
+		}
 		if p.Stage == world.Worker || p.Stage == world.Shadow {
 			factor := m.c.InjuryFactor.Other
 			switch p.Department {

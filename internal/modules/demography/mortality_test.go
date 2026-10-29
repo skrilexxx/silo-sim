@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/skrilexxx/silo-sim/internal/config"
+	"github.com/skrilexxx/silo-sim/internal/world"
 )
 
 var baseline = config.Mortality{GompertzA: 0.0002, GompertzB: 0.085, InfantHazard: 0.02, HealthMultiplier: 2}
@@ -41,5 +42,19 @@ func TestHealthZeroDies(t *testing.T) {
 	}
 	if p := DeathChance(20, 0.01, m); p >= 0.001 {
 		t.Errorf("age 20 at health 0.01: death chance %v, want the ordinary small risk", p)
+	}
+}
+
+// The health-1 table gives exactly DeathChance's number for every age in
+// days, so using it changes no result (T5.4).
+func TestDeathChanceTable(t *testing.T) {
+	m := &Module{cfg: &config.Scenario{Mortality: baseline}}
+	for days := world.Tick(120 * year); days >= 0; days-- { // longest first: the table grows once
+		if got, want := m.deathChance(days, 1), DeathChance(float64(days)/year, 1, baseline); got != want {
+			t.Fatalf("day %d: table %v, formula %v", days, got, want)
+		}
+	}
+	if got, want := m.deathChance(400, 0.7), DeathChance(400.0/year, 0.7, baseline); got != want {
+		t.Errorf("health 0.7: %v, want %v", got, want)
 	}
 }

@@ -72,27 +72,31 @@ func Clamp01(x float64) float64 { return max(0, min(1, x)) }
 
 // ODD §2: Person. Age is never stored; it follows from BirthDay and the day.
 type Person struct {
-	ID         PersonID
-	Sex        Sex
+	// Read by most daily steps, so they come first and share a cache line:
+	// every step visits people in shuffled order, and memory, not
+	// arithmetic, sets the pace (T5.4).
+	Health     float64 // 0–1
+	Skill      float64 // 0–1
+	Department int     // index into World.Depts, or None; kept after retirement and death as a record
 	BirthDay   Tick
-	Alive      bool // dead people stay in People, but leave World.Alive
 	Household  HouseholdID
 	Partner    PersonID // or None
+	Master     PersonID // or None
+	Alive      bool     // dead people stay in People, but leave World.Alive
+	Sex        Sex
+	Stage      Stage
+	Implant    Implant
+
+	ID         PersonID
 	Mother     PersonID // or None
 	Father     PersonID // or None
-	Stage      Stage
-	Department int      // index into World.Depts, or None; kept after retirement and death as a record
-	Master     PersonID // or None
-	Skill      float64  // 0–1
-	Health     float64  // 0–1
-	LowHealth  int      // consecutive days a worker's health has been below sickLeaveHealth
-	Implant    Implant
 	PermitDay  Tick     // day she won the lottery (meaningful while queued, open or pregnant)
 	WindowEnds Tick     // last tick of the conception window
 	DueDay     Tick     // birth day if pregnant
 	BabyFather PersonID // partner at conception, recorded for the birth; or None
-	Children   int      // children born, alive or not
 	LastBirth  Tick     // day of her most recent birth (meaningful if Children > 0)
+	LowHealth  int      // consecutive days a worker's health has been below sickLeaveHealth
+	Children   int      // children born, alive or not
 }
 
 // ODD §2: Household. Its zone follows from its floor. A household whose

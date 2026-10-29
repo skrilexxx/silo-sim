@@ -17,7 +17,7 @@ func TestCoverage(t *testing.T) {
 	for range target {
 		tw.add(world.Worker, 30*year, world.UpTop, medical, avg)
 	}
-	tw.m.output(tw.w)
+	tw.m.output(tw.w, false)
 	d := tw.w.Depts[medical]
 	ratio := d.Output / tw.m.need[medical]
 	t.Logf("full staff at skill × health %.3f: output %.1f, need %.1f, ratio %.3f, coverage %.2f", avg, d.Output, tw.m.need[medical], ratio, d.Coverage)
@@ -29,7 +29,7 @@ func TestCoverage(t *testing.T) {
 		tw.w.People[id].Alive = false
 	}
 	tw.w.Alive = tw.w.Alive[:target/2]
-	tw.m.output(tw.w)
+	tw.m.output(tw.w, false)
 	if c := tw.w.Depts[medical].Coverage; math.Abs(c-0.55) > 0.005 {
 		t.Errorf("half staff: coverage %.3f, want 0.55", c)
 	}
@@ -43,7 +43,7 @@ func TestOutput(t *testing.T) {
 	tw.w.People[a].Health = 0.5
 	tw.add(world.Shadow, 15*year, world.Mids, farms, 0.4)
 	tw.add(world.Retired, 70*year, world.Mids, farms, 0.9) // retired: no output
-	tw.m.output(tw.w)
+	tw.m.output(tw.w, false)
 	want := 0.8*0.5 + tw.m.c.ShadowOutputFactor*0.4
 	if got := tw.w.Depts[farms].Output; math.Abs(got-want) > 1e-12 {
 		t.Errorf("farms output %v, want %v", got, want)

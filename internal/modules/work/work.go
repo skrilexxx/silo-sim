@@ -73,7 +73,7 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 		m.need = append(m.need, m.cfg.Coverage.NeedFactor*m.target[d])
 	}
 	m.dayOneShadows(w, r)
-	m.output(w)
+	m.output(w, false)
 	return nil
 }
 
@@ -191,8 +191,7 @@ func (m *Module) dayOneShadows(w *world.World, r *rng.Stream) {
 // ODD §3 step 5: work. Output and coverage from today's skill and health,
 // then the day's skill growth.
 func (m *Module) work(w *world.World, _ *rng.Stream) error {
-	m.output(w)
-	m.skillGrowth(w)
+	m.output(w, true)
 	return nil
 }
 
@@ -200,7 +199,11 @@ func (m *Module) work(w *world.World, _ *rng.Stream) error {
 // skill × health over its workers, plus shadowOutputFactor × skill ×
 // health for each shadow. Coverage = min(1, output / need), with need =
 // needFactor × the department's day-1 target headcount.
-func (m *Module) output(w *world.World) {
+//
+// With grow, each worker's and shadow's skill then grows by α × (1 −
+// skill) (ODD §6.5), in the same pass: a person's output already used
+// their skill from before today's growth, so this equals two passes.
+func (m *Module) output(w *world.World, grow bool) {
 	for d := range w.Depts {
 		w.Depts[d].Output = 0
 	}
@@ -211,21 +214,15 @@ func (m *Module) output(w *world.World) {
 			w.Depts[p.Department].Output += p.Skill * p.Health
 		case world.Shadow:
 			w.Depts[p.Department].Output += m.c.ShadowOutputFactor * p.Skill * p.Health
+		default:
+			continue
+		}
+		if grow {
+			p.Skill += m.c.SkillGrowth * (1 - p.Skill)
 		}
 	}
 	for d := range w.Depts {
 		w.Depts[d].Coverage = min(1, w.Depts[d].Output/m.need[d])
-	}
-}
-
-// ODD §6.5: skill grows each working day by α × (1 − skill), for workers
-// and shadows, so it approaches 1 and never passes it.
-func (m *Module) skillGrowth(w *world.World) {
-	for _, id := range w.Alive {
-		p := &w.People[id]
-		if p.Stage == world.Shadow || p.Stage == world.Worker {
-			p.Skill += m.c.SkillGrowth * (1 - p.Skill)
-		}
 	}
 }
 

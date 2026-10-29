@@ -1,7 +1,7 @@
 SCENARIO ?= scenarios/baseline.yaml
 SEED     ?= 42
 
-.PHONY: build test vet fmt check run update-golden milestone1 stability
+.PHONY: build test vet fmt check run update-golden milestone1 stability bench
 
 build:
 	go build -o bin/silosim ./cmd/silosim
@@ -32,3 +32,9 @@ milestone1:
 # T3.2a stability check: 10 seeds x 100 years, demography + health + work + resources.
 stability:
 	SILOSIM_STABILITY=1 go test ./internal/modules/resources -run TestStability -v -timeout 60m | grep -E 'seed |^(ok|FAIL|---)'
+
+# T5.4: time one full baseline run (50 + 200 years). Close other programs first;
+# on a laptop the CPU governor and other load move this by ±30%.
+bench: build
+	bin/silosim run --scenario scenarios/baseline.yaml --seed 42
+	@grep runtimeSeconds runs/baseline-42/run.json

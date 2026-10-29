@@ -114,7 +114,7 @@ func TestSkillGrowth(t *testing.T) {
 	tw := newTiny(t)
 	id := tw.add(world.Worker, 30*year, world.Mids, farms, 0.5)
 	kid := tw.add(world.Child, 5*year, world.Mids, world.None, 0)
-	tw.m.skillGrowth(tw.w)
+	tw.m.output(tw.w, true)
 	alpha := tw.m.c.SkillGrowth
 	if got, want := tw.w.People[id].Skill, 0.5+alpha*0.5; math.Abs(got-want) > 1e-15 {
 		t.Errorf("skill after a day %v, want %v", got, want)
@@ -125,7 +125,7 @@ func TestSkillGrowth(t *testing.T) {
 	// ODD §6.5: from 0, about 0.8 after 10 years of work.
 	tw.w.People[id].Skill = 0
 	for range 10 * year {
-		tw.m.skillGrowth(tw.w)
+		tw.m.output(tw.w, true)
 	}
 	t.Logf("skill after 10 years from 0: %.3f", tw.w.People[id].Skill)
 	if s := tw.w.People[id].Skill; s < 0.79 || s > 0.81 {

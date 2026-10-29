@@ -124,6 +124,7 @@ func Eligible(w *world.World, id world.PersonID, day world.Tick, lot config.Lott
 // back in.
 func (m *Module) reproduction(w *world.World, r *rng.Stream) error {
 	lot := m.cfg.Lottery
+	before := m.deaths30
 	for _, id := range w.Alive { // newborns appended below are not visited
 		switch p := &w.People[id]; p.Implant {
 		case world.WindowOpen:
@@ -143,7 +144,7 @@ func (m *Module) reproduction(w *world.World, r *rng.Stream) error {
 		}
 	}
 	// Mothers who died giving birth leave Alive now, as in the death step.
-	w.Alive = slices.DeleteFunc(w.Alive, func(id world.PersonID) bool { return !w.People[id].Alive })
+	m.removeDead(w, before)
 	return nil
 }
 
