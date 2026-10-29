@@ -29,7 +29,7 @@ func fake(t *testing.T) string {
 	write("run.json", `{"seed":7,"finished":true,"scenario":{"warmupYears":1,"output":{"logWarmup":true}}}`)
 
 	var daily strings.Builder
-	daily.WriteString("day,population,births,rationing\n")
+	daily.WriteString("day,population,births,rationing,foodStockDays,popUpTop,popMids,popDownDeep,healthUpTop,healthMids,healthDownDeep\n")
 	for day := 1; day <= 11*365; day++ {
 		pop, births, rationing := 9500, 0, 0
 		measured := day - 365
@@ -48,7 +48,13 @@ func fake(t *testing.T) string {
 		if measured > 0 && measured <= 73 {
 			rationing = 1
 		}
-		fmt.Fprintf(&daily, "%d,%d,%d,%d\n", day, pop, births, rationing)
+		// Food stock grows 0.05 days a day over the measured run (a 5%
+		// surplus); Down Deep's health dips to 0.5 on day 1000 only.
+		food, hDD := 90+0.05*float64(max(measured-1, 0)), 1.0
+		if day == 1000 {
+			hDD = 0.5
+		}
+		fmt.Fprintf(&daily, "%d,%d,%d,%d,%.2f,%d,%d,%d,1,1,%.1f\n", day, pop, births, rationing, food, pop/2, pop/4, pop-pop/2-pop/4, hDD)
 	}
 	write("daily.csv", daily.String())
 
@@ -103,6 +109,10 @@ func TestLoadRun(t *testing.T) {
 	// counted.
 	if s.LongestUnderstaffed != 1016 || s.UnderstaffedDept != "sheriff" {
 		t.Errorf("longest understaffed %d days (%s), want 1016 (sheriff)", s.LongestUnderstaffed, s.UnderstaffedDept)
+	}
+	// Population-weighted: a quarter of 9,500 (2,375) at 0.5, the rest at 1.
+	if math.Abs(s.FoodSurplus-0.05) > 1e-9 || math.Abs(s.HealthMin-(1-0.5*2375.0/9500)) > 1e-9 {
+		t.Errorf("food surplus %v, lowest health %v; want 0.05 and %v", s.FoodSurplus, s.HealthMin, 1-0.5*2375.0/9500)
 	}
 	if s.AgeMin != 31 || s.AgeMax != 39 || s.MechanicalInZoneMin != 0.89 {
 		t.Errorf("median age %v–%v, Mechanical in zone ≥ %v; want 31–39 and 0.89", s.AgeMin, s.AgeMax, s.MechanicalInZoneMin)

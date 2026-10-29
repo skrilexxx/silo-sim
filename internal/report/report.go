@@ -49,6 +49,10 @@ type Seed struct {
 	LongestUnderstaffed int    // days
 	UnderstaffedDept    string // the department with that spell
 	MechanicalInZoneMin float64
+
+	// Information, not targets (T6.1).
+	FoodSurplus float64 // production / need − 1, from the drift of the food stock in days
+	HealthMin   float64 // lowest population-weighted average health: the stability margin
 }
 
 // Load reads every run folder in batch (one with a run.json), sorted by
@@ -158,7 +162,8 @@ func cell(col map[string]int, row []string, name string) float64 {
 }
 
 func (s *Seed) daily(path string, warmup int) error {
-	col, rows, err := table(path, warmup, "population", "rationing", "births")
+	col, rows, err := table(path, warmup, "population", "rationing", "births", "foodStockDays",
+		"popUpTop", "popMids", "popDownDeep", "healthUpTop", "healthMids", "healthDownDeep")
 	if err != nil {
 		return err
 	}
@@ -166,7 +171,7 @@ func (s *Seed) daily(path string, warmup int) error {
 		return fmt.Errorf("%s: no measured days", filepath.Base(path))
 	}
 	s.Days = len(rows)
-	s.PopMin, s.PopMax = math.MaxInt, 0
+	s.PopMin, s.PopMax, s.HealthMin = math.MaxInt, 0, 1
 	rationing := 0
 	var blocks []int
 	for i, r := range rows {
@@ -179,6 +184,19 @@ func (s *Seed) daily(path string, warmup int) error {
 			blocks = append(blocks, 0)
 		}
 		blocks[len(blocks)-1] += int(cell(col, r, "births"))
+		if pop > 0 {
+			h := 0.0
+			for _, z := range []string{"UpTop", "Mids", "DownDeep"} {
+				h += cell(col, r, "pop"+z) * cell(col, r, "health"+z)
+			}
+			s.HealthMin = min(s.HealthMin, h/float64(pop))
+		}
+	}
+	// The stock in days grows by (production − need) / need each day, so
+	// its average daily drift is the surplus, outage losses included.
+	if s.Days > 1 {
+		first, last := cell(col, rows[0], "foodStockDays"), cell(col, rows[len(rows)-1], "foodStockDays")
+		s.FoodSurplus = (last - first) / float64(s.Days-1)
 	}
 	s.RationingShare = float64(rationing) / float64(s.Days)
 	if s.Days%(birthsBlockYears*daysPerYear) != 0 {
@@ -306,21 +324,21 @@ func Write(out io.Writer, seeds []Seed) (bool, error) {
 	for _, t := range Targets {
 		fmt.Fprintf(tw, "\t%s", t.Pattern)
 	}
-	fmt.Fprintln(tw)
+	fmt.Fprintln(tw, "\t(food surplus)\t(lowest health)")
 	for _, s := range seeds {
 		if s.Crashed != "" {
 			fmt.Fprintf(tw, "%d\t-", s.Seed)
 			for range Targets {
 				fmt.Fprint(tw, "\tcrashed")
 			}
-			fmt.Fprintln(tw)
+			fmt.Fprintln(tw, "\t-\t-")
 			continue
 		}
 		fmt.Fprintf(tw, "%d\t%d", s.Seed, s.Days/daysPerYear)
 		for _, t := range Targets {
 			fmt.Fprintf(tw, "\t%s %s", t.Value(s), mark(t.Pass(s)))
 		}
-		fmt.Fprintln(tw)
+		fmt.Fprintf(tw, "\t%.1f%%\t%.3f\n", 100*s.FoodSurplus, s.HealthMin)
 	}
 	fmt.Fprintln(tw)
 	for _, s := range seeds {
