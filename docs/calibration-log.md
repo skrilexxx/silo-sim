@@ -310,3 +310,11 @@ Every other pattern passes in 10/10.
 **Reading:** the placement change only affects the 40% of children who don't follow a parent. Mechanical still overfills, through children following a Mechanical parent (60%, whenever a free master exists, and an overfull Mechanical has many). The §8 targets don't measure overfilling, so they pass anyway. `TestFiftyYears` (T2.1, demography and work only) now ends at Porters +16.5%, outside its ±15% band.
 
 **Open, for Adam:** also limit following a parent to departments below target, or go back to "stay only while short" and revise the 90% target.
+
+## 2026-10-29 — Decision: balanced staffing, persistent-zones target revised to 75%
+
+**Decision (Adam):** keep "stay only while Mechanical is short" (committed in `977f78d`) and drop the 80% stay rule and the placement experiment. Change the ODD §8 persistent-zones target from "above 90%" to "above 75%" of Mechanical workers living Down Deep.
+
+**Why:** partners are chosen freely (§6.3), so about one Mechanical worker in five lives with a partner from another zone, and the share settles near 81%. Every rule tried that pushed it above 90% (80% stay; 80% stay plus job-seeking placement) did so by growing the Down Deep to 28–33% of the silo and overfilling Mechanical by 19–38% at Farms' expense, which in turn starved the food supply. With the balanced rule, both departments stay on target, the Down Deep stays near 22%, and the 5% food surplus holds without rationing. 75% still means Mechanical clearly stays a Down Deep department.
+
+**Next:** the 100-seed confirmation of this version (T6.1 step 3, repeated).

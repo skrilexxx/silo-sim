@@ -14,7 +14,7 @@ import (
 // Population 9,500, one day at 11,001. Rationing on 73 measured days (2%).
 // Two failures. Mechanical leaves for 400 days, sheriff stays short from
 // day 3,000 to the end. Median age 31–39, Mechanical Down Deep 95% then
-// 89% once.
+// 74% once.
 func fake(t *testing.T) string {
 	t.Helper()
 	dir := filepath.Join(t.TempDir(), "baseline-7")
@@ -66,7 +66,7 @@ func fake(t *testing.T) string {
 			age, mech = 10, 0 // warm-up
 		}
 		if y == 6 {
-			mech = 0.89
+			mech = 0.74
 		}
 		fmt.Fprintf(&yearly, "%d,%.2f,%.4f\n", y*365, age, mech)
 	}
@@ -114,8 +114,8 @@ func TestLoadRun(t *testing.T) {
 	if math.Abs(s.FoodSurplus-0.05) > 1e-9 || math.Abs(s.HealthMin-(1-0.5*2375.0/9500)) > 1e-9 {
 		t.Errorf("food surplus %v, lowest health %v; want 0.05 and %v", s.FoodSurplus, s.HealthMin, 1-0.5*2375.0/9500)
 	}
-	if s.AgeMin != 31 || s.AgeMax != 39 || s.MechanicalInZoneMin != 0.89 {
-		t.Errorf("median age %v–%v, Mechanical in zone ≥ %v; want 31–39 and 0.89", s.AgeMin, s.AgeMax, s.MechanicalInZoneMin)
+	if s.AgeMin != 31 || s.AgeMax != 39 || s.MechanicalInZoneMin != 0.74 {
+		t.Errorf("median age %v–%v, Mechanical in zone ≥ %v; want 31–39 and 0.74", s.AgeMin, s.AgeMax, s.MechanicalInZoneMin)
 	}
 
 	var out strings.Builder
@@ -125,7 +125,7 @@ func TestLoadRun(t *testing.T) {
 	}
 	// Ages and rationing pass; population, births shock (not below 30%),
 	// failures, staffing and zones fail.
-	for _, want := range []string{"9500–11001 FAIL", "31.0–39.0 PASS", "30.0% FAIL", "2.0% PASS", "20.0 FAIL", "1016 d (sheriff) FAIL", "89.0% FAIL"} {
+	for _, want := range []string{"9500–11001 FAIL", "31.0–39.0 PASS", "30.0% FAIL", "2.0% PASS", "20.0 FAIL", "1016 d (sheriff) FAIL", "74.0% FAIL"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("report lacks %q:\n%s", want, out.String())
 		}
