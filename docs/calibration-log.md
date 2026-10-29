@@ -244,3 +244,29 @@ The new code is about 1.5–1.9× faster. Against the 90 s the old code took on 
 1. *Still no rationing.* With any surplus above 0 the stock grows year after year, and a 4-day outage costs only about 3 days of food. Rationing (stock below 30 days) can only start after a long run of deficits. So hunger stays out of the loop in a normal run. This is how §6.6–6.7 are built, not a calibration miss.
 2. *In these short runs "Rare crises" fails in 4 of 8 seeds:* 50 years hold 0–5 failures, which scales to 0–10 per century. This is a short-run artefact; the 100-seed check uses the full 200 measured years.
 3. Lowest average health is the same as at 16,000 (0.934–0.998), so food doesn't touch the stability margin.
+
+## 2026-10-29 — T6.1 step 3: 100 seeds — rationing fails, caused by the Mechanical stay rule
+
+**Code:** branch `t6.1` at `4337c44` (kcalPerFarmUnit 11,900). **Setup:** `scenarios/baseline.yaml`, seeds 1–100, 50 + 200 years. **Command:** `bin/silosim batch --scenario scenarios/baseline.yaml --seeds 1-100 --out runs/cal-100`, then `bin/silosim report --batch runs/cal-100`. All 100 runs finished.
+
+| Pattern | Seeds passing |
+| --- | ---: |
+| Stable population | 100 / 100 |
+| Plausible ages | 100 / 100 |
+| No demographic shocks | 100 / 100 |
+| **Balanced resources (rationing < 5% of days)** | **89 / 100: FAIL** |
+| Rare crises (1–6 failures per century) | 96 / 100 |
+| Staffed departments | 100 / 100 |
+| Persistent zones | 100 / 100 |
+
+The 11 rationing seeds ration on 5.8–18.0% of days. The food surplus over the full measured run averages 0.8% (−1.4% to 5.5%), not the 4.7% of the step-2 sweep. Lowest average health stays at 0.917 or above in every seed, so hunger now enters the loop without tipping it. The 4 failure-rate misses (0.5, 6.5, 7.0, 7.0 per century) are Poisson noise around 3.5.
+
+**Why the surplus is lower: Farms loses workers to Mechanical over the decades.**
+
+1. *The step-2 sweep measured years 10–60 only.* Production per need falls later in a run. At 16,000 kcal (the earlier `exp-final` batch, no rationing) the surplus was about 40% in years 60–110 and about 30% in years 160–250. The short window overstated the long-run surplus. That was a mistake in step 2.
+2. *The fall comes from staffing.* Farms workers slide from about 1,860 (year 60) to 1,670–1,740 (year 250) while the target stays near 1,870. Meanwhile Mechanical grows to 1,257–1,378 against a target of about 1,000. In the batch without the stay rule (capacity 1.5, `exp-C`) both departments stay at their targets: Farms 1,878–2,017, Mechanical 977–1,039 at year 250.
+3. *Down Deep grows.* With the stay rule, Down Deep goes from 22% of the population to 31–33% by year 250, and Up Top and the Mids shrink. Without it Down Deep stays at 20.5–22%.
+
+**Mechanism:** the stay rule keeps 80% of split couples Down Deep even when Mechanical is well over target. Their children grow up there, and a Down Deep child's placement can only choose Mechanical, General and Porters (apart from the 5% cross-zone chance and following a parent), so most go to Mechanical. Each generation of Down Deep families is larger than the one before. The rule fixed "Mechanical workers live Down Deep" but drains Farms and inflates Down Deep.
+
+**Open, for Adam:** how to change the stay rule (see the T6.1 discussion). The food value should be calibrated again on the full 200 measured years once staffing is fixed.
