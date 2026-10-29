@@ -168,3 +168,35 @@ After that, health stays at 0 for good. The population falls to 643 by year 100.
 5. *Only 10 seeds.* Seed 6 is the only one that came near the tipping point. A choice should be checked on 100 seeds (about an hour) before T6.1.
 
 **Open, for Adam:** which knob to change, if any (B or C keep the health rules as they are). And should a mass death that leaves orphans with no adult in their zone still stop the run (§6.1), now that health 0 kills?
+
+## 2026-10-29 — Agreed changes: capacity 1.5, orphans to any zone, Mechanical couples stay Down Deep
+
+**Decisions (Adam):**
+- **Capacity margin 1.3 → 1.5** (setting C above). backupPower goes 0.2 → 0.173 to keep backup at its old strength, about 26% of day-1 demand.
+- **Orphans:** they go to a household with an adult in any zone when their own zone has none (§6.1).
+- **Mechanical couples:** a couple split between Mechanical and another zone's department lives Down Deep always when Mechanical is below its target, and otherwise with `work.mechanicalStayChance` = 0.8 (§6.3).
+
+**Why the zone rule:** a probe at year 50 (seed 42) found 160 of 999 Mechanical workers living outside Down Deep. 155 of them were partnered with a worker of another zoned department (77 Farms, 20 Judicial, 17 Education, 13 IT, 13 Administration, …), and the 50/50 pick had sent them away. Mechanical was at its target then (999 workers, target 985), so the "below target" clause alone rarely fires; the 0.8 does most of the work.
+
+**Code:** branch `stability`. **Setup:** `scenarios/baseline.yaml` with the changes, seeds 1–10, 50 + 200 years. **Command:** `bin/silosim batch … --out runs/exp-final`, then `bin/silosim report --batch runs/exp-final`.
+
+| Seed | Population | Median age | Births shock | Rationing | Failures / century | Longest < 50% | Mechanical Down Deep (min) | Lowest avg health |
+| ---: | --- | --- | ---: | ---: | ---: | --- | ---: | ---: |
+| 1 | 9,723–9,821 | 31.4–33.8 | 11.8% | 0.0% | 2.0 | 0 d | 92.2% | 0.937 |
+| 2 | 9,727–9,816 | 31.8–33.7 | 11.9% | 0.0% | 2.0 | 0 d | 91.4% | 0.937 |
+| 3 | 9,723–9,825 | 31.8–33.2 | 17.2% | 0.0% | 3.0 | 0 d | 92.4% | 0.935 |
+| 4 | 9,727–9,822 | 31.7–33.3 | 14.3% | 0.0% | 3.5 | 0 d | 92.3% | 0.934 |
+| 5 | 9,720–9,823 | 31.8–33.3 | 12.7% | 0.0% | 4.5 | 0 d | 91.9% | 0.937 |
+| 6 | 9,725–9,819 | 32.0–33.1 | 11.7% | 0.0% | 4.0 | 0 d | 92.6% | 0.933 |
+| 7 | 9,728–9,818 | 31.8–33.3 | 14.2% | 0.0% | 3.0 | 0 d | 92.6% | 0.934 |
+| 8 | 9,735–9,821 | 31.8–33.0 | 10.8% | 0.0% | 2.5 | 0 d | 92.4% | 0.936 |
+| 9 | 9,730–9,818 | 31.7–33.7 | 15.5% | 0.0% | 2.5 | 0 d | 92.6% | 0.934 |
+| 10 | 9,724–9,829 | 31.4–33.5 | 16.7% | 0.0% | 3.5 | 0 d | 91.6% | 0.935 |
+
+**Result: every ODD §8 pattern holds in 10 of 10 seeds.** Seed 6 now survives its two close failures, with lowest average health 0.933.
+
+**Observations**
+
+1. *Persistent zones passes with a thin margin: 91.4–92.6% against the 90% target.* A stay chance of 0.85–0.9 would give more room if 100 seeds show some dips below 90%.
+2. *Still no rationing anywhere.* The food surplus from the T3.3 entry remains, so hunger is still untested in the loop. That's for T6.1.
+3. *Only 10 seeds.* The ODD §1 definition of done asks for 90 of 100.

@@ -50,6 +50,7 @@ func (s *Scenario) Validate() error {
 		{"work.shadowOutputFactor", s.Work.ShadowOutputFactor},
 		{"work.retrainBelowShare", s.Work.RetrainBelowShare},
 		{"work.retrainStartSkill", s.Work.RetrainStartSkill},
+		{"work.mechanicalStayChance", s.Work.MechanicalStayChance},
 		{"resources.generatorWear", s.Resources.GeneratorWear},
 		{"resources.repairRate", s.Resources.RepairRate},
 		{"resources.failureBase", s.Resources.FailureBase},

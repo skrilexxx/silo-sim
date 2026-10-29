@@ -119,7 +119,7 @@ func TestBadRangeFailsWithKeyName(t *testing.T) {
 		{"adultKcal: 2200", "adultKcal: 0", "rations.adultKcal = 0, must be greater than 0"},
 		{"ageGapScaleYears: 5.0", "ageGapScaleYears: 0", "partnering.ageGapScaleYears = 0, must be greater than 0"},
 		{"powerDemandPerPerson: 1.0", "powerDemandPerPerson: 0", "resources.powerDemandPerPerson = 0, must be greater than 0"},
-		{"capacityMargin: 1.3", "capacityMargin: 0", "resources.capacityMargin = 0, must be greater than 0"},
+		{"capacityMargin: 1.5", "capacityMargin: 0", "resources.capacityMargin = 0, must be greater than 0"},
 		{"kcalPerFarmUnit: 16000", "kcalPerFarmUnit: 0", "resources.kcalPerFarmUnit = 0, must be greater than 0"},
 		{"targetPopulation: 10000", "targetPopulation: 0", "lottery.targetPopulation = 0, must be greater than 0"},
 		{"population: 10000", "population: 0", "population = 0, must be greater than 0"},

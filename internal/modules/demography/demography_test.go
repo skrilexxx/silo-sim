@@ -4,7 +4,6 @@ import (
 	"math"
 	"slices"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/skrilexxx/silo-sim/internal/config"
@@ -198,17 +197,16 @@ func TestOrphansMoveTogetherInZone(t *testing.T) {
 	}
 }
 
-func TestOrphansWithNowhereToGoFail(t *testing.T) {
+// With no other Mids household holding an adult, the orphans go to the
+// Up Top one (ODD §6.1: any zone when their own has none).
+func TestOrphansGoToAnotherZoneWhenTheirsHasNone(t *testing.T) {
 	w, m := family(t)
 	kill(t, w, m, 4) // the other Mids adult; household 1 dissolves
 	if w.Households[1].Floor != world.None {
 		t.Error("single adult's household not dissolved")
 	}
-	if err := m.die(w, stream(t), 0); err != nil {
-		t.Fatal(err)
-	}
-	err := m.die(w, stream(t), 1)
-	if err == nil || !strings.Contains(err.Error(), "no household with an adult in zone 1") {
-		t.Errorf("got %v, want an error about orphans with nowhere to go", err)
+	kill(t, w, m, 0, 1)
+	if !slices.Equal(w.Households[2].Members, []world.PersonID{5, 2, 3}) {
+		t.Errorf("Up Top household is %v, want its adult plus both children", w.Households[2].Members)
 	}
 }

@@ -170,7 +170,7 @@ func TestTargetZoneRandomChoices(t *testing.T) {
 		a, b   person
 		zx, zy world.Zone
 	}{
-		{"both tied, different zones", person{world.Female, 30, world.Mids, 3}, person{world.Male, 30, world.Mids, 2}, world.UpTop, world.DownDeep},
+		{"both tied, different zones", person{world.Female, 30, world.Mids, 3}, person{world.Male, 30, world.Mids, 0}, world.UpTop, world.Mids},
 		{"neither tied: one of their home zones", person{world.Female, 30, world.Mids, 1}, person{world.Male, 30, world.UpTop, world.None}, world.Mids, world.UpTop},
 	}
 	for _, c := range cases {
@@ -296,5 +296,48 @@ func TestWhoMovesIn(t *testing.T) {
 	}
 	if !slices.Equal(w.Households[1].Members, []world.PersonID{4, 5}) {
 		t.Errorf("parents' household %v, want the mother and the sister left behind", w.Households[1].Members)
+	}
+}
+
+// Mechanical keeps its people: a couple split between Mechanical and a
+// department of another zone goes Down Deep whenever Mechanical is below
+// its target, and otherwise with mechanicalStayChance (0.8).
+func TestMechanicalCouplesStayDownDeep(t *testing.T) {
+	for _, c := range []struct {
+		what           string
+		headcount      int
+		target, lo, hi float64
+	}{
+		{"Mechanical below target", 9, 10, 1, 1},
+		{"Mechanical at target", 10, 10, 0.78, 0.82},
+	} {
+		w, m := town(t, person{world.Female, 30, world.Mids, 3}, person{world.Male, 30, world.Mids, 2}) // IT and Mechanical
+		w.Depts[2].Headcount, w.Depts[2].Target = c.headcount, c.target
+		r := stream(t)
+		down := 0
+		for range 10_000 {
+			if m.targetZone(w, r, 0, 1) == world.DownDeep {
+				down++
+			}
+		}
+		share := float64(down) / 10_000
+		t.Logf("%s: Down Deep in %.1f%% of 10,000 picks", c.what, 100*share)
+		if share < c.lo || share > c.hi {
+			t.Errorf("%s: Down Deep share %.3f, want %v–%v", c.what, share, c.lo, c.hi)
+		}
+	}
+}
+
+// Orphans whose zone has no household with an adult go to one in any
+// zone; with no adult anywhere the run stops.
+func TestOrphansMoveToAnyZoneWhenTheirsHasNoAdult(t *testing.T) {
+	w, m := town(t, person{world.Female, 5, world.DownDeep, world.None}, person{world.Male, 40, world.Mids, 0})
+	to, err := m.fosterHome(w, stream(t), &w.Households[0])
+	if err != nil || to != 1 {
+		t.Errorf("foster home %d, %v; want household 1 in the Mids", to, err)
+	}
+	w.People[1].BirthDay = w.Day - 10*year // now a child too
+	if _, err := m.fosterHome(w, stream(t), &w.Households[0]); err == nil {
+		t.Error("no adult left anywhere, but no error")
 	}
 }

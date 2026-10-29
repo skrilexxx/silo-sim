@@ -165,7 +165,8 @@ func TestOutage(t *testing.T) {
 }
 
 // Capacity is capacityMargin × day-1 demand, so at condition 0.8 and full
-// Mechanical coverage supply is 1.04 × demand and powerFactor is 1.
+// Mechanical coverage supply is capacityMargin × 0.8 × demand (1.2 at the
+// baseline 1.5) and powerFactor is 1.
 func TestPowerDayOne(t *testing.T) {
 	cfg := baseline(t)
 	cfg.Resources.FailureBase = 0
@@ -181,8 +182,8 @@ func TestPowerDayOne(t *testing.T) {
 	if s.PowerDemand != demand {
 		t.Errorf("demand = %v, want %v", s.PowerDemand, demand)
 	}
-	if ratio := s.PowerSupply / s.PowerDemand; math.Abs(ratio-1.04) > 0.001 {
-		t.Errorf("supply / demand = %.4f, want ≈ 1.04", ratio)
+	if ratio, want := s.PowerSupply/s.PowerDemand, rc.CapacityMargin*0.8; math.Abs(ratio-want) > 0.001 {
+		t.Errorf("supply / demand = %.4f, want ≈ %.2f", ratio, want)
 	}
 	if pf := s.PowerFactor(); pf != 1 {
 		t.Errorf("powerFactor = %v, want 1", pf)

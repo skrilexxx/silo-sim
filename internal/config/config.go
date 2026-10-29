@@ -120,21 +120,22 @@ type Lottery struct {
 }
 
 type Work struct {
-	ShadowAge           int          `yaml:"shadowAge"`
-	WorkerAge           int          `yaml:"workerAge"`
-	RetireAge           int          `yaml:"retireAge"`
-	SickLeaveDays       int          `yaml:"sickLeaveDays"`
-	SickLeaveHealth     float64      `yaml:"sickLeaveHealth"`
-	FollowParentChance  float64      `yaml:"followParentChance"`
-	CrossZoneChance     float64      `yaml:"crossZoneChance"`
-	MaxShadowsPerMaster int          `yaml:"maxShadowsPerMaster"`
-	MasterMinSkill      float64      `yaml:"masterMinSkill"`
-	SkillGrowth         float64      `yaml:"skillGrowth"`
-	ShadowOutputFactor  float64      `yaml:"shadowOutputFactor"`
-	RetrainBelowShare   float64      `yaml:"retrainBelowShare"`
-	RetrainStartSkill   float64      `yaml:"retrainStartSkill"`
-	AllZoneSplit        Zones        `yaml:"allZoneSplit"`
-	Departments         []Department `yaml:"departments"`
+	ShadowAge            int          `yaml:"shadowAge"`
+	WorkerAge            int          `yaml:"workerAge"`
+	RetireAge            int          `yaml:"retireAge"`
+	SickLeaveDays        int          `yaml:"sickLeaveDays"`
+	SickLeaveHealth      float64      `yaml:"sickLeaveHealth"`
+	FollowParentChance   float64      `yaml:"followParentChance"`
+	CrossZoneChance      float64      `yaml:"crossZoneChance"`
+	MaxShadowsPerMaster  int          `yaml:"maxShadowsPerMaster"`
+	MasterMinSkill       float64      `yaml:"masterMinSkill"`
+	SkillGrowth          float64      `yaml:"skillGrowth"`
+	ShadowOutputFactor   float64      `yaml:"shadowOutputFactor"`
+	RetrainBelowShare    float64      `yaml:"retrainBelowShare"`
+	RetrainStartSkill    float64      `yaml:"retrainStartSkill"`
+	MechanicalStayChance float64      `yaml:"mechanicalStayChance"`
+	AllZoneSplit         Zones        `yaml:"allZoneSplit"`
+	Departments          []Department `yaml:"departments"`
 }
 
 type Department struct {

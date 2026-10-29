@@ -68,8 +68,9 @@ func (m *Module) deaths(w *world.World, r *rng.Stream) error {
 // under way goes on.
 // If an adult still lives in the household, the children stay with them
 // (their other parent, or a step-parent). Otherwise the children move
-// together to a random household in the same zone with a living adult. A
-// household left empty is dissolved, which frees its home.
+// together to a random household in the same zone with a living adult, or
+// in any zone if their own has none. A household left empty is dissolved,
+// which frees its home.
 //
 // The dead keep their Partner and Household fields as a record; the
 // invariants only follow references from the living.
@@ -115,18 +116,22 @@ func (m *Module) hasAdult(w *world.World, hh *world.Household) bool {
 }
 
 // fosterHome picks, uniformly, another household in from's zone with at
-// least one living adult.
+// least one living adult. If the zone has none (a mass death), it picks
+// from every zone instead; only a silo with no adult left at all stops
+// the run.
 func (m *Module) fosterHome(w *world.World, r *rng.Stream, from *world.Household) (world.HouseholdID, error) {
 	zone := w.Floors[from.Floor-1].Zone
 	var homes []world.HouseholdID
-	for i := range w.Households {
-		h := &w.Households[i]
-		if h.ID != from.ID && h.Floor != world.None && w.Floors[h.Floor-1].Zone == zone && m.hasAdult(w, h) {
-			homes = append(homes, h.ID)
+	for _, anyZone := range []bool{false, true} {
+		for i := range w.Households {
+			h := &w.Households[i]
+			if h.ID != from.ID && h.Floor != world.None && (anyZone || w.Floors[h.Floor-1].Zone == zone) && m.hasAdult(w, h) {
+				homes = append(homes, h.ID)
+			}
+		}
+		if len(homes) > 0 {
+			return homes[r.IntRange(0, len(homes)-1)], nil
 		}
 	}
-	if len(homes) == 0 {
-		return 0, fmt.Errorf("demography: orphans of household %d have no household with an adult in zone %d", from.ID, zone)
-	}
-	return homes[r.IntRange(0, len(homes)-1)], nil
+	return 0, fmt.Errorf("demography: orphans of household %d have no household with an adult anywhere in the silo", from.ID)
 }
