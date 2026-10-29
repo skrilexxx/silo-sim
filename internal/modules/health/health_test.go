@@ -188,7 +188,7 @@ func run(t *testing.T, years int, workModule engine.Module) result {
 		p := &w.People[i]
 		if !p.Alive {
 			res.deaths++
-		} else if p.Stage == world.Retired && w.Day-p.BirthDay < world.Tick(cfg.Work.RetireAge*year) {
+		} else if p.Stage == world.SickLeave {
 			res.sickRetired++
 		}
 	}
@@ -201,8 +201,8 @@ func run(t *testing.T, years int, workModule engine.Module) result {
 func TestMedicalMatters(t *testing.T) {
 	full := run(t, 20, work.New())
 	none := run(t, 20, noMedical{work.New()})
-	t.Logf("full Medical: average health min %.3f, end %.3f; %d deaths; %d retired early for ill health", full.minHealth, full.endHealth, full.deaths, full.sickRetired)
-	t.Logf("no Medical:   average health min %.3f, end %.3f; %d deaths; %d retired early for ill health", none.minHealth, none.endHealth, none.deaths, none.sickRetired)
+	t.Logf("full Medical: average health min %.3f, end %.3f; %d deaths; %d on sick leave at the end", full.minHealth, full.endHealth, full.deaths, full.sickRetired)
+	t.Logf("no Medical:   average health min %.3f, end %.3f; %d deaths; %d on sick leave at the end", none.minHealth, none.endHealth, none.deaths, none.sickRetired)
 	if full.minHealth <= 0.9 {
 		t.Errorf("with full Medical average health fell to %.3f, want above 0.9", full.minHealth)
 	}

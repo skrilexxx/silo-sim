@@ -159,31 +159,64 @@ func TestStageTransitions(t *testing.T) {
 	}
 }
 
-func TestSickRetirement(t *testing.T) {
+// ODD §6.5: sickLeaveDays in a row below sickLeaveHealth puts a worker on
+// sick leave (off the headcount, department kept); health back at the mark
+// returns them to work.
+func TestSickLeave(t *testing.T) {
 	tw := newTiny(t)
 	tw.staffed()
 	sick := tw.add(world.Worker, 40*year, world.Mids, farms, 0.9)
 	tw.m.recount(tw.w)
 	c := tw.m.c
-	tw.w.People[sick].Health = c.SickRetireHealth / 2
-	for range c.SickRetireDays - 1 {
+	tw.w.People[sick].Health = c.SickLeaveHealth / 2
+	for range c.SickLeaveDays - 1 {
 		tw.day()
 	}
 	if tw.w.People[sick].Stage != world.Worker {
-		t.Fatalf("retired after %d days of low health, want %d", c.SickRetireDays-1, c.SickRetireDays)
+		t.Fatalf("on leave after %d days of low health, want %d", c.SickLeaveDays-1, c.SickLeaveDays)
 	}
 	tw.w.People[sick].Health = 1 // one good day resets the count
 	tw.day()
-	tw.w.People[sick].Health = c.SickRetireHealth / 2
-	for range c.SickRetireDays - 1 {
+	tw.w.People[sick].Health = c.SickLeaveHealth / 2
+	for range c.SickLeaveDays - 1 {
 		tw.day()
 	}
 	if tw.w.People[sick].Stage != world.Worker {
 		t.Fatal("the count did not restart after a day of good health")
 	}
+	before := tw.w.Depts[farms].Headcount
 	tw.day()
-	if tw.w.People[sick].Stage != world.Retired {
-		t.Errorf("not retired after %d days in a row of low health", c.SickRetireDays)
+	if p := tw.w.People[sick]; p.Stage != world.SickLeave || p.Department != farms || tw.w.Depts[farms].Headcount != before-1 {
+		t.Fatalf("after %d days in a row of low health: stage %d, department %d, headcount %d → %d; want sick leave from farms, one fewer",
+			c.SickLeaveDays, p.Stage, p.Department, before, tw.w.Depts[farms].Headcount)
+	}
+	tw.day() // still sick: stays on leave
+	if tw.w.People[sick].Stage != world.SickLeave {
+		t.Fatal("left sick leave while still below the mark")
+	}
+	tw.w.People[sick].Health = c.SickLeaveHealth
+	tw.day()
+	if p := tw.w.People[sick]; p.Stage != world.Worker || p.Department != farms || tw.w.Depts[farms].Headcount != before {
+		t.Errorf("health back at %v: stage %d, headcount %d; want back at work in farms", c.SickLeaveHealth, p.Stage, tw.w.Depts[farms].Headcount)
+	}
+}
+
+// Someone on sick leave who reaches retireAge retires instead of
+// returning.
+func TestSickLeaveRetiresAtAge(t *testing.T) {
+	tw := newTiny(t)
+	tw.staffed()
+	sick := tw.add(world.Worker, 64*year, world.Mids, farms, 0.9)
+	tw.w.People[sick].Stage, tw.w.People[sick].Health = world.SickLeave, tw.m.c.SickLeaveHealth/2
+	tw.m.recount(tw.w)
+	for range year {
+		tw.day()
+		if tw.w.People[sick].Stage == world.Worker {
+			t.Fatal("returned to work while still sick")
+		}
+	}
+	if p := tw.w.People[sick]; p.Stage != world.Retired {
+		t.Errorf("stage %d at 65, want retired", p.Stage)
 	}
 }
 

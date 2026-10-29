@@ -42,7 +42,7 @@ func (s *Scenario) Validate() error {
 		{"lottery.openWindowWeight", s.Lottery.OpenWindowWeight},
 		{"lottery.conceptionChance", s.Lottery.ConceptionChance},
 		{"lottery.girlShare", s.Lottery.GirlShare},
-		{"work.sickRetireHealth", s.Work.SickRetireHealth},
+		{"work.sickLeaveHealth", s.Work.SickLeaveHealth},
 		{"work.followParentChance", s.Work.FollowParentChance},
 		{"work.crossZoneChance", s.Work.CrossZoneChance},
 		{"work.masterMinSkill", s.Work.MasterMinSkill},

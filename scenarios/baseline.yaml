@@ -76,8 +76,8 @@ work:                             # ODD §6.5
   shadowAge: 14
   workerAge: 18
   retireAge: 65
-  sickRetireDays: 90
-  sickRetireHealth: 0.3
+  sickLeaveDays: 90               # a worker this many days in a row below sickLeaveHealth goes on sick leave
+  sickLeaveHealth: 0.3            # ...and returns to work once health is back at this level
   followParentChance: 0.6
   crossZoneChance: 0.05
   maxShadowsPerMaster: 2

@@ -30,3 +30,16 @@ func TestDeathChance(t *testing.T) {
 		t.Error("infant hazard should stop at age 1")
 	}
 }
+
+// Health 0 means death the same day, at any age.
+func TestHealthZeroDies(t *testing.T) {
+	m := baseline
+	for _, age := range []float64{0.5, 20, 80} {
+		if p := DeathChance(age, 0, m); p != 1 {
+			t.Errorf("age %v at health 0: death chance %v, want 1", age, p)
+		}
+	}
+	if p := DeathChance(20, 0.01, m); p >= 0.001 {
+		t.Errorf("age 20 at health 0.01: death chance %v, want the ordinary small risk", p)
+	}
+}

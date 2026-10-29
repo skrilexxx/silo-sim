@@ -15,9 +15,15 @@ import (
 //
 //	p = 1 − exp(−h(age) · (1 + k_h · (1 − health)) / 365)
 //
+// A person whose health has reached 0 dies for certain: the health step
+// (§3 step 6) runs before deaths, so that is the same day.
+//
 // The day-1 population (initpop) draws ages from this same rule, so the
 // starting age structure is the one mortality keeps in balance.
 func DeathChance(ageYears, health float64, m config.Mortality) float64 {
+	if health <= 0 {
+		return 1
+	}
 	h := m.GompertzA * math.Exp(m.GompertzB*ageYears)
 	if ageYears < 1 {
 		h += m.InfantHazard

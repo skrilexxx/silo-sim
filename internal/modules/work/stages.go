@@ -7,10 +7,12 @@ import (
 
 // ODD §6.5: life stages, daily. In the tick's shuffled order: a child
 // turning shadowAge is placed as a shadow; a shadow turning workerAge
-// becomes a worker in the same department; a worker retires at retireAge
-// or after sickRetireDays days in a row with health below sickRetireHealth.
-// Afterwards, every shadow whose master died, retired or left has a new
-// master found.
+// becomes a worker in the same department; a worker retires at retireAge,
+// and goes on sick leave after sickLeaveDays days in a row with health
+// below sickLeaveHealth. Someone on sick leave returns to work in the same
+// department once health is back at sickLeaveHealth, or retires at
+// retireAge. Afterwards, every shadow whose master died, retired or left
+// (sick leave included) has a new master found.
 func (m *Module) lifeStages(w *world.World, r *rng.Stream) error {
 	m.recount(w)
 	for _, id := range w.Alive {
@@ -29,14 +31,26 @@ func (m *Module) lifeStages(w *world.World, r *rng.Stream) error {
 				w.Depts[p.Department].Headcount++
 			}
 		case world.Worker:
-			if p.Health < m.c.SickRetireHealth {
+			if p.Health < m.c.SickLeaveHealth {
 				p.LowHealth++
 			} else {
 				p.LowHealth = 0
 			}
-			if a >= m.days(m.c.RetireAge) || p.LowHealth >= m.c.SickRetireDays {
+			switch {
+			case a >= m.days(m.c.RetireAge):
 				p.Stage = world.Retired
 				w.Depts[p.Department].Headcount--
+			case p.LowHealth >= m.c.SickLeaveDays:
+				p.Stage, p.LowHealth = world.SickLeave, 0
+				w.Depts[p.Department].Headcount--
+			}
+		case world.SickLeave:
+			switch {
+			case a >= m.days(m.c.RetireAge):
+				p.Stage = world.Retired
+			case p.Health >= m.c.SickLeaveHealth:
+				p.Stage = world.Worker
+				w.Depts[p.Department].Headcount++
 			}
 		}
 	}

@@ -54,6 +54,7 @@ const (
 	Shadow
 	Worker
 	Retired
+	SickLeave // a worker off sick: no work, keeps the department, returns when health recovers (ODD §6.5)
 )
 
 // Implant is the state of a woman's contraceptive implant (ODD §6.4).
@@ -84,7 +85,7 @@ type Person struct {
 	Master     PersonID // or None
 	Skill      float64  // 0–1
 	Health     float64  // 0–1
-	LowHealth  int      // consecutive days a worker's health has been below sickRetireHealth
+	LowHealth  int      // consecutive days a worker's health has been below sickLeaveHealth
 	Implant    Implant
 	PermitDay  Tick     // day she won the lottery (meaningful while queued, open or pregnant)
 	WindowEnds Tick     // last tick of the conception window

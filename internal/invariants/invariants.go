@@ -213,7 +213,7 @@ func work(w *world.World, c config.Work) error {
 			if p.Department != world.None {
 				return fmt.Errorf("child %d has department %d", id, p.Department)
 			}
-		case world.Shadow, world.Worker:
+		case world.Shadow, world.Worker, world.SickLeave:
 			if p.Department < 0 || p.Department >= len(w.Depts) {
 				return fmt.Errorf("person %d (stage %d) has no valid department (%d)", id, p.Stage, p.Department)
 			}

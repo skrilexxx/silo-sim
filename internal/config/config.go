@@ -123,8 +123,8 @@ type Work struct {
 	ShadowAge           int          `yaml:"shadowAge"`
 	WorkerAge           int          `yaml:"workerAge"`
 	RetireAge           int          `yaml:"retireAge"`
-	SickRetireDays      int          `yaml:"sickRetireDays"`
-	SickRetireHealth    float64      `yaml:"sickRetireHealth"`
+	SickLeaveDays       int          `yaml:"sickLeaveDays"`
+	SickLeaveHealth     float64      `yaml:"sickLeaveHealth"`
 	FollowParentChance  float64      `yaml:"followParentChance"`
 	CrossZoneChance     float64      `yaml:"crossZoneChance"`
 	MaxShadowsPerMaster int          `yaml:"maxShadowsPerMaster"`

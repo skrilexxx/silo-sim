@@ -41,12 +41,12 @@ Five kinds of entity: people, households, floors, departments and the silo itsel
 | householdID | int | Where they live |
 | partnerID | int or none | Chosen partner |
 | motherID, fatherID | int or none | For family trees and inheritance of trades |
-| stage | enum | child, shadow, worker, retired |
+| stage | enum | child, shadow, worker, sick leave, retired |
 | department | enum or none | Set when shadowing starts; kept as a record after retirement and death |
 | masterID | int or none | The worker they shadow |
 | skill | 0–1 | Grows with experience; drives output |
 | health | 0–1 | 1 = healthy; drops with injury, illness, hunger, bad air |
-| lowHealth | int | Days in a row a worker's health has been below 0.3 (sick retirement, 6.5) |
+| lowHealth | int | Days in a row a worker's health has been below 0.3 (sick leave, 6.5) |
 | implant | enum | in, queued (permit won, waiting for Medical), removed (window open), pregnant |
 | permitDay | int | Tick she won the lottery |
 | windowEnds | int | Last tick of the 365-day conception window |
@@ -119,7 +119,7 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 6. **Health** — hunger, air, work injuries, illness, recovery with Medical (6.2)
 7. **Deaths** — mortality draws; widowed partners, orphans and job vacancies handled (6.1)
 8. **Reproduction** — conceptions in open windows, births due today, expired windows closed (6.4)
-9. **Life stages** — child → shadow at 14, shadow → worker at 18, worker → retired (6.5)
+9. **Life stages** — child → shadow at 14, shadow → worker at 18, worker ↔ sick leave, worker → retired (6.5)
 10. **Partnering** — unpartnered adults may pair up (6.3)
 11. **Logging** — daily metrics written (8)
 
@@ -206,7 +206,7 @@ Each day each person dies with a probability from a Gompertz hazard (risk of dea
 h(a) = A e^{B a} + h_{infant}[a < 1], \quad p_{day} = 1 - \exp\left(-\frac{h(a)\,(1 + k_h (1 - health))}{365}\right)
 ```
 
-With A = 0.0002 and B = 0.085, half of people reach about 67 before health effects. Deaths are drawn person by person in the tick's shuffled order and handled at once. On a death: the partner becomes unpartnered and may pair again; if an adult (18+) still lives in the household, the children under 18 stay with them (their other parent, or a step-parent); otherwise all the children in that household move together to a random household in the same zone with at least one living adult, and if there is none the run stops with an error. A household left with no members is dissolved, which frees its home. The job becomes a vacancy (6.5).
+With A = 0.0002 and B = 0.085, half of people reach about 67 before health effects. A person whose health reaches 0 dies that day: the health step (§3 step 6) comes just before deaths, so the death chance is 1 then. Deaths are drawn person by person in the tick's shuffled order and handled at once. On a death: the partner becomes unpartnered and may pair again; if an adult (18+) still lives in the household, the children under 18 stay with them (their other parent, or a step-parent); otherwise all the children in that household move together to a random household in the same zone with at least one living adult, and if there is none the run stops with an error. A household left with no members is dissolved, which frees its home. The job becomes a vacancy (6.5).
 
 ### 6.2 Health and Medical
 
@@ -274,7 +274,7 @@ Departments have a home zone and a target share of the workforce. Their shares s
 
 - **Targets:** each month (staffing, §3 step 14) every department's target headcount is its share × the current number of workers. Shadows and retired people are not workers.
 - **Shadowing at 14:** with a 60% chance the child follows the department of a parent picked at random from those who have one (working, retired or dead), if it has room: a worker with skill above 0.5 and fewer than 2 shadows. Otherwise, with a 5% chance they pick among departments tied to another zone, else among their own zone's departments plus General services and Porters. Departments without room are skipped, and the pick is weighted by shortfall = max(0, target − workers − shadows), counted live so that every placement shrinks it at once. If every shortfall in reach is 0, the weights are each department's share of the jobs in the child's zone (an all-zone department's share × allZoneSplit for that zone). If no department in reach has room, the child shadows the department those weights pick, with no master until one is free. The master is the free worker of that department with the fewest shadows (ties at random). A shadow whose master dies, retires or leaves gets a new one the same day if one is free. A shadow keeps living at home; a job tied to another zone moves them only when they partner (6.3).
-- **Worker at 18** in the same department; the master link ends. **Retired** at 65 or after 90 days in a row with health below 0.3; the department stays on record.
+- **Worker at 18** in the same department; the master link ends. **Sick leave** after 90 days in a row with health below 0.3: the worker stops working (no output, not counted as a worker for targets, coverage or retraining) but keeps the department, and their shadows get new masters. They return to work in the same department, with their skill, on the first day their health is back at 0.3 or more. **Retired** at 65, from work or from sick leave; the department stays on record. Sick leave used to be permanent retirement. That made a silo-wide health crisis final, because a recovered workforce never came back (calibration log, 2026-10-29).
 - **Skill:** grows each day by α × (1 − skill) for workers and shadows, so reaching 0.8 takes about 10 years.
 - **Trade inheritance (outcome, not a rule):** about 80% of workers end up in a parent's department, more than the 60% follow chance, because the other placements often land in a parent's department too.
 - **Output:** department output = the sum of skill × health over its workers, plus 0.3 × skill × health for each shadow. Computed daily (§3 step 5), before the day's skill growth.
@@ -327,7 +327,7 @@ How a Mayor is chosen and how long they serve are two separate settings. In the 
 
 Every number the model uses, in one place. Each one becomes a field in the scenario file with this default; "Calibrate" means the value is a starting point to tune in the first calibration task, not something to defend.
 
-**Ranges checked at load.** No parameter may be negative. These must lie in [0, 1]: every daily chance and percentage; α, ρ, f₀ and the air recovery share (so the updates in 6.5 and 6.6 cannot overshoot); every amount subtracted from, or compared with, a 0–1 variable (injury and illness cost, condition drop, wear, start skill, master skill, sick-retire health); hunger and air damage; recovery; the open-window weight; the shadow output factor; the retraining threshold. Also maternalDeathBase ≤ 0.5 and injuryChance × the largest injury factor ≤ 1, so every derived daily probability stays ≤ 1. These must be strictly greater than 0, because they are divisors or define quantities that must exist: Gompertz A and B (so the day-1 age table ends), floors per zone, the coverage need factor, every department share, adult kcal, the age-gap scale, power demand per person, the capacity margin, kcal per farm unit, target and starting population, window, pregnancy and minimum outage length, and the invariant interval. invariantEvery is an integer ≥ 1. Ages are ordered (shadow < worker < retire, mother min < max, partnering min age ≤ day-1 pairing age), outage min ≤ max, farm and Mechanical floors each fewer than the floors per zone (every zone keeps a residential floor), the home capacity margin is at least 1, and zone splits and department shares each sum to 1.
+**Ranges checked at load.** No parameter may be negative. These must lie in [0, 1]: every daily chance and percentage; α, ρ, f₀ and the air recovery share (so the updates in 6.5 and 6.6 cannot overshoot); every amount subtracted from, or compared with, a 0–1 variable (injury and illness cost, condition drop, wear, start skill, master skill, sick-leave health); hunger and air damage; recovery; the open-window weight; the shadow output factor; the retraining threshold. Also maternalDeathBase ≤ 0.5 and injuryChance × the largest injury factor ≤ 1, so every derived daily probability stays ≤ 1. These must be strictly greater than 0, because they are divisors or define quantities that must exist: Gompertz A and B (so the day-1 age table ends), floors per zone, the coverage need factor, every department share, adult kcal, the age-gap scale, power demand per person, the capacity margin, kcal per farm unit, target and starting population, window, pregnancy and minimum outage length, and the invariant interval. invariantEvery is an integer ≥ 1. Ages are ordered (shadow < worker < retire, mother min < max, partnering min age ≤ day-1 pairing age), outage min ≤ max, farm and Mechanical floors each fewer than the floors per zone (every zone keeps a residential floor), the home capacity margin is at least 1, and zone splits and department shares each sum to 1.
 
 | Parameter | Default | Basis | Used in |
 | --- | --- | --- | --- |
