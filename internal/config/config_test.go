@@ -92,7 +92,7 @@ func TestBadRangeFailsWithKeyName(t *testing.T) {
 	for _, c := range []struct{ old, new, want string }{
 		{"conceptionChance: 0.0044", "conceptionChance: 1.5", "lottery.conceptionChance = 1.5, must be between 0 and 1"},
 		{"population: 10000", "population: -5", "population = -5, must not be negative"},
-		{"kcalPerFarmUnit: 16000", "kcalPerFarmUnit: -1", "resources.kcalPerFarmUnit = -1, must not be negative"},
+		{"kcalPerFarmUnit: 11900", "kcalPerFarmUnit: -1", "resources.kcalPerFarmUnit = -1, must not be negative"},
 		{"workerAge: 18", "workerAge: 70", "work.workerAge (70) must be below work.retireAge (65)"},
 		{"shadowAge: 14", "shadowAge: 18", "work.shadowAge (18) must be below work.workerAge (18)"},
 		{"motherAgeMax: 40", "motherAgeMax: 17", "lottery.motherAgeMin (18) must be below lottery.motherAgeMax (17)"},
@@ -120,7 +120,7 @@ func TestBadRangeFailsWithKeyName(t *testing.T) {
 		{"ageGapScaleYears: 5.0", "ageGapScaleYears: 0", "partnering.ageGapScaleYears = 0, must be greater than 0"},
 		{"powerDemandPerPerson: 1.0", "powerDemandPerPerson: 0", "resources.powerDemandPerPerson = 0, must be greater than 0"},
 		{"capacityMargin: 1.5", "capacityMargin: 0", "resources.capacityMargin = 0, must be greater than 0"},
-		{"kcalPerFarmUnit: 16000", "kcalPerFarmUnit: 0", "resources.kcalPerFarmUnit = 0, must be greater than 0"},
+		{"kcalPerFarmUnit: 11900", "kcalPerFarmUnit: 0", "resources.kcalPerFarmUnit = 0, must be greater than 0"},
 		{"targetPopulation: 10000", "targetPopulation: 0", "lottery.targetPopulation = 0, must be greater than 0"},
 		{"population: 10000", "population: 0", "population = 0, must be greater than 0"},
 		{"windowDays: 365", "windowDays: 0", "lottery.windowDays = 0, must be greater than 0"},

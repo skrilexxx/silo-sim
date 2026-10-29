@@ -222,3 +222,25 @@ Tried and dropped: profile-guided optimisation (`default.pgo`), no measurable ga
 | 60-year runs, alternated 3× | 25–36 s | 16–23 s |
 
 The new code is about 1.5–1.9× faster. Against the 90 s the old code took on a quieter machine earlier today, that is about 48–60 s. It still needs one timing on a quiet machine to confirm the under-60 s target.
+
+## 2026-10-29 — T6.1 step 2: food surplus to 5% (kcalPerFarmUnit)
+
+**Why:** ODD §7 wants about a 5% food surplus, but 16,000 kcal per unit of farm output gave 31–39% (stock drift in the 10-seed batch above). So rationing and hunger never came into play.
+
+**Setup:** `scenarios/baseline.yaml` with only `kcalPerFarmUnit` changed, seeds 1–8, 10 warm-up + 50 years (short runs: the surplus settles within years). The surplus is the report's new information column: the drift of the food stock in days over the measured years, production ÷ need − 1, with outage losses included.
+**Command:** `bin/silosim batch --scenario <copy> --seeds 1-8 --out runs/cal-kcal-<v>`, then `bin/silosim report`.
+
+| kcalPerFarmUnit | Food surplus, seeds 1–8 | Mean | Rationing days |
+| ---: | --- | ---: | ---: |
+| 11,900 | 5.3, 4.8, 3.5, 5.9, 4.3, 6.2, 3.0, 4.7% | **4.7%** | 0% in all |
+| 12,000 | 6.2, 5.7, 4.4, 6.8, 5.2, 7.1, 3.8, 5.6% | 5.6% | 0% |
+| 12,500 | 10.6, 10.1, 8.8, 11.2, 9.6, 11.6, 8.1, 10.0% | 10.0% | 0% |
+| 13,000 | 15.1, 14.5, 13.1, 15.7, 13.9, 16.0, 12.5, 14.5% | 14.4% | 0% |
+
+**Chosen: 11,900** (4.7%, closest to 5%). The surplus rises about 0.9 percentage points per 100 kcal, almost linearly.
+
+**Observations**
+
+1. *Still no rationing.* With any surplus above 0 the stock grows year after year, and a 4-day outage costs only about 3 days of food. Rationing (stock below 30 days) can only start after a long run of deficits. So hunger stays out of the loop in a normal run. This is how §6.6–6.7 are built, not a calibration miss.
+2. *In these short runs "Rare crises" fails in 4 of 8 seeds:* 50 years hold 0–5 failures, which scales to 0–10 per century. This is a short-run artefact; the 100-seed check uses the full 200 measured years.
+3. Lowest average health is the same as at 16,000 (0.934–0.998), so food doesn't touch the stability margin.

@@ -366,7 +366,7 @@ Every number the model uses, in one place. Each one becomes a field in the scena
 | Backup power | 17.3% of capacity (≈ 26% of day-1 demand) | Guess | 6.6 |
 | Generator capacity | 1.5 × day-1 demand | Design choice: full power after a failure (1.5 × 0.7 ≥ 1) | 6.6 |
 | Parts | Supply 1.2 a day at full coverage; repair 1 a day; failure 30 | Guess | 6.6 |
-| Food per unit of farm output | About 16,000 kcal | Calibrate to a 5% surplus | 6.6 |
+| Food per unit of farm output | 11,900 kcal | Calibrated to a 5% surplus (4.7% measured; calibration log, 2026-10-29) | 6.6 |
 | Food need | 2,200 kcal adult; 60% under 14 | Real-world | 6.7 |
 | Rationing | Below 30 days of stock, hand out 90% | Guess | 6.7 |
 | Starting stocks | Food 90 days, parts 365 days, condition 0.8 | Guess | 5 |

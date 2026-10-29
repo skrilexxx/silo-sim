@@ -114,7 +114,7 @@ resources:                        # ODD §6.6
   powerDemandPerPerson: 1.0       # abstract units
   powerDemandPerFarmFloor: 150.0
   airRecoveryShare: 0.333         # air moves this share of the gap toward powerFactor each day
-  kcalPerFarmUnit: 16000          # calibrate to a ~5% food surplus
+  kcalPerFarmUnit: 11900          # calibrated (calibration log, 2026-10-29): ≈ 5% food surplus
   partsPerDayFullCoverage: 1.2    # Supply production at coverage 1
   partsPerRepairDay: 1.0
   partsPerFailure: 30.0
