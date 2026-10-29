@@ -151,7 +151,7 @@ One folder per run: `runs/<scenario>-<seed>/`
 | `events.jsonl` | on event | generator failure/repair, rationing on/off, Mayor change, department below 50% |
 | `run.json` | start and end | resolved scenario (after `extends`), seed, git commit, Go version, runtime |
 
-Floats are written with a fixed format (`strconv.FormatFloat(x, 'f', 6, 64)`) so files diff cleanly.
+Floats are written with a fixed format so files diff cleanly: 4 decimals (`strconv.AppendFloat(b, x, 'f', 4, 64)`), or 1 for food stock in days and department targets. That's finer than any change the model makes in a day, and keeps a 250-year `daily.csv` near 10 MB. JSON in `events.jsonl` uses Go's shortest exact form.
 
 ## CLI
 
