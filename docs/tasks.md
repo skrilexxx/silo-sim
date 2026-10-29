@@ -56,8 +56,10 @@ Demography only. Until later milestones, stub what other modules provide: health
 
 - [x] **T3.1 Generator and power.** (2026-10-29) Condition wear, repair × (1 − c), parts use, failures, outages with backup power, capacity set on day 1, powerFactor.
   - *Spec:* ODD §6.6. *Done when:* with full Mechanical coverage condition settles at 0.80 ± 0.02; failure count over 100 simulated centuries at c = 0.8 averages 2.5–3.5 per century; with no parts, condition falls steadily.
-- [ ] **T3.2 Water, air, food, parts.** Water and air from power and Mechanical coverage, food production, Supply making parts.
+- [x] **T3.2 Water, air, food, parts.** (2026-10-29) Water and air from power and Mechanical coverage, food production, Supply making parts.
   - *Spec:* ODD §6.6. *Done when:* a 14-day outage drops air below 0.3 and it recovers within ~10 days after repair (test); food stock is conserved exactly every tick (invariant).
+- [ ] **T3.2a Resource-loop stability.** One generator failure currently tips the silo into a health collapse (calibration log, 2026-10-29). Find the cause in the loop health → Mechanical → power → air → health, agree a parameter or rule change with Adam, record it.
+  - *Spec:* ODD §6.2, §6.6. *Done when:* 10 seeds × 100 years with demography, health, work and resources all survive every generator failure (average health returns above 0.9); the change is in the spec and the calibration log.
 - [ ] **T3.3 Rations.** Distribution by zone weights, children's need, rationing below 30 days of stock, intake/need per person feeding health (remove the hunger stub), hardship per zone logged.
   - *Spec:* ODD §6.7. *Done when:* with equal weights every zone's intake/need is equal; with Up Top weight 1.5 and a food shortage, Down Deep hardship is higher (test).
 

@@ -13,7 +13,7 @@ import (
 
 // Check runs every invariant and returns the first violation.
 func Check(w *world.World, cfg *config.Scenario) error {
-	for _, check := range []func(*world.World) error{countsAgree, oneHousehold, homeCapacity, partnerships, unitRanges} {
+	for _, check := range []func(*world.World) error{countsAgree, oneHousehold, homeCapacity, partnerships, unitRanges, foodConserved} {
 		if err := check(w); err != nil {
 			return err
 		}
@@ -255,3 +255,15 @@ func unitRanges(w *world.World) error {
 }
 
 func in01(x float64) bool { return x >= 0 && x <= 1 }
+
+// ODD §8: food is conserved exactly: today's stock = the opening stock +
+// produced − handed out. Compared with ==, in the order the steps apply
+// them, so any other change to the stock shows.
+func foodConserved(w *world.World) error {
+	s := &w.Silo
+	if want := s.FoodOpening + s.FoodProduced - s.FoodHandedOut; s.FoodStock != want {
+		return fmt.Errorf("food stock %v, but opening %v + produced %v − handed out %v = %v",
+			s.FoodStock, s.FoodOpening, s.FoodProduced, s.FoodHandedOut, want)
+	}
+	return nil
+}

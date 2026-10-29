@@ -111,7 +111,7 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 
 ### Every day
 
-1. **Generator** — wear, failure check, repair progress → power supply (6.6)
+1. **Generator** — Supply's new parts added, then wear, repair, failure check, outage countdown → power supply (6.6)
 2. **Life support** — water and air from power and Mechanical output (6.6)
 3. **Food production** — farm output, scaled by power, added to the stock (6.6)
 4. **Rations** — food split by zone, intake per person, stock reduced (6.7)
@@ -174,7 +174,7 @@ Day 1 is generated from the scenario file, then the model runs 50 years of warm-
 5. **Jobs** (only when the work module is on): in each zone, adults 18–64 fill the departments of that zone plus General services and Porters by target share (an all-zone department's share split over the zones by allZoneSplit), rounded by largest remainder and assigned at random. People 65+ are retired with no department. 14- to 17-year-olds are placed by the shadowing rule of 6.5, in random order.
 6. **Skill:** 1 − (1 − α)^(days since the 14th birthday, counted up to 65), the same curve as daily skill growth (6.5), since shadows learn too.
 7. **Implants:** every woman starts with the implant in; no open windows, no pregnancies.
-8. **Stocks:** food for 90 days of full rations, parts for 365 days of expected use (365 × the parts one repair day uses, 6.6), generator condition 0.8, water and air at 1.
+8. **Stocks:** food for 90 days of full rations (90 × the day-1 daily need of 6.7), parts for 365 days of expected use (365 × the parts one repair day uses, 6.6), generator condition 0.8, water and air at 1.
 
 ### Input data
 
@@ -287,10 +287,10 @@ The generator is the root of the loop: it powers the farms, the water pumps and 
 - **Generator condition c:** loses 0.0004 per day (from new to broken in about 7 years without care). Repair adds ρ × mechanicalCoverage × (1 − c) and uses 1 part a day; with fewer parts in stock than one repair day uses there is no repair. Because repair slows as c nears 1, condition settles where wear and repair balance: c\* = 1 − wear / (ρ × coverage), which is 0.8 at full coverage with ρ = 0.002. Wear and repair come first each day, then the failure draw; c is kept within 0–1. The generator step runs before the work step (§3), so it uses the previous day's mechanicalCoverage (on day 1, the coverage from initialization).
 - **Failure:** daily chance f₀ × (1 − c)², with f₀ = 0.002, which gives about 3 failures per century at c = 0.8. A failure takes 3–14 days to fix (a whole number of days, uniform), consumes extra parts (as many as are left if the stock is short; a short stock does not lengthen the outage) and drops c by 0.1. The day of the failure is the first day of the outage. While it is down, the condition is frozen: no wear, no repair, no parts used and no new failure draw; only the days left count down. Backup power then gives 20% of capacity, whatever c and Mechanical coverage are.
 - **Power:** supply = capacity × c × mechanicalCoverage (or backup while down); demand is fixed per person and per farm floor. Capacity is set on day 1 to 1.3 × day-1 demand, so at condition 0.8 and full coverage the silo has just enough power. powerFactor = min(1, supply / demand).
-- **Water:** powerFactor × mechanicalCoverage.
+- **Water:** powerFactor × mechanicalCoverage (today's powerFactor, the previous day's coverage).
 - **Air:** moves toward powerFactor by a third of the gap each day, so short outages are survivable and long ones are not.
-- **Food:** production = farm output × kcal per unit of farm output × powerFactor, added to the stock.
-- **Parts:** measured in days of normal use. Supply makes 1.2 units a day × supplyCoverage (scavenging and recycling); each repair day uses 1 unit; each failure uses 30 more.
+- **Food:** production = farm output × kcal per unit of farm output × powerFactor, added to the stock. Farm output is the previous day's, since the work step (§3 step 5) comes later.
+- **Parts:** measured in days of normal use. Supply makes 1.2 units a day × supplyCoverage (scavenging and recycling), added at the start of the generator step (§3 step 1) every day, outage days included, so they can serve that day's repair; each repair day uses 1 unit; each failure uses 30 more.
 
 mechanicalCoverage = min(1, Mechanical output / Mechanical need), the same shape as medicalCoverage. Every coverage uses the same need: 0.84 × the department's day-1 target headcount (its share of the day-1 workers). The need is fixed, so losing workers across the silo lowers every coverage, not only an imbalance between departments. The silo's average skill × health is about 0.92 (measured over 50 years with health 1), so a fully staffed department has output / need ≈ 1.1, coverage is capped at 1, and shortages start to bite at about 90% staffing.
 

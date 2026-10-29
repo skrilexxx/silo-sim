@@ -51,3 +51,24 @@ Every calibration run, in order: what was run, on which code, what came out, and
 | 10 | 12.0% | 39.8% |
 
 **Result: the new births-shock target passes in 10 of 10 seeds (10.1–16.6%).** That range matches what pure noise predicts, so the lottery adds no booms of its own. Population and median age came out identical to the run above, seed for seed, which also confirms that runs are reproducible.
+
+## 2026-10-29 — Resource loop collapses after the first generator failure (T3.2)
+
+**Code:** branch `t3.2`, on top of `e024fa8` (T3.1).
+**Setup:** `scenarios/baseline.yaml` unchanged, modules demography, health, work and resources (no rations yet, so no hunger). Seed 42, no warm-up, 100 years, invariants every tick. A throwaway probe test, not kept in the repo.
+
+**What happened:** the silo runs steadily for 44 years (condition 0.800, powerFactor 1, every coverage 1, about 9,780 people). Then the first generator failure hits on day 16,085: c drops to 0.70, followed by a 9-day outage on backup power.
+
+| Days after failure | powerFactor | Air | Avg health | Mechanical cov. | Medical cov. |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 0.265 | 0.755 | 0.996 | 1.000 | 0.970 |
+| 10 | 0.831 | 0.594 | 0.790 | 0.876 | 0.779 |
+| 30 | 0.689 | 0.703 | 0.667 | 0.733 | 0.657 |
+| 50 | 0.408 | 0.448 | 0.362 | 0.415 | 0.376 |
+| 70 | 0.000 | 0.005 | 0.001 | 0.000 | 0.000 |
+
+After that, health stays at 0 for good. The population falls to 643 by year 100. The 1,000-person golden scenario does the same, from its first failure in year 28.
+
+**Why:** ODD §6.6 sets up a feedback loop with gain above 1: health → Mechanical output → power → air → health. After a failure, supply ≤ 1.3 × 0.7 × mechanicalCoverage = 0.91 × coverage, and coverage ≈ min(1, 1.1 × health). Health is in balance where airDamage × (1 − powerFactor) = recoveryRate × medicalCoverage. With 0.05 and 0.01 that gives 0.05 × (1 − 1.0 h) = 0.011 h, so h* ≈ 0.82. Below that, health only falls. An outage of about 8 days or more on backup power (air → 0.26) pushes average health below 0.82. At c = 0.8 the tipping point is h* ≈ 0.73. Because people at health 0 die only 3× faster (k_h = 2), the silo lingers for decades instead of ending at once.
+
+**Open, agreed with Adam:** fix before T3.3, since hunger adds one more loss of health to the same loop. Candidates: airDamage and recoveryRate (both marked "Calibrate"), capacityMargin (a design choice), or a rule change to the loop.

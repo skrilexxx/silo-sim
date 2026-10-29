@@ -120,6 +120,9 @@ type Department struct {
 // ODD §2: Silo, the global state.
 type Silo struct {
 	FoodStock          float64 // kcal
+	FoodOpening        float64 // kcal: today's stock before production, for the conservation invariant (ODD §8)
+	FoodProduced       float64 // kcal produced today
+	FoodHandedOut      float64 // kcal handed out today
 	GeneratorCondition float64 // 0–1; 1 = like new
 	GeneratorDown      int     // ticks until a failed generator is repaired
 	PowerSupply        float64 // abstract units

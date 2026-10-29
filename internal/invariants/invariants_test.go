@@ -58,6 +58,7 @@ func TestViolationsAreCaught(t *testing.T) {
 		{"person 0 health = 1.5, outside 0–1", func(w *world.World) { w.People[0].Health = 1.5 }},
 		{"person 2 skill = -0.1, outside 0–1", func(w *world.World) { w.People[2].Skill = -0.1 }},
 		{"person 0 health = NaN", func(w *world.World) { w.People[0].Health = math.NaN() }},
+		{"food stock 5, but opening 0 + produced 0 − handed out 0 = 0", func(w *world.World) { w.Silo.FoodStock = 5 }},
 		{"silo air quality = 1.2, outside 0–1", func(w *world.World) { w.Silo.AirQuality = 1.2 }},
 		{"silo generator condition = -1", func(w *world.World) { w.Silo.GeneratorCondition = -1 }},
 		{"household 0 holds person 2, whose household is 1", func(w *world.World) {
