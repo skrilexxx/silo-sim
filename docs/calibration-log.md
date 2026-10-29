@@ -292,3 +292,21 @@ Every other pattern passes in 10/10.
 **The tension:** keeping Mechanical's people Down Deep means their families live there, and Down Deep children can mostly only become Mechanical, General or Porters (§6.5 placement). When no department in reach is short, a child's pick falls back to the departments' shares in their own zone, so a growing Down Deep overfills Mechanical. Free partnering (§6.3) and zone-bound placement (§6.5) together cap the share near 81% unless Down Deep grows.
 
 **Open, for Adam:** change placement so children go where the jobs are, or keep the rule and revise the 90% target.
+
+## 2026-10-29 — 80% stay rule plus "children go where the jobs are" placement (not committed)
+
+**Change (Adam):** the 80% stay rule restored. In §6.5 placement, a child not following a parent whose reachable departments are all at or above target now picks a short department (with room) in the other set: tied to another zone, or their own. Only when nothing anywhere is short do their own zone's job shares weigh the pick.
+**Setup:** seeds 1–10, 50 + 200 years, kcalPerFarmUnit 11,900; `--out runs/cal-place`.
+
+**Report:** every §8 pattern passes in 10/10. Mechanical living Down Deep: 91.6–93.0%. Rationing: 0% in 8 seeds, 0.7% and 2.0% in two.
+
+| Year 250 | 80% stay rule alone (100-seed run) | 80% stay + placement change |
+| --- | --- | --- |
+| Mechanical vs target | +26% to +38% | +19% to +30% |
+| Farms vs target | −7% to −11% | −4% to −10% |
+| Down Deep share of population | 31–33% | 28.3–30.7% |
+| Food surplus, full run | 0.8% | −1.1% to 2.5% (mean 0.6%) |
+
+**Reading:** the placement change only affects the 40% of children who don't follow a parent. Mechanical still overfills, through children following a Mechanical parent (60%, whenever a free master exists, and an overfull Mechanical has many). The §8 targets don't measure overfilling, so they pass anyway. `TestFiftyYears` (T2.1, demography and work only) now ends at Porters +16.5%, outside its ±15% band.
+
+**Open, for Adam:** also limit following a parent to departments below target, or go back to "stay only while short" and revise the 90% target.
