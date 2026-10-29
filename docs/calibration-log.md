@@ -142,3 +142,29 @@ After that, health stays at 0 for good. The population falls to 643 by year 100.
 2. *Mechanical workers living Down Deep: about 80–82%, not above 90%.* The share is 100% on day 1, about 82% by the end of warm-up, and stays at 80–85% for the whole run. My unverified explanation is the housing rule (§6.3). A couple whose partners both have zoned departments picks one of the two zones at random, so about half of the Mechanical workers who partner with, say, a Farms worker move out of Down Deep. Cross-zone shadows (5%) add a little more. This needs a spec decision, either on the housing rule or on the target.
 3. *No rationing in any seed.* This is the food surplus from the T3.3 entry.
 4. *Runtime:* 325 s per run with 10 runs on 8 cores, against 86 s for a run that has a machine to itself. This is for T5.4.
+
+## 2026-10-29 — Stability experiments: capacity margin, air damage, recovery
+
+**Code:** branch `stability`, on top of T5.3, with the two new rules (health 0 means death, sick leave instead of permanent sick retirement; commit `90dd132`).
+**Setup:** five settings, each `scenarios/baseline.yaml` with one value changed, seeds 1–10, 50 warm-up + 200 measured years, all modules. Every setting uses the same seeds and random streams, so the settings differ only by the changed value (common random numbers), and seed 6's crisis starts the same way in each.
+**Command:** `bin/silosim batch … --seeds 1-10`, then `bin/silosim report`. Margins come from `daily.csv`: the lowest population-weighted average health and the lowest Mechanical coverage over the measured years.
+
+| Setting | Change | Seeds passing patterns 1–6 | Seed 6 | Lowest avg health (other seeds) | Lowest Mechanical coverage |
+| --- | --- | ---: | --- | --- | --- |
+| A | none (new rules only) | 9 / 10 | collapses, run stops on day 39,100 | 0.911–0.933 | 0.955 |
+| B | capacityMargin 1.3 → 1.4 | 10 / 10 | survives (lowest health 0.938) | 0.933–0.941 | 1.000 |
+| C | capacityMargin 1.3 → 1.5 | 10 / 10 | survives (0.943) | 0.942–0.944 | 1.000 |
+| D | airDamage 0.05 → 0.02 | 10 / 10 | survives (0.996) | 0.996 | 0.979 |
+| E | recoveryRate 0.01 → 0.02 | 10 / 10 | survives (0.982) | 0.978–0.982 | 0.949 |
+
+"Persistent zones" fails in every seed of every setting (about 80%), as in the entry above. It doesn't depend on these values.
+
+**Observations**
+
+1. *The two new rules alone don't save seed 6.* Health 0 now kills, so the collapse is fast. The run stops on day 39,100, because so many adults die at once that orphans in Down Deep have no adult left in their zone (§6.1 says the run then stops with an error). Sick leave can't help when nobody recovers.
+2. *Capacity margin works through the condition a failure leaves.* After a failure c ≈ 0.7, so the silo keeps full power only if capacityMargin × 0.7 ≥ 1, i.e. capacityMargin ≥ 1.43. With 1.4 a failure still leaves power at 0.98 of demand; with 1.5, at 1.05. It changes no health rule.
+3. *Air damage 0.02 almost removes outages from the model:* lowest health 0.996 everywhere, so a failure barely shows in health. This weakens the loop the spec describes (§6.6: "short outages are survivable and long ones are not"), rather than making it stable.
+4. *Recovery 0.02 helps health, but Mechanical coverage still dips to 0.95 in three seeds.* Those dips look like staffing, not health, and setting A shows them too.
+5. *Only 10 seeds.* Seed 6 is the only one that came near the tipping point. A choice should be checked on 100 seeds (about an hour) before T6.1.
+
+**Open, for Adam:** which knob to change, if any (B or C keep the health rules as they are). And should a mass death that leaves orphans with no adult in their zone still stop the run (§6.1), now that health 0 kills?

@@ -8,7 +8,6 @@ import (
 	"cmp"
 	"encoding/csv"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -37,9 +36,10 @@ const (
 
 // Seed holds one run's measured values (warm-up excluded).
 type Seed struct {
-	Dir  string
-	Seed uint64
-	Days int // measured days
+	Dir     string
+	Seed    uint64
+	Crashed string // the run's error if it stopped early; it then fails every target
+	Days    int    // measured days
 
 	PopMin, PopMax      int
 	AgeMin, AgeMax      float64
@@ -83,6 +83,7 @@ func LoadRun(dir string) (Seed, error) {
 	var info struct {
 		Seed     uint64 `json:"seed"`
 		Finished bool   `json:"finished"`
+		Error    string `json:"error"`
 		Scenario struct {
 			WarmupYears int `json:"warmupYears"`
 			Output      struct {
@@ -97,10 +98,14 @@ func LoadRun(dir string) (Seed, error) {
 	if err := json.Unmarshal(data, &info); err != nil {
 		return s, err
 	}
-	if !info.Finished {
-		return s, errors.New("run did not finish")
-	}
 	s.Seed = info.Seed
+	if !info.Finished {
+		s.Crashed = info.Error
+		if s.Crashed == "" {
+			s.Crashed = "did not finish"
+		}
+		return s, nil
+	}
 	warmup := 0 // rows on or before this day are warm-up (written only with logWarmup)
 	if info.Scenario.Output.LogWarmup {
 		warmup = info.Scenario.WarmupYears * daysPerYear
@@ -303,11 +308,25 @@ func Write(out io.Writer, seeds []Seed) (bool, error) {
 	}
 	fmt.Fprintln(tw)
 	for _, s := range seeds {
+		if s.Crashed != "" {
+			fmt.Fprintf(tw, "%d\t-", s.Seed)
+			for range Targets {
+				fmt.Fprint(tw, "\tcrashed")
+			}
+			fmt.Fprintln(tw)
+			continue
+		}
 		fmt.Fprintf(tw, "%d\t%d", s.Seed, s.Days/daysPerYear)
 		for _, t := range Targets {
 			fmt.Fprintf(tw, "\t%s %s", t.Value(s), mark(t.Pass(s)))
 		}
 		fmt.Fprintln(tw)
+	}
+	fmt.Fprintln(tw)
+	for _, s := range seeds {
+		if s.Crashed != "" {
+			fmt.Fprintf(tw, "seed %d crashed: %s\n", s.Seed, s.Crashed)
+		}
 	}
 	fmt.Fprintln(tw)
 
@@ -316,7 +335,7 @@ func Write(out io.Writer, seeds []Seed) (bool, error) {
 	for _, t := range Targets {
 		n := 0
 		for _, s := range seeds {
-			if t.Pass(s) {
+			if s.Crashed == "" && t.Pass(s) {
 				n++
 			}
 		}

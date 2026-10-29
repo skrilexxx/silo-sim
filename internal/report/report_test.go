@@ -125,6 +125,21 @@ func TestLoadRun(t *testing.T) {
 	}
 }
 
+// A run that stopped early fails every target but does not stop the
+// report.
+func TestCrashedRunFails(t *testing.T) {
+	dir := fake(t)
+	os.WriteFile(filepath.Join(dir, "run.json"), []byte(`{"seed":7,"finished":false,"error":"day 9: boom"}`), 0o644)
+	s, err := LoadRun(dir)
+	if err != nil || s.Crashed != "day 9: boom" {
+		t.Fatalf("got %+v, %v; want a crashed seed", s, err)
+	}
+	var out strings.Builder
+	if ok, _ := Write(&out, []Seed{s}); ok || !strings.Contains(out.String(), "seed 7 crashed: day 9: boom") || strings.Contains(out.String(), "1/1") {
+		t.Errorf("report:\n%s", out.String())
+	}
+}
+
 func TestOldFilesFail(t *testing.T) {
 	dir := fake(t)
 	os.WriteFile(filepath.Join(dir, "yearly.csv"), []byte("day,medianAge\n365,30\n800,31\n"), 0o644)
