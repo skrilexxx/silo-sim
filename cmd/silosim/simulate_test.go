@@ -61,7 +61,7 @@ func TestTenYearEmptyRunWritesFiles(t *testing.T) {
 	dir := mustSimulate(t, cfg)
 
 	lines := strings.Split(strings.TrimSuffix(string(readFile(t, filepath.Join(dir, "daily.csv"))), "\n"), "\n")
-	if cols := strings.Split(lines[0], ","); len(cols) != 25 || cols[0] != "day" || cols[24] != "mechanicalCoverage" {
+	if cols := strings.Split(lines[0], ","); len(cols) != 26 || cols[0] != "day" || cols[25] != "mechanicalCoverage" {
 		t.Errorf("header = %q", lines[0])
 	}
 	// Each row's births − deaths is the change in population since the
@@ -69,8 +69,8 @@ func TestTenYearEmptyRunWritesFiles(t *testing.T) {
 	prevPop := -1
 	for i, line := range lines[1:] {
 		cols := strings.Split(line, ",")
-		if len(cols) != 25 {
-			t.Fatalf("row %d has %d columns, want 25: %q", i+1, len(cols), line)
+		if len(cols) != 26 {
+			t.Fatalf("row %d has %d columns, want 26: %q", i+1, len(cols), line)
 		}
 		pop, births, deaths := atoi(t, cols[1]), atoi(t, cols[5]), atoi(t, cols[6])
 		if i == 0 && births > 5 {
@@ -92,7 +92,7 @@ func TestTenYearEmptyRunWritesFiles(t *testing.T) {
 	// One yearly row per measured year; with 5-year terms the Mayor is
 	// chosen again on days 1825 and 3650, after the warm-up year.
 	yearly := strings.Split(strings.TrimSuffix(string(readFile(t, filepath.Join(dir, "yearly.csv"))), "\n"), "\n")
-	if !strings.HasPrefix(yearly[0], "day,f0_4,m0_4,") || !strings.HasSuffix(yearly[0], ",zoneMoves,mayor,mayorZone") ||
+	if !strings.HasPrefix(yearly[0], "day,medianAge,f0_4,m0_4,") || !strings.HasSuffix(yearly[0], ",mechanicalInZone,zoneMoves,mayor,mayorZone") ||
 		len(yearly)-1 != 10 || !strings.HasPrefix(yearly[1], "730,") {
 		t.Errorf("yearly.csv: header %q, %d rows, first %q; want 10 rows from day 730", yearly[0], len(yearly)-1, yearly[1])
 	}

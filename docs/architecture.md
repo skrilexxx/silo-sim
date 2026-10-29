@@ -147,7 +147,7 @@ One folder per run: `runs/<scenario>-<seed>/`
 | File | Written | Content |
 | --- | --- | --- |
 | `daily.csv` | every tick after warm-up | ODD §8 daily columns |
-| `yearly.csv` | every 365 ticks | age pyramid, department headcount vs target, zone changes, Mayor |
+| `yearly.csv` | every 365 ticks | median age, age pyramid, department headcount vs target, Mechanical workers in their zone, zone changes, Mayor |
 | `events.jsonl` | on event | generator failure/repair, rationing on/off, Mayor change, department below 50% |
 | `run.json` | start and end | resolved scenario (after `extends`), seed, git commit, Go version, runtime |
 

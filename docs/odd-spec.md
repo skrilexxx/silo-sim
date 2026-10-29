@@ -383,8 +383,8 @@ A run is only trusted if its invariants hold and its outputs hit the calibration
 
 | File | Content |
 | --- | --- |
-| daily.csv | Day; population total and by zone; births, deaths, permits, open windows, winners waiting for Medical (queued), pregnancies; food stock in days; powerFactor; generator condition and outage flag; water; air; average health and hardship by zone; Medical and Mechanical coverage |
-| yearly.csv | Age pyramid in 5-year bands; headcount vs target per department; people who changed zone; current Mayor and their zone (the snapshot runs before governance, so a row shows the Mayor before that day's change) |
+| daily.csv | Day; population total and by zone; births, deaths, permits, open windows, winners waiting for Medical (queued), pregnancies; food stock in days; rationing flag; powerFactor; generator condition and outage flag; water; air; average health and hardship by zone; Medical and Mechanical coverage |
+| yearly.csv | Median age; age pyramid in 5-year bands; headcount vs target per department; share of Mechanical workers living in Mechanical's zone; people who changed zone; current Mayor and their zone (the snapshot runs before governance, so a row shows the Mayor before that day's change) |
 | events.jsonl | Generator failures and repairs, rationing on/off, Mayor changes, any department below 50% of target (and back above) |
 | run.json | Scenario file, seed, code version, runtime |
 
@@ -412,6 +412,8 @@ Counts in a row (births, deaths, permits, people who changed zone) are what happ
 | Rare crises | Generator failures | 1–6 per century |
 | Staffed departments | Department below 50% of target | Never for more than a year |
 | Persistent zones | Share of Mechanical workers living Down Deep | Above 90% |
+
+`silosim report` measures each target per seed over the measured years only. Population is checked on every day. Median age and the Mechanical share are checked at every yearly snapshot. Births are summed over consecutive 5-year blocks from the first measured day, and an unfinished last block is not compared. Rationing days are counted from the daily rationing flag. Failures per century are the run's failures divided by its length in centuries, an average over the run. A department's spell below 50% runs from its "understaffed" event to its "restaffed" event, or to the end of the run. A pattern holds when at least 90% of the seeds pass it.
 
 Births are summed over 5-year blocks because single years are too noisy to judge: with about 150 births a year, randomness alone gives a largest year-to-year change of 31–46% over 200 years (10th–90th percentile of 1,000 simulated runs of pure Poisson noise), so a yearly target of 30% would fail on noise, not on booms. On 5-year totals the same pure noise gives a median of 12% and never more than 26% in 1,000 runs, so a change above 30% points to a real boom or collapse.
 

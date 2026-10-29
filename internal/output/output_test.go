@@ -1,8 +1,13 @@
 package output
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/skrilexxx/silo-sim/internal/config"
+	"github.com/skrilexxx/silo-sim/internal/engine"
 	"github.com/skrilexxx/silo-sim/internal/world"
 )
 
@@ -29,5 +34,35 @@ func TestDepartmentEvents(t *testing.T) {
 		if got[i] != want[i] {
 			t.Fatalf("events %v, want %v", got, want)
 		}
+	}
+}
+
+// A department still understaffed when warm-up ends is logged again on
+// the first measured day, because its warm-up event is dropped.
+func TestUnderstaffedCarriesOverWarmup(t *testing.T) {
+	o, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+	cfg := &config.Scenario{WarmupYears: 1, Output: config.Output{UnderstaffedShare: 0.5}}
+	w := &world.World{Depts: []world.Department{{Name: "it", Target: 10, Headcount: 2}}}
+	if err := o.Init(w, cfg, nil); err != nil {
+		t.Fatal(err)
+	}
+	for w.Day = 1; w.Day <= engine.DaysPerYear+2; w.Day++ {
+		if err := o.logDaily(w, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Logged on day 1 (warm-up, dropped), then again on day 366, the first
+	// measured day.
+	if len(w.Events) != 0 || !o.under[0] {
+		t.Fatalf("events left %v, under %v", o.w.Events, o.under)
+	}
+	o.events.Flush()
+	data, _ := os.ReadFile(filepath.Join(filepath.Dir(o.files[2].Name()), "events.jsonl"))
+	if got := strings.TrimSpace(string(data)); got != `{"day":366,"type":"understaffed","department":"it","workers":2,"target":10}` {
+		t.Errorf("events.jsonl = %q, want one understaffed event on day 366", got)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 
 	"gopkg.in/yaml.v3"
@@ -37,6 +38,7 @@ type Writer struct {
 	understaffedShare float64
 	born0             int    // people on day 0; later ones were born
 	under             []bool // per department: below understaffedShare of target
+	ages              []int  // reused, in days
 
 	// Counts at the previous row.
 	births, deaths, permits int
@@ -81,12 +83,12 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 	}
 
 	if _, err := o.daily.WriteString("day,population,popUpTop,popMids,popDownDeep,births,deaths,permits," +
-		"openWindows,queued,pregnancies,foodStockDays,powerFactor,generatorCondition,outage,water,air," +
+		"openWindows,queued,pregnancies,foodStockDays,rationing,powerFactor,generatorCondition,outage,water,air," +
 		"healthUpTop,healthMids,healthDownDeep,hardshipUpTop,hardshipMids,hardshipDownDeep," +
 		"medicalCoverage,mechanicalCoverage\n"); err != nil {
 		return err
 	}
-	h := []byte("day")
+	h := []byte("day,medianAge")
 	for b := range bands {
 		for _, sex := range "fm" {
 			h = append(h, ',', byte(sex))
@@ -102,7 +104,7 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 	for _, d := range w.Depts {
 		h = append(h, ","+d.Name+"Workers,"+d.Name+"Target"...)
 	}
-	h = append(h, ",zoneMoves,mayor,mayorZone\n"...)
+	h = append(h, ",mechanicalInZone,zoneMoves,mayor,mayorZone\n"...)
 	_, err := o.yearly.Write(h)
 	return err
 }
@@ -121,6 +123,11 @@ func (o *Writer) Steps() []engine.Step {
 func (o *Writer) logDaily(w *world.World, _ *rng.Stream) error {
 	births, deaths := len(w.People)-o.born0, len(w.People)-len(w.Alive)
 	permits := w.Counts.Permits
+	if o.warmupDays > 0 && w.Day == o.warmupDays+1 {
+		// A department still understaffed from warm-up is logged again on
+		// the first measured day, since its warm-up event was dropped.
+		clear(o.under)
+	}
 	if o.warmupDays == 0 || w.Day > o.warmupDays {
 		if err := o.writeDaily(w, births-o.births, deaths-o.deaths, permits-o.permits); err != nil {
 			return err
@@ -156,10 +163,6 @@ func (o *Writer) writeDaily(w *world.World, births, deaths, permits int) error {
 	if s.FoodNeed > 0 {
 		foodDays = s.FoodStock / s.FoodNeed
 	}
-	outage := 0
-	if s.GeneratorDown > 0 {
-		outage = 1
-	}
 
 	b := strconv.AppendInt(o.row[:0], int64(w.Day), 10)
 	for _, n := range []int{len(w.Alive), pop[world.UpTop], pop[world.Mids], pop[world.DownDeep],
@@ -168,10 +171,12 @@ func (o *Writer) writeDaily(w *world.World, births, deaths, permits int) error {
 		b = strconv.AppendInt(b, int64(n), 10)
 	}
 	b = appendF(b, foodDays, 1)
+	b = append(b, ',')
+	b = strconv.AppendInt(b, int64(flag(s.Rationing)), 10)
 	b = appendF(b, s.PowerFactor(), 4)
 	b = appendF(b, s.GeneratorCondition, 4)
 	b = append(b, ',')
-	b = strconv.AppendInt(b, int64(outage), 10)
+	b = strconv.AppendInt(b, int64(flag(s.GeneratorDown > 0)), 10)
 	b = appendF(b, s.WaterSupply, 4)
 	b = appendF(b, s.AirQuality, 4)
 	for z := range world.NumZones {
@@ -191,20 +196,32 @@ func (o *Writer) writeDaily(w *world.World, births, deaths, permits int) error {
 	return err
 }
 
-// ODD §8: yearly.csv: the age pyramid (women and men per 5-year band),
-// workers and target per department, people who moved to another zone
-// since the previous yearly row, and the Mayor. The snapshot (§3 step 15)
+// ODD §8: yearly.csv: the median age in years, the age pyramid (women
+// and men per 5-year band), workers and target per department, the share
+// of Mechanical workers living in Mechanical's zone (Down Deep; the §8
+// "persistent zones" target), people who moved to another zone since the
+// previous yearly row, and the Mayor. The snapshot (§3 step 15)
 // runs before governance (step 16), so a row shows the Mayor before that
 // day's change; a Mayor who died since the last governance step is still
 // shown, with no zone.
 func (o *Writer) logYearly(w *world.World, _ *rng.Stream) error {
 	var pyramid [bands][2]int
+	o.ages = o.ages[:0]
+	mech, mechInZone := 0, 0
 	for _, id := range w.Alive {
 		p := &w.People[id]
-		band := min(int(w.Day-p.BirthDay)/engine.DaysPerYear/bandYears, bands-1)
-		pyramid[band][p.Sex]++
+		age := int(w.Day - p.BirthDay)
+		o.ages = append(o.ages, age)
+		pyramid[min(age/engine.DaysPerYear/bandYears, bands-1)][p.Sex]++
+		if p.Stage == world.Worker && w.Depts[p.Department].Name == "mechanical" {
+			mech++
+			if zoneOf(w, id) == w.Depts[p.Department].Zone {
+				mechInZone++
+			}
+		}
 	}
 	b := strconv.AppendInt(o.row[:0], int64(w.Day), 10)
+	b = appendF(b, median(o.ages)/engine.DaysPerYear, 2)
 	for _, band := range pyramid {
 		for _, n := range band {
 			b = append(b, ',')
@@ -216,6 +233,11 @@ func (o *Writer) logYearly(w *world.World, _ *rng.Stream) error {
 		b = strconv.AppendInt(b, int64(d.Headcount), 10)
 		b = appendF(b, d.Target, 1)
 	}
+	share := 0.0
+	if mech > 0 {
+		share = float64(mechInZone) / float64(mech)
+	}
+	b = appendF(b, share, 4)
 	b = append(b, ',')
 	b = strconv.AppendInt(b, int64(w.Counts.ZoneMoves-o.zoneMoves), 10)
 	o.zoneMoves = w.Counts.ZoneMoves
@@ -287,6 +309,27 @@ func (o *Writer) Close() error {
 		}
 	}
 	return err
+}
+
+// median of ages in days (mean of the middle two for an even count); it
+// sorts ages. 0 for nobody.
+func median(ages []int) float64 {
+	if len(ages) == 0 {
+		return 0
+	}
+	slices.Sort(ages)
+	n := len(ages)
+	if n%2 == 1 {
+		return float64(ages[n/2])
+	}
+	return float64(ages[n/2-1]+ages[n/2]) / 2
+}
+
+func flag(on bool) int {
+	if on {
+		return 1
+	}
+	return 0
 }
 
 func appendF(b []byte, x float64, prec int) []byte {
