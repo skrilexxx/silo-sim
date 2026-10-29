@@ -12,6 +12,7 @@ import (
 	"github.com/skrilexxx/silo-sim/internal/engine"
 	"github.com/skrilexxx/silo-sim/internal/initpop"
 	"github.com/skrilexxx/silo-sim/internal/modules/demography"
+	"github.com/skrilexxx/silo-sim/internal/modules/governance"
 	"github.com/skrilexxx/silo-sim/internal/modules/health"
 	"github.com/skrilexxx/silo-sim/internal/modules/resources"
 	"github.com/skrilexxx/silo-sim/internal/modules/work"
@@ -70,17 +71,17 @@ func run1(cfg *config.Scenario, dir string, modules []engine.Module) error {
 	if err != nil {
 		return err
 	}
-	daily, err := output.NewDaily(dir)
+	out, err := output.New(dir)
 	if err != nil {
 		return err
 	}
-	e, err := engine.New(cfg, w, append(modules, daily))
+	e, err := engine.New(cfg, w, append(modules, out))
 	if err != nil {
-		daily.Close()
+		out.Close()
 		return err
 	}
 	runErr := e.Run()
-	if err := daily.Close(); err != nil && runErr == nil {
+	if err := out.Close(); err != nil && runErr == nil {
 		runErr = err
 	}
 	return runErr
@@ -97,6 +98,8 @@ func newModule(name string) (engine.Module, error) {
 		return health.New(), nil
 	case "resources":
 		return resources.New(), nil
+	case "governance":
+		return governance.New(), nil
 	}
 	return nil, fmt.Errorf("module %q is not implemented yet", name)
 }

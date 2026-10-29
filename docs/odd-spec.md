@@ -317,10 +317,10 @@ This simplifies to intake/need = w\_z × distributed / Σ w × N. In the baselin
 
 ### 6.8 Governance
 
-How a Mayor is chosen and how long they serve are two separate settings. In the baseline the office changes no rules; it is logged so the dissent modules have it ready.
+How a Mayor is chosen and how long they serve are two separate settings. In the baseline the office changes no rules; it is logged so the dissent modules have it ready. "Senior worker" here means any worker (stage worker, not shadow or retired). Skill grows with years worked, so the most skilled is nearly always among the oldest. Ties in skill go to the lower person ID. The first Mayor is chosen on day 1, at initialization. After that, the yearly governance step (§3 step 16) chooses a new Mayor if the Mayor has died since the last step, the term has run out, or the office is vacant. A death is therefore noticed only at the next yearly step. The sitting Mayor may be chosen again. A Mayor who retires keeps the office until death or the end of the term. If nobody can be chosen, the office stays vacant and is retried each year.
 
 - **Appointment (default):** the heads of IT, Judicial and Administration (the most skilled worker in each) choose the most skilled senior worker from those three departments.
-- **Election (scenario toggle):** each zone puts up its most skilled senior worker; every adult votes for their own zone's candidate with an 80% chance, otherwise at random. Without beliefs, this simply measures how zone size decides an election.
+- **Election (scenario toggle):** each zone puts up its most skilled senior worker living there; every adult (18+) votes for their own zone's candidate with an 80% chance, otherwise for a candidate drawn uniformly from all of them, their own included (so about 87% back their own zone). A voter whose zone has no candidate always draws. Most votes wins; a tie is drawn at random. Without beliefs, this simply measures how zone size decides an election.
 - **Term (scenario toggle):** a 5-year term (default), or for life, so a Mayor serves until death. A life term works with either way of choosing; it removes any regular, peaceful change of leader, which matters once dissent is modeled.
 
 ## 7. Parameters
@@ -383,7 +383,7 @@ A run is only trusted if its invariants hold and its outputs hit the calibration
 | File | Content |
 | --- | --- |
 | daily.csv | Day; population total and by zone; births, deaths, permits, open windows, pregnancies; food stock in days; powerFactor; generator condition and outage flag; water; air; average health and hardship by zone; Medical and Mechanical coverage |
-| yearly.csv | Age pyramid in 5-year bands; headcount vs target per department; people who changed zone; current Mayor and their zone |
+| yearly.csv | Age pyramid in 5-year bands; headcount vs target per department; people who changed zone; current Mayor and their zone (the snapshot runs before governance, so a row shows the Mayor before that day's change) |
 | events.jsonl | Generator failures and repairs, rationing on/off, Mayor changes, any department below 50% of target |
 | run.json | Scenario file, seed, code version, runtime |
 

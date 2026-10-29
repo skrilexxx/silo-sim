@@ -110,6 +110,10 @@ func TestBadRangeFailsWithKeyName(t *testing.T) {
 		{"zone: downDeep, share: 0.16", "zone: bottom, share: 0.16", `work.departments[2].zone = "bottom", must be upTop, mids, downDeep or all`},
 		{"maternalDeathBase: 0.002", "maternalDeathBase: 0.6", "health.maternalDeathBase = 0.6 gives a maternal death risk of 1.2"},
 		{"injuryChance: 0.0002", "injuryChance: 0.6", "health.injuryChance × largest health.injuryFactor = 1.2"},
+		{"mode: appointment ", "mode: vote ", `governance.mode = "vote", must be appointment or election`},
+		{"term: 5y ", "term: 5 ", `governance.term = "5", must be life or a number of years like 5y`},
+		{"term: 5y ", "term: 0y ", `governance.term = "0y", must be life or a number of years like 5y`},
+		{"term: 5y ", "term: forever ", `governance.term = "forever", must be life or a number of years like 5y`},
 		// Strictly positive keys, each set to 0.
 		{"needFactor: 0.84", "needFactor: 0", "coverage.needFactor = 0, must be greater than 0"},
 		{"adultKcal: 2200", "adultKcal: 0", "rations.adultKcal = 0, must be greater than 0"},
@@ -140,6 +144,9 @@ func TestBoundaryValuesAccepted(t *testing.T) {
 		{"maternalDeathBase: 0.002", "maternalDeathBase: 0.5"}, // risk exactly 1 at zero coverage
 		{"injuryChance: 0.0002", "injuryChance: 0.5"},          // 0.5 × Mechanical factor 2 = 1
 		{"invariantEvery: 365", "invariantEvery: 1"},           // check every tick
+		{"term: 5y ", "term: life "},
+		{"term: 5y ", "term: 12y "},
+		{"mode: appointment ", "mode: election "},
 	} {
 		if got := loadErr(t, edit(t, base, c.old, c.new)); got != "" {
 			t.Errorf("%s rejected: %s", c.new, got)

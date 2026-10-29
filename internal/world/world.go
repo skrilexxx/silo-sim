@@ -27,6 +27,19 @@ const (
 // NumZones counts the residential zones: UpTop, Mids, DownDeep.
 const NumZones = int(DownDeep) + 1
 
+// String gives the zone's scenario-file name.
+func (z Zone) String() string {
+	switch z {
+	case UpTop:
+		return "upTop"
+	case Mids:
+		return "mids"
+	case DownDeep:
+		return "downDeep"
+	}
+	return "all"
+}
+
 type Sex int8
 
 const (
@@ -135,6 +148,7 @@ type Silo struct {
 	Rationing          bool       // today's hand-out was cut to rationingShare
 	GovernanceMode     string     // appointment or election
 	Mayor              PersonID   // or None
+	MayorSince         Tick       // day the current term started
 }
 
 // PowerFactor is the share of today's power demand that is met (ODD §6.6).
@@ -158,4 +172,19 @@ type World struct {
 	Silo       Silo
 
 	HousingQueue []HousingRequest // oldest first
+
+	Events []Event // not yet written to events.jsonl; the output module drains it
+}
+
+// Event is one line of events.jsonl (ODD §8). Only Mayor changes so far;
+// the other kinds arrive with T5.1.
+type Event struct {
+	Day      Tick     `json:"day"`
+	Type     string   `json:"type"`
+	Mayor    PersonID `json:"mayor"`           // or None if nobody could be chosen
+	Previous PersonID `json:"previous"`        // or None
+	Zone     string   `json:"zone"`            // the new Mayor's home zone
+	Reason   string   `json:"reason"`          // start, died, term or vacant
+	Mode     string   `json:"mode"`            // appointment or election
+	Votes    []int    `json:"votes,omitempty"` // elections: votes per zone's candidate, Up Top first; -1 for no candidate
 }

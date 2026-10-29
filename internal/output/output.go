@@ -17,54 +17,132 @@ import (
 	"github.com/skrilexxx/silo-sim/internal/world"
 )
 
-// Daily is the module that writes daily.csv at the logging phase. The
-// engine skips that phase during warm-up unless output.logWarmup is set.
-type Daily struct {
-	f   *os.File
-	w   *bufio.Writer
-	row []byte // reused, so logging allocates nothing per tick
+// Writer is the module that writes the run's files: daily.csv at the
+// logging phase, yearly.csv at the snapshot phase, and events.jsonl as
+// modules append to World.Events. The engine skips both phases during
+// warm-up unless output.logWarmup is set; warm-up events are dropped too.
+type Writer struct {
+	files  []*os.File
+	daily  *bufio.Writer
+	yearly *bufio.Writer
+	events *bufio.Writer
+	row    []byte // reused, so logging allocates nothing per tick
+
+	w          *world.World
+	warmupDays world.Tick // 0 if warm-up events are kept
 }
 
-// NewDaily creates dir/daily.csv and writes its header.
-func NewDaily(dir string) (*Daily, error) {
-	f, err := os.Create(filepath.Join(dir, "daily.csv"))
-	if err != nil {
-		return nil, err
+// New creates daily.csv, yearly.csv and events.jsonl in dir and writes
+// the CSV headers.
+func New(dir string) (*Writer, error) {
+	o := &Writer{}
+	for _, f := range []struct {
+		name   string
+		buf    **bufio.Writer
+		header string
+	}{
+		{"daily.csv", &o.daily, "day,population\n"},
+		{"yearly.csv", &o.yearly, "day,mayor,mayorZone\n"},
+		{"events.jsonl", &o.events, ""},
+	} {
+		file, err := os.Create(filepath.Join(dir, f.name))
+		if err != nil {
+			o.Close()
+			return nil, err
+		}
+		o.files = append(o.files, file)
+		*f.buf = bufio.NewWriter(file)
+		if _, err := (*f.buf).WriteString(f.header); err != nil {
+			o.Close()
+			return nil, err
+		}
 	}
-	d := &Daily{f: f, w: bufio.NewWriter(f)}
-	if _, err := d.w.WriteString("day,population\n"); err != nil {
-		f.Close()
-		return nil, err
-	}
-	return d, nil
+	return o, nil
 }
 
-func (d *Daily) Name() string       { return "output" }
-func (d *Daily) Requires() []string { return nil }
-func (d *Daily) Init(*world.World, *config.Scenario, *rng.Stream) error {
+func (o *Writer) Name() string       { return "output" }
+func (o *Writer) Requires() []string { return nil }
+func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error {
+	o.w = w
+	if !cfg.Output.LogWarmup {
+		o.warmupDays = world.Tick(cfg.WarmupYears * engine.DaysPerYear)
+	}
 	return nil
 }
-func (d *Daily) Steps() []engine.Step {
-	return []engine.Step{{Phase: engine.PhaseLogDaily, Run: d.log}}
+func (o *Writer) Steps() []engine.Step {
+	return []engine.Step{
+		{Phase: engine.PhaseLogDaily, Run: o.logDaily},
+		{Phase: engine.PhaseSnapshot, Run: o.logYearly},
+	}
 }
 
 // ODD §8: daily.csv. Only day and population exist so far; the other
-// columns arrive with the modules that produce them (T5.1).
-func (d *Daily) log(w *world.World, _ *rng.Stream) error {
-	d.row = strconv.AppendInt(d.row[:0], int64(w.Day), 10)
-	d.row = append(d.row, ',')
-	d.row = strconv.AppendInt(d.row, int64(len(w.Alive)), 10)
-	d.row = append(d.row, '\n')
-	_, err := d.w.Write(d.row)
+// columns arrive with T5.1. Events logged since the last row go out too.
+func (o *Writer) logDaily(w *world.World, _ *rng.Stream) error {
+	o.row = strconv.AppendInt(o.row[:0], int64(w.Day), 10)
+	o.row = append(o.row, ',')
+	o.row = strconv.AppendInt(o.row, int64(len(w.Alive)), 10)
+	o.row = append(o.row, '\n')
+	if _, err := o.daily.Write(o.row); err != nil {
+		return err
+	}
+	return o.writeEvents()
+}
+
+// ODD §8: yearly.csv. Only the Mayor so far; the age pyramid, department
+// table and zone changes arrive with T5.1. The snapshot (§3 step 15) runs
+// before governance (step 16), so a row shows the Mayor before that day's
+// change, if any.
+func (o *Writer) logYearly(w *world.World, _ *rng.Stream) error {
+	o.row = strconv.AppendInt(o.row[:0], int64(w.Day), 10)
+	o.row = append(o.row, ',')
+	o.row = strconv.AppendInt(o.row, int64(w.Silo.Mayor), 10)
+	o.row = append(o.row, ',')
+	if w.Silo.Mayor != world.None {
+		p := &w.People[w.Silo.Mayor]
+		o.row = append(o.row, w.Floors[w.Households[p.Household].Floor-1].Zone.String()...)
+	}
+	o.row = append(o.row, '\n')
+	_, err := o.yearly.Write(o.row)
 	return err
 }
 
-// Close flushes and closes daily.csv. A failed flush means lost rows, so
-// its error must not be ignored.
-func (d *Daily) Close() error {
-	err := d.w.Flush()
-	if cerr := d.f.Close(); err == nil {
-		err = cerr
+// writeEvents writes and clears World.Events, dropping warm-up events.
+// With no warm-up nothing is dropped, day-0 events included.
+func (o *Writer) writeEvents() error {
+	for _, e := range o.w.Events {
+		if o.warmupDays > 0 && e.Day <= o.warmupDays {
+			continue
+		}
+		line, err := json.Marshal(e)
+		if err != nil {
+			return err
+		}
+		if _, err := o.events.Write(append(line, '\n')); err != nil {
+			return err
+		}
+	}
+	o.w.Events = o.w.Events[:0]
+	return nil
+}
+
+// Close writes the last events, flushes and closes every file. A failed
+// flush means lost rows, so its error must not be ignored.
+func (o *Writer) Close() error {
+	var err error
+	if o.w != nil {
+		err = o.writeEvents()
+	}
+	for i, b := range []*bufio.Writer{o.daily, o.yearly, o.events} {
+		if i >= len(o.files) {
+			break
+		}
+		if ferr := b.Flush(); err == nil {
+			err = ferr
+		}
+		if cerr := o.files[i].Close(); err == nil {
+			err = cerr
+		}
 	}
 	return err
 }

@@ -65,7 +65,7 @@ Demography only. Until later milestones, stub what other modules provide: health
 
 ## Milestone 4 — Governance
 
-- [ ] **T4.1 Mayor.** Appointment and election, `mayorTerm: 5y | life`, new Mayor when the term ends or the Mayor dies, logged to `events.jsonl` and `yearly.csv`.
+- [x] **T4.1 Mayor.** (2026-10-29) Appointment and election, `mayorTerm: 5y | life`, new Mayor when the term ends or the Mayor dies, logged to `events.jsonl` and `yearly.csv`.
   - *Spec:* ODD §6.8. *Done when:* with `life` the Mayor changes only on death; with elections and 80% own-zone voting the Mids candidate wins most elections (largest zone).
 
 ## Milestone 5 — Outputs and tools

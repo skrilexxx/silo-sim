@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -171,6 +172,18 @@ type Governance struct {
 	Mode        string  `yaml:"mode"`
 	Term        string  `yaml:"term"`
 	OwnZoneVote float64 `yaml:"ownZoneVote"`
+}
+
+// TermYears reads governance.term: "<n>y" gives n ≥ 1, "life" gives 0.
+func (g Governance) TermYears() (int, error) {
+	if g.Term == "life" {
+		return 0, nil
+	}
+	n, err := strconv.Atoi(strings.TrimSuffix(g.Term, "y"))
+	if err != nil || n < 1 || !strings.HasSuffix(g.Term, "y") {
+		return 0, fmt.Errorf("governance.term = %q, must be life or a number of years like 5y", g.Term)
+	}
+	return n, nil
 }
 
 // Load reads a scenario file, merges in its `extends` parents, and checks

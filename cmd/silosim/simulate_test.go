@@ -71,6 +71,30 @@ func TestTenYearEmptyRunWritesFiles(t *testing.T) {
 		t.Errorf("rows run from %q to %q, want days 366 to 4015", lines[1], lines[len(lines)-1])
 	}
 
+	// One yearly row per measured year; with 5-year terms the Mayor is
+	// chosen again on days 1825 and 3650, after the warm-up year.
+	yearly := strings.Split(strings.TrimSuffix(string(readFile(t, filepath.Join(dir, "yearly.csv"))), "\n"), "\n")
+	if yearly[0] != "day,mayor,mayorZone" || len(yearly)-1 != 10 || !strings.HasPrefix(yearly[1], "730,") {
+		t.Errorf("yearly.csv: header %q, %d rows, first %q; want 10 rows from day 730", yearly[0], len(yearly)-1, yearly[1])
+	}
+	var days []int
+	for _, line := range strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(dir, "events.jsonl")))), "\n") {
+		var e struct {
+			Day    int    `json:"day"`
+			Type   string `json:"type"`
+			Reason string `json:"reason"`
+		}
+		if err := json.Unmarshal([]byte(line), &e); err != nil {
+			t.Fatalf("events.jsonl line %q: %v", line, err)
+		}
+		if e.Type == "mayor" && e.Reason == "term" {
+			days = append(days, e.Day)
+		}
+	}
+	if len(days) != 2 || days[0] != 1825 || days[1] != 3650 {
+		t.Errorf("term-end Mayor events on days %v, want [1825 3650]", days)
+	}
+
 	var info output.RunInfo
 	if err := json.Unmarshal(readFile(t, filepath.Join(dir, "run.json")), &info); err != nil {
 		t.Fatal(err)
@@ -93,8 +117,9 @@ func TestSameSeedGivesIdenticalDaily(t *testing.T) {
 
 func TestUnbuiltModuleFails(t *testing.T) {
 	cfg := loadInto(t, "../../scenarios/baseline.yaml")
+	cfg.Modules = append(cfg.Modules, "dissent")
 	_, err := simulate(cfg)
-	if err == nil || !strings.Contains(err.Error(), `module "governance" is not implemented yet`) {
+	if err == nil || !strings.Contains(err.Error(), `module "dissent" is not implemented yet`) {
 		t.Errorf("got %v", err)
 	}
 }

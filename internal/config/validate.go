@@ -147,11 +147,19 @@ func (s *Scenario) Validate() error {
 	}
 
 	// Rules name these departments: retraining draws from General (6.5),
-	// injuries weigh Mechanical and Farms, Medical gives coverage (6.2).
-	for _, name := range []string{"general", "medical", "mechanical", "farms"} {
+	// injuries weigh Mechanical and Farms, Medical gives coverage (6.2),
+	// IT, Judicial and Administration appoint the Mayor (6.8).
+	for _, name := range []string{"general", "medical", "mechanical", "farms", "it", "judicial", "administration"} {
 		if !slices.ContainsFunc(s.Work.Departments, func(d Department) bool { return d.Name == name }) {
 			add("work.departments has no %q, which the rules need", name)
 		}
+	}
+
+	if s.Governance.Mode != "appointment" && s.Governance.Mode != "election" {
+		add("governance.mode = %q, must be appointment or election", s.Governance.Mode)
+	}
+	if _, err := s.Governance.TermYears(); err != nil {
+		errs = append(errs, err)
 	}
 
 	// Fewer homes than households would leave people homeless on day 1.
