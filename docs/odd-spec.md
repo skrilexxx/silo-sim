@@ -174,7 +174,7 @@ Day 1 is generated from the scenario file, then the model runs 50 years of warm-
 5. **Jobs** (only when the work module is on): in each zone, adults 18–64 fill the departments of that zone plus General services and Porters by target share (an all-zone department's share split over the zones by allZoneSplit), rounded by largest remainder and assigned at random. People 65+ are retired with no department. 14- to 17-year-olds are placed by the shadowing rule of 6.5, in random order.
 6. **Skill:** 1 − (1 − α)^(days since the 14th birthday, counted up to 65), the same curve as daily skill growth (6.5), since shadows learn too.
 7. **Implants:** every woman starts with the implant in; no open windows, no pregnancies.
-8. **Stocks:** food for 90 days of full rations, parts for 365 days of expected use, generator condition 0.8, water and air at 1.
+8. **Stocks:** food for 90 days of full rations, parts for 365 days of expected use (365 × the parts one repair day uses, 6.6), generator condition 0.8, water and air at 1.
 
 ### Input data
 
@@ -284,8 +284,8 @@ Departments have a home zone and a target share of the workforce. Their shares s
 
 The generator is the root of the loop: it powers the farms, the water pumps and the air, so a weak Mechanical department eventually shows up as hunger and illness everywhere.
 
-- **Generator condition c:** loses 0.0004 per day (from new to broken in about 7 years without care). Repair adds ρ × mechanicalCoverage × (1 − c) and uses 1 part a day; with no parts there is no repair. Because repair slows as c nears 1, condition settles where wear and repair balance: c\* = 1 − wear / (ρ × coverage), which is 0.8 at full coverage with ρ = 0.002.
-- **Failure:** daily chance f₀ × (1 − c)², with f₀ = 0.002, which gives about 3 failures per century at c = 0.8. A failure takes 3–14 days to fix, consumes extra parts and drops c by 0.1. While it is down, backup power gives 20% of normal output.
+- **Generator condition c:** loses 0.0004 per day (from new to broken in about 7 years without care). Repair adds ρ × mechanicalCoverage × (1 − c) and uses 1 part a day; with fewer parts in stock than one repair day uses there is no repair. Because repair slows as c nears 1, condition settles where wear and repair balance: c\* = 1 − wear / (ρ × coverage), which is 0.8 at full coverage with ρ = 0.002. Wear and repair come first each day, then the failure draw; c is kept within 0–1. The generator step runs before the work step (§3), so it uses the previous day's mechanicalCoverage (on day 1, the coverage from initialization).
+- **Failure:** daily chance f₀ × (1 − c)², with f₀ = 0.002, which gives about 3 failures per century at c = 0.8. A failure takes 3–14 days to fix (a whole number of days, uniform), consumes extra parts (as many as are left if the stock is short; a short stock does not lengthen the outage) and drops c by 0.1. The day of the failure is the first day of the outage. While it is down, the condition is frozen: no wear, no repair, no parts used and no new failure draw; only the days left count down. Backup power then gives 20% of capacity, whatever c and Mechanical coverage are.
 - **Power:** supply = capacity × c × mechanicalCoverage (or backup while down); demand is fixed per person and per farm floor. Capacity is set on day 1 to 1.3 × day-1 demand, so at condition 0.8 and full coverage the silo has just enough power. powerFactor = min(1, supply / demand).
 - **Water:** powerFactor × mechanicalCoverage.
 - **Air:** moves toward powerFactor by a third of the gap each day, so short outages are survivable and long ones are not.

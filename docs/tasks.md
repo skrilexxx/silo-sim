@@ -54,7 +54,7 @@ Demography only. Until later milestones, stub what other modules provide: health
 
 ## Milestone 3 — Resources
 
-- [ ] **T3.1 Generator and power.** Condition wear, repair × (1 − c), parts use, failures, outages with backup power, capacity set on day 1, powerFactor.
+- [x] **T3.1 Generator and power.** (2026-10-29) Condition wear, repair × (1 − c), parts use, failures, outages with backup power, capacity set on day 1, powerFactor.
   - *Spec:* ODD §6.6. *Done when:* with full Mechanical coverage condition settles at 0.80 ± 0.02; failure count over 100 simulated centuries at c = 0.8 averages 2.5–3.5 per century; with no parts, condition falls steadily.
 - [ ] **T3.2 Water, air, food, parts.** Water and air from power and Mechanical coverage, food production, Supply making parts.
   - *Spec:* ODD §6.6. *Done when:* a 14-day outage drops air below 0.3 and it recovers within ~10 days after repair (test); food stock is conserved exactly every tick (invariant).

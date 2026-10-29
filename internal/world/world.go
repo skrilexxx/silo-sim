@@ -132,6 +132,9 @@ type Silo struct {
 	Mayor              PersonID   // or None
 }
 
+// PowerFactor is the share of today's power demand that is met (ODD §6.6).
+func (s *Silo) PowerFactor() float64 { return min(1, s.PowerSupply/s.PowerDemand) }
+
 // HousingRequest is a couple waiting to move into a home of their own
 // (ODD §6.3). Zone is chosen the first month housing handles them.
 type HousingRequest struct {
