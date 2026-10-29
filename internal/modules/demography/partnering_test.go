@@ -299,9 +299,9 @@ func TestWhoMovesIn(t *testing.T) {
 	}
 }
 
-// Mechanical keeps its people: a couple split between Mechanical and a
-// department of another zone goes Down Deep whenever Mechanical is below
-// its target, and otherwise with mechanicalStayChance (0.8).
+// Mechanical keeps its people while short: a couple split between
+// Mechanical and a department of another zone goes Down Deep whenever
+// Mechanical is below its target, and 50/50 otherwise.
 func TestMechanicalCouplesStayDownDeep(t *testing.T) {
 	for _, c := range []struct {
 		what           string
@@ -309,7 +309,7 @@ func TestMechanicalCouplesStayDownDeep(t *testing.T) {
 		target, lo, hi float64
 	}{
 		{"Mechanical below target", 9, 10, 1, 1},
-		{"Mechanical at target", 10, 10, 0.78, 0.82},
+		{"Mechanical at target", 10, 10, 0.48, 0.52},
 	} {
 		w, m := town(t, person{world.Female, 30, world.Mids, 3}, person{world.Male, 30, world.Mids, 2}) // IT and Mechanical
 		w.Depts[2].Headcount, w.Depts[2].Target = c.headcount, c.target

@@ -270,3 +270,25 @@ The 11 rationing seeds ration on 5.8–18.0% of days. The food surplus over the 
 **Mechanism:** the stay rule keeps 80% of split couples Down Deep even when Mechanical is well over target. Their children grow up there, and a Down Deep child's placement can only choose Mechanical, General and Porters (apart from the 5% cross-zone chance and following a parent), so most go to Mechanical. Each generation of Down Deep families is larger than the one before. The rule fixed "Mechanical workers live Down Deep" but drains Farms and inflates Down Deep.
 
 **Open, for Adam:** how to change the stay rule (see the T6.1 discussion). The food value should be calibrated again on the full 200 measured years once staffing is fixed.
+
+## 2026-10-29 — Stay rule only while Mechanical is short: staffing fixed, zones fail again
+
+**Change (Adam):** a couple split between Mechanical and another zone's department goes Down Deep only while Mechanical is below its target; otherwise 50/50 like any other couple. `work.mechanicalStayChance` is removed. kcalPerFarmUnit stays 11,900.
+**Setup:** seeds 1–10, 50 + 200 years; `bin/silosim batch --scenario scenarios/baseline.yaml --seeds 1-10 --out runs/cal-stay`.
+
+| | 80% stay rule (100-seed run) | Stay only while short (this run) |
+| --- | --- | --- |
+| Farms workers / target, year 250 | 1,670–1,740 / ~1,870 | 1,823–2,026 / ~1,870 |
+| Mechanical workers / target, year 250 | 1,257–1,378 / ~1,000 | 992–1,067 / ~1,000 |
+| Down Deep share of population, year 250 | 31–33% | 21.3–25.7% |
+| Food surplus over the full run | 0.8% | 5.5% (2.1–9.1%) |
+| Seeds with rationing < 5% of days | 89 / 100 | 10 / 10 (0 days) |
+| Mechanical living Down Deep (min) | 91–93% | 80.5–82.5%: fails 10 / 10 |
+
+Every other pattern passes in 10/10.
+
+**Reading:** with departments balanced, kcalPerFarmUnit 11,900 gives the intended ~5% surplus over the full run. But Mechanical is rarely below target, so the rule hardly ever fires and the share falls back to about 81%, as under the plain 50/50 pick.
+
+**The tension:** keeping Mechanical's people Down Deep means their families live there, and Down Deep children can mostly only become Mechanical, General or Porters (§6.5 placement). When no department in reach is short, a child's pick falls back to the departments' shares in their own zone, so a growing Down Deep overfills Mechanical. Free partnering (§6.3) and zone-bound placement (§6.5) together cap the share near 81% unless Down Deep grows.
+
+**Open, for Adam:** change placement so children go where the jobs are, or keep the rule and revise the 90% target.

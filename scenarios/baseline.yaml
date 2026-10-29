@@ -86,7 +86,6 @@ work:                             # ODD §6.5
   shadowOutputFactor: 0.3
   retrainBelowShare: 0.8          # of target headcount
   retrainStartSkill: 0.2
-  mechanicalStayChance: 0.8       # a couple split between Mechanical and another zone's department lives Down Deep with this chance (ODD §6.3)
   # People in "all zones" departments are spread so the total split matches init.zoneSplit.
   allZoneSplit: { upTop: 0.36, mids: 0.40, downDeep: 0.24 }
   departments:                    # order is fixed and used as the department index

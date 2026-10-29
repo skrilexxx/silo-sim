@@ -51,24 +51,20 @@ func (m *Module) housing(w *world.World, r *rng.Stream) error {
 // targetZone: the zone of a partner whose department has a zone; if both
 // have one and they differ, one of the two at random; if neither, one of
 // the two partners' current home zones at random. Mechanical runs the
-// generator, so it keeps its people: when one partner is Mechanical and
-// the other's department lies in another zone, the couple goes to
-// Mechanical's zone if Mechanical has fewer workers than its target, and
-// otherwise with mechanicalStayChance.
+// generator, so it keeps its people while it needs them: when one partner
+// is Mechanical, the other's department lies in another zone, and
+// Mechanical has fewer workers than its target, the couple goes to
+// Mechanical's zone. Otherwise such a couple is picked 50/50 like any
+// other. Keeping them always overfilled Mechanical and Down Deep at
+// Farms' expense (calibration log, 2026-10-29).
 func (m *Module) targetZone(w *world.World, r *rng.Stream, a, b world.PersonID) world.Zone {
 	za, tiedA := deptZone(w, a)
 	zb, tiedB := deptZone(w, b)
 	switch {
-	case tiedA && tiedB && za != zb && (m.isMechanical(w, a) || m.isMechanical(w, b)):
-		mech, zone, other := a, za, zb
-		if !m.isMechanical(w, a) {
-			mech, zone, other = b, zb, za
-		}
-		d := &w.Depts[w.People[mech].Department]
-		if float64(d.Headcount) < d.Target || r.Bernoulli(m.cfg.Work.MechanicalStayChance) {
-			return zone
-		}
-		return other
+	case tiedA && tiedB && za != zb && m.mechanicalShort(w, a):
+		return za
+	case tiedA && tiedB && za != zb && m.mechanicalShort(w, b):
+		return zb
 	case tiedA && tiedB:
 		return pick(r, za, zb)
 	case tiedA:
@@ -86,9 +82,11 @@ func pick(r *rng.Stream, x, y world.Zone) world.Zone {
 	return y
 }
 
-func (m *Module) isMechanical(w *world.World, id world.PersonID) bool {
+// mechanicalShort: id works in Mechanical, and Mechanical has fewer
+// workers than its target.
+func (m *Module) mechanicalShort(w *world.World, id world.PersonID) bool {
 	d := w.People[id].Department
-	return d != world.None && w.Depts[d].Name == "mechanical"
+	return d != world.None && w.Depts[d].Name == "mechanical" && float64(w.Depts[d].Headcount) < w.Depts[d].Target
 }
 
 func deptZone(w *world.World, id world.PersonID) (world.Zone, bool) {
