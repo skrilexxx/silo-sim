@@ -23,6 +23,8 @@ import (
 //
 // Target (docs/tasks.md T3.2a): the silo survives every generator failure,
 // i.e. average health is back above 0.9 within a year of each failure.
+// Also logged since T3.3: days with rationing (ODD §8 target: under 5%),
+// the lowest intake/need of any zone, and the final food stock in days.
 func TestStability(t *testing.T) {
 	if os.Getenv("SILOSIM_STABILITY") == "" {
 		t.Skip("set SILOSIM_STABILITY=1 (make stability)")
@@ -58,7 +60,8 @@ func runStability(t *testing.T, seed uint64) {
 	start := time.Now()
 	end := world.Tick(cfg.Years * engine.DaysPerYear)
 	failures, recovered, longest := 0, 0, 0
-	minHealth, minAir := 1.0, 1.0
+	minHealth, minAir, minIntake := 1.0, 1.0, 1.0
+	rationingDays := 0
 	var failDay world.Tick // last failure still waiting to recover; 0 if none
 	for w.Day < end {
 		down := w.Silo.GeneratorDown
@@ -78,6 +81,10 @@ func runStability(t *testing.T, seed uint64) {
 		}
 		h /= float64(len(w.Alive))
 		minHealth, minAir = min(minHealth, h), min(minAir, w.Silo.AirQuality)
+		minIntake = min(minIntake, w.Silo.Intake[world.UpTop], w.Silo.Intake[world.Mids], w.Silo.Intake[world.DownDeep])
+		if w.Silo.Rationing {
+			rationingDays++
+		}
 		if failDay > 0 && w.Silo.GeneratorDown == 0 && h > 0.9 {
 			recovered++
 			failDay = 0
@@ -87,8 +94,9 @@ func runStability(t *testing.T, seed uint64) {
 		}
 	}
 	ok := failDay == 0
-	t.Logf("seed %2d: %d failures, longest outage %d days, lowest avg health %.3f, lowest air %.3f, condition %.3f, population %d %s | %.0fs",
-		seed, failures, longest, minHealth, minAir, w.Silo.GeneratorCondition, len(w.Alive), mark(ok), time.Since(start).Seconds())
+	t.Logf("seed %2d: %d failures, longest outage %d days, lowest avg health %.3f, lowest air %.3f, condition %.3f, population %d %s | rationing %d days, lowest intake/need %.3f, food stock %.0f days | %.0fs",
+		seed, failures, longest, minHealth, minAir, w.Silo.GeneratorCondition, len(w.Alive), mark(ok),
+		rationingDays, minIntake, w.Silo.FoodStock/w.Silo.FoodHandedOut, time.Since(start).Seconds())
 	if !ok {
 		t.Errorf("seed %d: average health not back above 0.9 within a year of the failure on day %d", seed, failDay)
 	}

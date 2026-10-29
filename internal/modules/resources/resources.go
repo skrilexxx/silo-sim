@@ -1,6 +1,5 @@
 // Package resources holds the silo's resource loop (ODD §6.6): the
-// generator and power, parts, water, air and food; rations (§6.7) arrive
-// in T3.3.
+// generator and power, parts, water, air and food, and rations (§6.7).
 package resources
 
 import (
@@ -40,21 +39,25 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 	w.Silo.GeneratorCondition = cfg.Init.GeneratorCondition
 	// Parts are counted in days of normal use: one repair day's worth.
 	w.Silo.PartsStock = float64(cfg.Init.PartsStockDays) * m.c.PartsPerRepairDay
-	w.Silo.FoodStock = float64(cfg.Init.FoodStockDays) * m.foodNeed(w)
+	need := m.zoneNeed(w)
+	w.Silo.FoodStock = float64(cfg.Init.FoodStockDays) * (need[world.UpTop] + need[world.Mids] + need[world.DownDeep])
+	w.Silo.RationShares = [world.NumZones]float64{m.rations.Weights.UpTop, m.rations.Weights.Mids, m.rations.Weights.DownDeep}
 	m.capacity = m.c.CapacityMargin * m.demand(w)
 	return nil
 }
 
-// ODD §6.7: daily food need, adultKcal per person and childNeedShare of
-// that for children under childAgeBelow.
-func (m *Module) foodNeed(w *world.World) float64 {
+// ODD §6.7: daily food need per zone, adultKcal per person and
+// childNeedShare of that for children under childAgeBelow.
+func (m *Module) zoneNeed(w *world.World) [world.NumZones]float64 {
 	childDays := world.Tick(m.rations.ChildAgeBelow * engine.DaysPerYear)
-	need := 0.0
+	var need [world.NumZones]float64
 	for _, id := range w.Alive {
-		if w.Day-w.People[id].BirthDay < childDays {
-			need += m.rations.ChildNeedShare * m.rations.AdultKcal
+		p := &w.People[id]
+		z := w.Floors[w.Households[p.Household].Floor-1].Zone
+		if w.Day-p.BirthDay < childDays {
+			need[z] += m.rations.ChildNeedShare * m.rations.AdultKcal
 		} else {
-			need += m.rations.AdultKcal
+			need[z] += m.rations.AdultKcal
 		}
 	}
 	return need
@@ -76,6 +79,7 @@ func (m *Module) Steps() []engine.Step {
 		{Phase: engine.PhaseGenerator, Run: m.generator},
 		{Phase: engine.PhaseLifeSupport, Run: m.lifeSupport},
 		{Phase: engine.PhaseFood, Run: m.food},
+		{Phase: engine.PhaseRations, Run: m.rationsStep},
 	}
 }
 
@@ -196,5 +200,40 @@ func (m *Module) food(w *world.World, _ *rng.Stream) error {
 	s.FoodOpening = s.FoodStock
 	s.FoodProduced = w.Depts[farms].Output * m.c.KcalPerFarmUnit * s.PowerFactor()
 	s.FoodStock = s.FoodOpening + s.FoodProduced
+	return nil
+}
+
+// ODD §6.7: rations, daily. The silo hands out the day's total need, or
+// rationingShare of it while the stock (after today's production) is
+// below rationingBelowDays of need, and never more than the stock. Zones
+// get share_z = w_z × need_z / Σ w × need, shared within the zone in
+// proportion to need, so everyone in zone z has
+//
+//	intake/need = share_z × distributed / need_z = w_z × distributed / Σ w × need
+//
+// With equal weights that is the same everywhere. Under unequal weights a
+// zone can get more than its need; all of it is handed out (hunger in
+// §6.2 gains nothing from it).
+func (m *Module) rationsStep(w *world.World, _ *rng.Stream) error {
+	s := &w.Silo
+	need := m.zoneNeed(w)
+	total, weighted := 0.0, 0.0
+	for z := range world.NumZones {
+		total += need[z]
+		weighted += s.RationShares[z] * need[z]
+	}
+	out := total
+	s.Rationing = s.FoodStock < float64(m.rations.RationingBelowDays)*total
+	if s.Rationing {
+		out *= m.rations.RationingShare
+	}
+	out = min(out, s.FoodStock)
+	if weighted > 0 {
+		for z := range world.NumZones {
+			s.Intake[z] = s.RationShares[z] * out / weighted
+		}
+	}
+	s.FoodHandedOut = out
+	s.FoodStock -= out
 	return nil
 }

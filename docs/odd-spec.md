@@ -212,7 +212,7 @@ With A = 0.0002 and B = 0.085, half of people reach about 67 before health effec
 
 Health runs from 0 to 1 and changes every day for every living person, in the tick's shuffled order: damage from hunger, bad air, injuries and illness, then recovery that depends on how well Medical is staffed, then a clamp to 0–1.
 
-- **Hunger:** −d\_hunger × (1 − intake/need)
+- **Hunger:** −d\_hunger × max(0, 1 − intake/need), with intake/need of the person's zone (6.7); food above need does not raise health
 - **Bad air:** −d\_air × (1 − airQuality)
 - **Work injury:** for workers and shadows, daily chance 0.0002 × the department factor (Mechanical ×2, Farms ×1, others ×0.5); an injury costs 0.3 health
 - **Illness:** small daily chance; costs 0.15 health
@@ -222,7 +222,7 @@ Health runs from 0 to 1 and changes every day for every living person, in the ti
 medicalCoverage = \min\left(1, \frac{MedicalOutput}{0.84 \times MedicalDay1TargetHeadcount}\right)
 ```
 
-Until rations exist (6.7) intake equals need, so hunger does no damage; air starts at 1 (§5 step 8) and stays there until life support exists (6.6).
+Without the resources module, intake/need stays 1 and air stays at its day-1 value of 1 (§5 step 8).
 
 Medical also performs implant removals for lottery winners. Winners join a queue; right after each monthly draw, Medical removes the implants of the oldest ⌊medicalCoverage × waiting⌋ winners (oldest permit first), and the rest wait for the next month. At coverage 1 nobody waits; at 0.5 about half wait a month, which delays births when the silo is short of doctors. A winner whose partner dies while she waits loses the permit. Mothers face a death risk at each birth of 0.002 × (2 − medicalCoverage); the child lives. Where there is no Medical department (the work module is off), coverage counts as 1.
 
@@ -307,13 +307,13 @@ The loop closes through people: hunger and bad air raise deaths and lower output
 
 ### 6.7 Rations
 
-Each day the silo hands out food from the stock. If the stock falls below 30 days of need, it hands out only 90%, which is rationing. Food is split between zones by policy weights, then shared within each zone in proportion to need (children under 14 need 60% of an adult's 2,200 kcal).
+Each day the silo hands out the day's total need from the stock. If the stock, after the day's production, is below 30 days of need, it hands out only 90%, which is rationing; it never hands out more than the stock holds. Food is split between zones by policy weights, then shared within each zone in proportion to need (children under 14 need 60% of an adult's 2,200 kcal). N\_z below is zone z's total need in kcal, not its headcount, so with equal weights every zone gets the same share of its need however many children it has.
 
 ```latex
 share_z = \frac{w_z N_z}{\sum_{z'} w_{z'} N_{z'}}, \qquad \frac{intake_i}{need_i} = \frac{share_z \times distributed}{need_z}
 ```
 
-In the baseline every weight is 1.0, so everyone gets the same share of their need. The regime can change the weights later, for example to favor Up Top. Each day the model logs hardship per zone = 1 − average intake/need; the dissent modules will use it as a source of grievance.
+This simplifies to intake/need = w\_z × distributed / Σ w × N. In the baseline every weight is 1.0, so everyone gets the same share of their need. The regime can change the weights later, for example to favor Up Top. A zone with a weight above 1 can then get more than its need. All the distributed food is still handed out, and the extra does not raise health (6.2), while the other zones get less than their need even when the stock is full. Each day the model logs hardship per zone = 1 − average intake/need (everyone in a zone has the same intake/need). Hardship is negative for a zone fed above its need. The dissent modules will use it as a source of grievance.
 
 ### 6.8 Governance
 

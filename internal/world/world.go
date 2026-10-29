@@ -131,6 +131,8 @@ type Silo struct {
 	AirQuality         float64    // 0–1
 	PartsStock         float64    // abstract units
 	RationShares       [3]float64 // per zone, indexed by Zone (policy)
+	Intake             [3]float64 // today's intake/need per zone (ODD §6.7); may exceed 1 under unequal weights
+	Rationing          bool       // today's hand-out was cut to rationingShare
 	GovernanceMode     string     // appointment or election
 	Mayor              PersonID   // or None
 }

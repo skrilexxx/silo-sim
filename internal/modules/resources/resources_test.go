@@ -24,11 +24,14 @@ func baseline(t *testing.T) *config.Scenario {
 	return cfg
 }
 
-// silo builds 100 people, 2 farm floors and the baseline departments with
+// silo builds 100 people in one Up Top household, 2 farm floors and the baseline departments with
 // Mechanical coverage 1, then runs Init.
 func silo(t *testing.T, cfg *config.Scenario) (*world.World, *Module, *rng.Stream) {
 	t.Helper()
-	w := &world.World{Floors: []world.Floor{{Function: world.Farm}, {Function: world.Residential}, {Function: world.Farm}}}
+	w := &world.World{
+		Floors:     []world.Floor{{Number: 1, Function: world.Farm}, {Number: 2, Function: world.Residential}, {Number: 3, Function: world.Farm}},
+		Households: []world.Household{{Floor: 2}}, // everyone lives Up Top
+	}
 	for _, d := range cfg.Work.Departments {
 		w.Depts = append(w.Depts, world.Department{Name: d.Name})
 	}
@@ -308,5 +311,113 @@ func TestOutageDays(t *testing.T) {
 		if got := m.outageDays(w, mechanical); got != tc.want {
 			t.Errorf("%s: %d days, want %d", tc.what, got, tc.want)
 		}
+	}
+}
+
+// zoned builds a silo with one household per zone: Up Top 10 adults,
+// Mids 10 adults and 10 children, Down Deep 5 adults and 15 children, so
+// the zones differ in size and in their share of children. Food stock is
+// set to days × total need.
+func zoned(t *testing.T, cfg *config.Scenario, days float64) (*world.World, *Module, [3]float64) {
+	t.Helper()
+	w := &world.World{
+		Floors: []world.Floor{{Number: 1, Zone: world.UpTop}, {Number: 2, Zone: world.Mids}, {Number: 3, Zone: world.DownDeep}},
+		Day:    world.Tick(30 * year),
+	}
+	adult, child := w.Day-world.Tick(30*year), w.Day-world.Tick(5*year)
+	for z, mix := range [][2]int{{10, 0}, {10, 10}, {5, 15}} {
+		w.Households = append(w.Households, world.Household{ID: world.HouseholdID(z), Floor: z + 1})
+		for i := range mix[0] + mix[1] {
+			id := world.PersonID(len(w.People))
+			born := adult
+			if i >= mix[0] {
+				born = child
+			}
+			w.People = append(w.People, world.Person{ID: id, Alive: true, BirthDay: born, Household: world.HouseholdID(z)})
+			w.Alive = append(w.Alive, id)
+		}
+	}
+	for _, d := range cfg.Work.Departments {
+		w.Depts = append(w.Depts, world.Department{Name: d.Name})
+	}
+	m := New()
+	if err := m.Init(w, cfg, nil); err != nil {
+		t.Fatal(err)
+	}
+	rc := cfg.Rations
+	kid := rc.ChildNeedShare * rc.AdultKcal
+	need := [3]float64{10 * rc.AdultKcal, 10*rc.AdultKcal + 10*kid, 5*rc.AdultKcal + 15*kid}
+	w.Silo.FoodStock = days * (need[0] + need[1] + need[2])
+	return w, m, need
+}
+
+func ration(t *testing.T, w *world.World, m *Module) {
+	t.Helper()
+	if err := m.rationsStep(w, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// With equal weights every zone gets the same intake/need, whatever its
+// share of children: 1 with enough stock, rationingShare below
+// rationingBelowDays of stock, and all that is left when the stock is
+// smaller than the day's need.
+func TestRationsEqualWeights(t *testing.T) {
+	cfg := baseline(t)
+	rc := cfg.Rations
+	below := float64(rc.RationingBelowDays)
+	cases := []struct {
+		days      float64 // stock, in days of total need
+		rationing bool
+		intake    float64
+	}{
+		{below, false, 1},
+		{below - 0.01, true, rc.RationingShare},
+		{0.5, true, 0.5},
+		{0, true, 0},
+	}
+	for _, tc := range cases {
+		w, m, need := zoned(t, cfg, tc.days)
+		total := need[0] + need[1] + need[2]
+		stock := w.Silo.FoodStock
+		ration(t, w, m)
+		s := &w.Silo
+		if s.Rationing != tc.rationing {
+			t.Errorf("stock %v days: rationing = %v, want %v", tc.days, s.Rationing, tc.rationing)
+		}
+		for z, got := range s.Intake {
+			if math.Abs(got-tc.intake) > 1e-12 {
+				t.Errorf("stock %v days: zone %d intake/need = %v, want %v", tc.days, z, got, tc.intake)
+			}
+		}
+		if want := tc.intake * total; math.Abs(s.FoodHandedOut-want) > 1e-6 || s.FoodStock != stock-s.FoodHandedOut {
+			t.Errorf("stock %v days: handed out %v (want %v), stock %v → %v", tc.days, s.FoodHandedOut, want, stock, s.FoodStock)
+		}
+	}
+}
+
+// Favouring Up Top (weight 1.5) in a shortage: Up Top gets 1.5× the
+// intake/need of the other zones, so Down Deep's hardship is higher.
+func TestRationsFavourUpTop(t *testing.T) {
+	cfg := baseline(t)
+	cfg.Rations.Weights.UpTop = 1.5
+	w, m, need := zoned(t, cfg, 10) // below 30 days: rationing
+	ration(t, w, m)
+	s := &w.Silo
+	out := cfg.Rations.RationingShare * (need[0] + need[1] + need[2])
+	weighted := 1.5*need[0] + need[1] + need[2]
+	want := [3]float64{1.5 * out / weighted, out / weighted, out / weighted}
+	for z := range want {
+		if math.Abs(s.Intake[z]-want[z]) > 1e-12 {
+			t.Errorf("zone %d intake/need = %v, want %v", z, s.Intake[z], want[z])
+		}
+	}
+	upTop, downDeep := 1-s.Intake[world.UpTop], 1-s.Intake[world.DownDeep]
+	t.Logf("hardship: Up Top %.3f, Down Deep %.3f", upTop, downDeep)
+	if downDeep <= upTop {
+		t.Errorf("Down Deep hardship %.3f not above Up Top's %.3f", downDeep, upTop)
+	}
+	if math.Abs(s.FoodHandedOut-out) > 1e-6 {
+		t.Errorf("handed out %v, want all %v distributed", s.FoodHandedOut, out)
 	}
 }

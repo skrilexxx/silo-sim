@@ -60,7 +60,7 @@ Demography only. Until later milestones, stub what other modules provide: health
   - *Spec:* ODD §6.6. *Done when:* a 14-day outage drops air below 0.3 and it recovers within ~10 days after repair (test); food stock is conserved exactly every tick (invariant).
 - [x] **T3.2a Resource-loop stability.** (2026-10-29) One generator failure currently tips the silo into a health collapse (calibration log, 2026-10-29). Find the cause in the loop health → Mechanical → power → air → health, agree a parameter or rule change with Adam, record it.
   - *Spec:* ODD §6.2, §6.6. *Done when:* 10 seeds × 100 years with demography, health, work and resources all survive every generator failure (average health returns above 0.9); the change is in the spec and the calibration log.
-- [ ] **T3.3 Rations.** Distribution by zone weights, children's need, rationing below 30 days of stock, intake/need per person feeding health (remove the hunger stub), hardship per zone logged.
+- [x] **T3.3 Rations.** (2026-10-29) Distribution by zone weights, children's need, rationing below 30 days of stock, intake/need per person feeding health (remove the hunger stub), hardship per zone logged.
   - *Spec:* ODD §6.7. *Done when:* with equal weights every zone's intake/need is equal; with Up Top weight 1.5 and a food shortage, Down Deep hardship is higher (test).
 
 ## Milestone 4 — Governance

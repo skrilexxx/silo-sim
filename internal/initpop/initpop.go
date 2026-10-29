@@ -36,7 +36,7 @@ type couple struct {
 func Build(cfg *config.Scenario, r *rng.Stream) (*world.World, error) {
 	// ODD §5 step 8, the part that exists so far: water and air start at 1.
 	// Food, parts and the generator arrive with resources (T3.1, T3.2).
-	b := &builder{cfg: cfg, r: r, w: &world.World{Silo: world.Silo{Mayor: world.None, WaterSupply: 1, AirQuality: 1}}}
+	b := &builder{cfg: cfg, r: r, w: &world.World{Silo: world.Silo{Mayor: world.None, WaterSupply: 1, AirQuality: 1, Intake: [3]float64{1, 1, 1}}}}
 	b.w.Floors = floors(cfg.Init)
 	b.people()
 	b.zones()

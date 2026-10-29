@@ -33,7 +33,11 @@ func baseline(t *testing.T) *config.Scenario {
 func crowd(t *testing.T, n int, stage world.Stage, dept int, cov float64) (*world.World, *Module) {
 	t.Helper()
 	cfg := baseline(t)
-	w := &world.World{Silo: world.Silo{AirQuality: 1, WaterSupply: 1}}
+	w := &world.World{
+		Silo:       world.Silo{AirQuality: 1, WaterSupply: 1, Intake: [3]float64{1, 1, 1}},
+		Floors:     []world.Floor{{Number: 1, Zone: world.UpTop}},
+		Households: []world.Household{{Floor: 1}},
+	}
 	for _, d := range cfg.Work.Departments {
 		w.Depts = append(w.Depts, world.Department{Name: d.Name})
 	}
@@ -205,5 +209,24 @@ func TestMedicalMatters(t *testing.T) {
 	if none.endHealth >= full.endHealth || none.deaths <= full.deaths {
 		t.Errorf("without Medical: health %.3f vs %.3f, deaths %d vs %d; want lower health and more deaths",
 			none.endHealth, full.endHealth, none.deaths, full.deaths)
+	}
+}
+
+// Hunger costs hungerDamage × (1 − intake/need) a day; food above need
+// gives nothing.
+func TestHunger(t *testing.T) {
+	for _, tc := range []struct{ intake, want float64 }{{0.5, 1 - 0.5*baseline(t).Health.HungerDamage}, {0, 1 - baseline(t).Health.HungerDamage}, {1.5, 1}} {
+		w, m := crowd(t, 10, world.Child, world.None, 0)
+		m.c.IllnessChance = 0
+		w.Silo.Intake[world.UpTop] = tc.intake
+		r, _ := rng.New(1, "health")
+		if err := m.health(w, r); err != nil {
+			t.Fatal(err)
+		}
+		for _, id := range w.Alive {
+			if h := w.People[id].Health; math.Abs(h-tc.want) > 1e-12 {
+				t.Fatalf("intake/need %v: health %v, want %v", tc.intake, h, tc.want)
+			}
+		}
 	}
 }

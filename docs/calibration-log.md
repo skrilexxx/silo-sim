@@ -103,3 +103,15 @@ After that, health stays at 0 for good. The population falls to 643 by year 100.
 1. *Every outage lasted 4 days.* The average Mechanical skill stays near 0.85, and Supply keeps parts above 30. So in the baseline the rule behaves like a fixed 4-day outage. It matters only when Mechanical is green (after retraining or heavy losses) or when parts run short. That is when it should matter: a badly run silo gets longer outages and can still tip over (10 days is above the ~8-day tipping point).
 2. *The tipping point is still in the loop.* Average health below about 0.82 after a failure still cannot recover. The rule keeps the baseline away from it but doesn't remove it. T3.3 adds hunger to the same loop, so the stability check should be rerun after T3.3.
 3. *Runtime:* about 60 s per 100-year run with four modules, 10 runs in parallel.
+
+## 2026-10-29 — Stability rerun with rations and hunger (T3.3)
+
+**Code:** branch `t3.3`, on top of `52bd199` (T3.2a). Rations (ODD §6.7) hand out food, and hunger now feeds health (§6.2).
+**Setup and command:** as in the T3.2a entry (`make stability`). The test now also logs rationing days, the lowest intake/need of any zone, and the final food stock in days.
+
+**Result: 10 of 10 seeds survive every failure, with numbers identical to the T3.2a entry, seed for seed** (failures, outages, lowest health, population). Food never runs short. There are 0 rationing days in all 10 seeds, the lowest intake/need is 1.000, and the food stock ends at 13,904–17,164 days.
+
+**Observations**
+
+1. *Food production is far above need.* The stock grows by about 150 days' worth a year, so farms make about 40% more than the silo eats. ODD §7 wants about a 5% surplus (kcalPerFarmUnit, marked "Calibrate"; scaling 16,000 by 1.05 / 1.41 suggests about 12,000). With this surplus, rations and hunger never come into play in the baseline, so the stability check doesn't test the hunger part of the loop yet. That's left for T6.1. Lowering the surplus will put hunger into the loop health → Mechanical → power → food, so `make stability` should be rerun then.
+2. *Runtime:* 42–43 s for a 100-year run when it has a core to itself (38 s before rations), and about 195 s with 8 runs sharing the machine.
