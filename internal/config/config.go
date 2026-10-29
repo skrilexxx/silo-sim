@@ -50,6 +50,8 @@ type Output struct {
 	Dir            string `yaml:"dir"`
 	LogWarmup      bool   `yaml:"logWarmup"`
 	InvariantEvery int    `yaml:"invariantEvery"`
+
+	UnderstaffedShare float64 `yaml:"understaffedShare"`
 }
 
 type Init struct {

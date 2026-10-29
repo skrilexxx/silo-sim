@@ -70,7 +70,7 @@ Demography only. Until later milestones, stub what other modules provide: health
 
 ## Milestone 5 — Outputs and tools
 
-- [ ] **T5.1 Full outputs.** All `daily.csv` columns, `yearly.csv`, `events.jsonl` per ODD §8; complete invariant list.
+- [x] **T5.1 Full outputs.** (2026-10-29) All `daily.csv` columns, `yearly.csv`, `events.jsonl` per ODD §8; complete invariant list.
 - [ ] **T5.2 Batch runner.** `silosim batch` with `--seeds 1-100` and `--workers`, one goroutine per run, one folder per seed.
   - *Done when:* batch output for seed 7 is identical to a single `run` with seed 7.
 - [ ] **T5.3 Report.** `silosim report` computes every ODD §8 calibration target per seed and prints pass/fail with the share of seeds passing.

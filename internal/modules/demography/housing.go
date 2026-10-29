@@ -109,6 +109,9 @@ func (m *Module) moveIn(w *world.World, a, b world.PersonID, floor int, occupied
 				movers = append(movers, x)
 			}
 		}
+		if w.Floors[from.Floor-1].Zone != w.Floors[floor-1].Zone {
+			w.Counts.ZoneMoves += len(movers)
+		}
 		from.Members = slices.DeleteFunc(from.Members, func(x world.PersonID) bool { return slices.Contains(movers, x) })
 		if len(from.Members) == 0 {
 			occupied[from.Floor-1]--

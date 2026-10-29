@@ -373,6 +373,7 @@ Every number the model uses, in one place. Each one becomes a field in the scena
 | Day-1 couples | 70% of adults aged 20+ | Guess | 5 |
 | Mayor term | 5 years, or life (toggle) | Guess | 6.8 |
 | Vote for own zone | 80% | Guess | 6.8 |
+| Understaffed department (output) | Below 50% of target | Calibration target | 8 |
 
 ## 8. Outputs, tests and validation
 
@@ -382,10 +383,12 @@ A run is only trusted if its invariants hold and its outputs hit the calibration
 
 | File | Content |
 | --- | --- |
-| daily.csv | Day; population total and by zone; births, deaths, permits, open windows, pregnancies; food stock in days; powerFactor; generator condition and outage flag; water; air; average health and hardship by zone; Medical and Mechanical coverage |
+| daily.csv | Day; population total and by zone; births, deaths, permits, open windows, winners waiting for Medical (queued), pregnancies; food stock in days; powerFactor; generator condition and outage flag; water; air; average health and hardship by zone; Medical and Mechanical coverage |
 | yearly.csv | Age pyramid in 5-year bands; headcount vs target per department; people who changed zone; current Mayor and their zone (the snapshot runs before governance, so a row shows the Mayor before that day's change) |
-| events.jsonl | Generator failures and repairs, rationing on/off, Mayor changes, any department below 50% of target |
+| events.jsonl | Generator failures and repairs, rationing on/off, Mayor changes, any department below 50% of target (and back above) |
 | run.json | Scenario file, seed, code version, runtime |
+
+Counts in a row (births, deaths, permits, people who changed zone) are what happened since the previous row of that file. Steps that run after daily logging (§3 steps 12–16) therefore appear in the next day's row: a lottery's permits on day 30 show on day 31. The pyramid is women and men in 5-year bands, the last one 100+. A department counts as below 50% when its workers fall under 0.5 × its current target (headcounts are recounted daily, targets monthly). Warm-up is not written unless the scenario asks for it.
 
 ### Invariant tests (must always pass)
 

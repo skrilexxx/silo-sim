@@ -17,6 +17,7 @@ output:
   dir: runs
   logWarmup: false
   invariantEvery: 365             # ticks between invariant checks in normal runs (tests: every tick)
+  understaffedShare: 0.5          # events.jsonl logs a department below this share of its target (ODD §8)
 
 init:                             # ODD §5
   floorsPerZone: 48               # 3 zones × 48 = 144 floors

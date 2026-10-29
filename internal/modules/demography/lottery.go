@@ -48,6 +48,7 @@ func (m *Module) lottery(w *world.World, r *rng.Stream) error {
 	}
 	n := min(Permits(m.deaths30, len(w.Alive), pregnant, open, m.cfg.Lottery), len(m.pool))
 	m.deaths30 = 0
+	w.Counts.Permits += n
 
 	// Partial Fisher–Yates: the first n of the pool become a uniform
 	// random sample without replacement.

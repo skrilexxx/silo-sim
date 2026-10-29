@@ -59,6 +59,7 @@ func (s *Scenario) Validate() error {
 		{"rations.childNeedShare", s.Rations.ChildNeedShare},
 		{"rations.rationingShare", s.Rations.RationingShare},
 		{"governance.ownZoneVote", s.Governance.OwnZoneVote},
+		{"output.understaffedShare", s.Output.UnderstaffedShare},
 	}
 	for _, u := range unit {
 		if u.v < 0 || u.v > 1 {

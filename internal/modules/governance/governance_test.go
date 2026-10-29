@@ -67,14 +67,14 @@ func TestAppointment(t *testing.T) {
 	if w.Silo.Mayor != 2 {
 		t.Errorf("appointed %d, want 2", w.Silo.Mayor)
 	}
-	if len(w.Events) != 1 || w.Events[0].Reason != "start" || w.Events[0].Day != 0 {
+	if len(w.Events) != 1 || w.Events[0].(world.MayorEvent).Reason != "start" || w.Events[0].When() != 0 {
 		t.Errorf("events = %+v, want one start event on day 0", w.Events)
 	}
 }
 
 // run plays the 1,000-person golden scenario for 100 years with
 // demography, work and governance, and returns the Mayor events.
-func run(t *testing.T, mode, term string) (*world.World, []world.Event) {
+func run(t *testing.T, mode, term string) (*world.World, []world.MayorEvent) {
 	t.Helper()
 	cfg := load(t, "../../../testdata/golden/scenario.yaml")
 	cfg.Governance.Mode, cfg.Governance.Term, cfg.Years = mode, term, 100
@@ -87,12 +87,14 @@ func run(t *testing.T, mode, term string) (*world.World, []world.Event) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var events []world.Event
+	var events []world.MayorEvent
 	for w.Day < world.Tick(cfg.Years*year) {
 		if err := e.Tick(); err != nil {
 			t.Fatal(err)
 		}
-		events = append(events, w.Events...)
+		for _, ev := range w.Events {
+			events = append(events, ev.(world.MayorEvent))
+		}
 		w.Events = w.Events[:0]
 	}
 	return w, events
@@ -189,7 +191,8 @@ func TestVoteShares(t *testing.T) {
 		}
 	}
 	total := adults[0] + adults[1] + adults[2]
-	votes := w.Events[0].Votes
+	start := w.Events[0].(world.MayorEvent)
+	votes := start.Votes
 	own := cfg.Governance.OwnZoneVote
 	for z := range world.NumZones {
 		want := adults[z]*own + total*(1-own)/3
@@ -197,5 +200,5 @@ func TestVoteShares(t *testing.T) {
 			t.Errorf("zone %d: %v votes, want ≈ %.0f", z, got, want)
 		}
 	}
-	t.Logf("day-1 election, 10,000 people: votes %v (Up Top, Mids, Down Deep), winner's zone %s", votes, w.Events[0].Zone)
+	t.Logf("day-1 election, 10,000 people: votes %v (Up Top, Mids, Down Deep), winner's zone %s", votes, start.Zone)
 }

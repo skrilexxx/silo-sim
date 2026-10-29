@@ -11,7 +11,21 @@ import (
 	"github.com/skrilexxx/silo-sim/internal/world"
 )
 
-// Check runs every invariant and returns the first violation.
+// Check runs every invariant and returns the first violation. The ODD §8
+// list maps onto them as follows:
+//
+//   - counts agree: countsAgree
+//   - one household each, no floor over capacity: oneHousehold, homeCapacity
+//   - partnerships symmetric and alive: partnerships
+//   - no pregnancy without a window, windows only for the eligible: reproduction
+//   - food conserved exactly: foodConserved
+//   - every 0–1 variable within 0–1: unitRanges (stocks and outage days ≥ 0 too)
+//   - nobody acts after the tick they died: every step acts on World.Alive,
+//     which countsAgree keeps to the living; households (oneHousehold),
+//     partners (partnerships) and masters (work) never point to the dead.
+//     The Mayor may be dead until the next yearly step (ODD §6.8).
+//   - same seed → identical files, different seeds → different files:
+//     tested in cmd/silosim, not checked per tick.
 func Check(w *world.World, cfg *config.Scenario) error {
 	for _, check := range []func(*world.World) error{countsAgree, oneHousehold, homeCapacity, partnerships, unitRanges, foodConserved} {
 		if err := check(w); err != nil {
@@ -244,11 +258,30 @@ func unitRanges(w *world.World) error {
 		x    float64
 	}{
 		{"generator condition", s.GeneratorCondition},
+		{"power factor", s.PowerFactor()},
 		{"water supply", s.WaterSupply},
 		{"air quality", s.AirQuality},
 	} {
 		if !in01(v.x) {
 			return fmt.Errorf("silo %s = %v, outside 0–1", v.name, v.x)
+		}
+	}
+	for _, v := range []struct {
+		name string
+		x    float64
+	}{
+		{"food stock", s.FoodStock},
+		{"parts stock", s.PartsStock},
+		{"generator down days", float64(s.GeneratorDown)},
+		{"power supply", s.PowerSupply},
+	} {
+		if !(v.x >= 0) {
+			return fmt.Errorf("silo %s = %v, below 0", v.name, v.x)
+		}
+	}
+	for z, x := range s.Intake {
+		if !(x >= 0) {
+			return fmt.Errorf("zone %d intake/need = %v, below 0", z, x)
 		}
 	}
 	return nil

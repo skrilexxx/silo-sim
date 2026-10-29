@@ -8,6 +8,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -60,8 +61,25 @@ func TestTenYearEmptyRunWritesFiles(t *testing.T) {
 	dir := mustSimulate(t, cfg)
 
 	lines := strings.Split(strings.TrimSuffix(string(readFile(t, filepath.Join(dir, "daily.csv"))), "\n"), "\n")
-	if lines[0] != "day,population" {
+	if cols := strings.Split(lines[0], ","); len(cols) != 25 || cols[0] != "day" || cols[24] != "mechanicalCoverage" {
 		t.Errorf("header = %q", lines[0])
+	}
+	// Each row's births − deaths is the change in population since the
+	// row before, and the first row does not carry the warm-up's births.
+	prevPop := -1
+	for i, line := range lines[1:] {
+		cols := strings.Split(line, ",")
+		if len(cols) != 25 {
+			t.Fatalf("row %d has %d columns, want 25: %q", i+1, len(cols), line)
+		}
+		pop, births, deaths := atoi(t, cols[1]), atoi(t, cols[5]), atoi(t, cols[6])
+		if i == 0 && births > 5 {
+			t.Errorf("first measured row has %d births: warm-up leaked in", births)
+		}
+		if prevPop >= 0 && pop-prevPop != births-deaths {
+			t.Fatalf("day %s: population %d → %d, but %d births and %d deaths", cols[0], prevPop, pop, births, deaths)
+		}
+		prevPop = pop
 	}
 	// One row per measured day; the warm-up year is not logged.
 	if rows := len(lines) - 1; rows != 10*365 {
@@ -74,7 +92,8 @@ func TestTenYearEmptyRunWritesFiles(t *testing.T) {
 	// One yearly row per measured year; with 5-year terms the Mayor is
 	// chosen again on days 1825 and 3650, after the warm-up year.
 	yearly := strings.Split(strings.TrimSuffix(string(readFile(t, filepath.Join(dir, "yearly.csv"))), "\n"), "\n")
-	if yearly[0] != "day,mayor,mayorZone" || len(yearly)-1 != 10 || !strings.HasPrefix(yearly[1], "730,") {
+	if !strings.HasPrefix(yearly[0], "day,f0_4,m0_4,") || !strings.HasSuffix(yearly[0], ",zoneMoves,mayor,mayorZone") ||
+		len(yearly)-1 != 10 || !strings.HasPrefix(yearly[1], "730,") {
 		t.Errorf("yearly.csv: header %q, %d rows, first %q; want 10 rows from day 730", yearly[0], len(yearly)-1, yearly[1])
 	}
 	var days []int
@@ -107,11 +126,21 @@ func TestTenYearEmptyRunWritesFiles(t *testing.T) {
 	}
 }
 
-func TestSameSeedGivesIdenticalDaily(t *testing.T) {
-	a := readFile(t, filepath.Join(mustSimulate(t, loadInto(t, goldenScenario)), "daily.csv"))
-	b := readFile(t, filepath.Join(mustSimulate(t, loadInto(t, goldenScenario)), "daily.csv"))
-	if !bytes.Equal(a, b) {
-		t.Error("two runs with the same seed wrote different daily.csv")
+// ODD §8: same seed → byte-identical files; different seeds → different
+// files.
+func TestSeedsAndIdenticalFiles(t *testing.T) {
+	a, b := mustSimulate(t, loadInto(t, goldenScenario)), mustSimulate(t, loadInto(t, goldenScenario))
+	other := loadInto(t, goldenScenario)
+	other.Seed = 2
+	c := mustSimulate(t, other)
+	for _, f := range []string{"daily.csv", "yearly.csv", "events.jsonl"} {
+		fa, fb, fc := readFile(t, filepath.Join(a, f)), readFile(t, filepath.Join(b, f)), readFile(t, filepath.Join(c, f))
+		if !bytes.Equal(fa, fb) {
+			t.Errorf("two runs with the same seed wrote different %s", f)
+		}
+		if bytes.Equal(fa, fc) {
+			t.Errorf("seeds 1 and 2 wrote the same %s", f)
+		}
 	}
 }
 
@@ -141,4 +170,13 @@ func TestGolden(t *testing.T) {
 		t.Errorf("golden daily.csv changed:\n got  %s\n want %s\n"+
 			"If the change is on purpose, run `make update-golden` and give the reason in the commit message.", got, want)
 	}
+}
+
+func atoi(t *testing.T, s string) int {
+	t.Helper()
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return n
 }

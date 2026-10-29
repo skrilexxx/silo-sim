@@ -116,7 +116,7 @@ func TestFrequencies(t *testing.T) {
 	}
 }
 
-func TestOutputSkippedDuringWarmup(t *testing.T) {
+func TestSnapshotSkippedDuringWarmup(t *testing.T) {
 	for _, logWarmup := range []bool{false, true} {
 		var log []string
 		cfg := scenario(1, 1)
@@ -135,7 +135,9 @@ func TestOutputSkippedDuringWarmup(t *testing.T) {
 				t.Errorf("logWarmup=true: logging ran %d times from day %v, snapshots %v", len(logged), logged[:1], snaps)
 			}
 		} else {
-			if len(logged) != DaysPerYear || logged[0] != DaysPerYear+1 || !slices.Equal(snaps, []int{730}) {
+			// Daily logging runs through warm-up (the output module writes
+			// nothing then); only the snapshot is skipped.
+			if len(logged) != 2*DaysPerYear || logged[0] != 1 || !slices.Equal(snaps, []int{730}) {
 				t.Errorf("logWarmup=false: logging ran %d times from day %v, snapshots %v", len(logged), logged[:1], snaps)
 			}
 		}

@@ -246,8 +246,9 @@ func (m *Module) setTargets(w *world.World) {
 		workers += d.Headcount
 	}
 	m.target = m.target[:0]
-	for _, d := range w.Depts {
-		m.target = append(m.target, d.TargetShare*float64(workers))
+	for d := range w.Depts {
+		m.target = append(m.target, w.Depts[d].TargetShare*float64(workers))
+		w.Depts[d].Target = m.target[d]
 	}
 }
 

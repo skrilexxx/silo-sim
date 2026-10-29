@@ -139,6 +139,10 @@ func TestOutage(t *testing.T) {
 		if s.PartsStock != wantParts {
 			t.Errorf("parts %v → %v, want %v", parts, s.PartsStock, wantParts)
 		}
+		if len(w.Events) != 1 || w.Events[0].(world.GeneratorEvent).Type != "failure" || w.Events[0].(world.GeneratorEvent).OutageDays != length {
+			t.Errorf("events after the failure = %+v, want one failure of %d days", w.Events, length)
+		}
+		w.Events = nil
 		m.c.FailureBase = 0 // the day the generator runs again must not fail at once
 		c, p := s.GeneratorCondition, s.PartsStock
 		backup := rc.BackupPower * m.capacity
@@ -150,6 +154,9 @@ func TestOutage(t *testing.T) {
 				t.Fatalf("outage day %d: condition or parts changed while down", day)
 			}
 			step(t, w, m, r)
+		}
+		if len(w.Events) != 1 || w.Events[0].(world.GeneratorEvent).Type != "repair" || w.Events[0].When() != w.Day {
+			t.Errorf("events over the outage = %+v, want one repair today", w.Events)
 		}
 		if s.GeneratorDown != 0 || s.PowerSupply != m.capacity*s.GeneratorCondition {
 			t.Errorf("day after the outage: down %d, supply %v, want normal %v", s.GeneratorDown, s.PowerSupply, m.capacity*s.GeneratorCondition)
@@ -419,5 +426,23 @@ func TestRationsFavourUpTop(t *testing.T) {
 	}
 	if math.Abs(s.FoodHandedOut-out) > 1e-6 {
 		t.Errorf("handed out %v, want all %v distributed", s.FoodHandedOut, out)
+	}
+}
+
+// Rationing switching on and off is logged once each way.
+func TestRationingEvents(t *testing.T) {
+	cfg := baseline(t)
+	w, m, need := zoned(t, cfg, 10)
+	total := need[0] + need[1] + need[2]
+	ration(t, w, m) // on
+	ration(t, w, m) // still on: no event
+	w.Silo.FoodStock = 100 * total
+	ration(t, w, m) // off
+	var kinds []string
+	for _, e := range w.Events {
+		kinds = append(kinds, e.(world.RationingEvent).Type)
+	}
+	if len(kinds) != 2 || kinds[0] != "rationingOn" || kinds[1] != "rationingOff" {
+		t.Errorf("rationing events %v, want [rationingOn rationingOff]", kinds)
 	}
 }

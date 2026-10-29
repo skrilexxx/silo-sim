@@ -124,6 +124,7 @@ type Department struct {
 	Name        string
 	Zone        Zone // or AllZones
 	TargetShare float64
+	Target      float64 // target headcount from the monthly staffing step (ODD §6.5)
 	Headcount   int
 	Shadows     int
 	Output      float64 // this tick: worker skill × health, plus shadowOutputFactor × shadow skill × health
@@ -133,6 +134,7 @@ type Department struct {
 // ODD §2: Silo, the global state.
 type Silo struct {
 	FoodStock          float64 // kcal
+	FoodNeed           float64 // kcal: today's total need (ODD §6.7)
 	FoodOpening        float64 // kcal: today's stock before production, for the conservation invariant (ODD §8)
 	FoodProduced       float64 // kcal produced today
 	FoodHandedOut      float64 // kcal handed out today
@@ -151,8 +153,14 @@ type Silo struct {
 	MayorSince         Tick       // day the current term started
 }
 
-// PowerFactor is the share of today's power demand that is met (ODD §6.6).
-func (s *Silo) PowerFactor() float64 { return min(1, s.PowerSupply/s.PowerDemand) }
+// PowerFactor is the share of today's power demand that is met (ODD
+// §6.6). With no demand (the resources module is off) all of it is.
+func (s *Silo) PowerFactor() float64 {
+	if s.PowerDemand == 0 {
+		return 1
+	}
+	return min(1, s.PowerSupply/s.PowerDemand)
+}
 
 // HousingRequest is a couple waiting to move into a home of their own
 // (ODD §6.3). Zone is chosen the first month housing handles them.
@@ -173,18 +181,59 @@ type World struct {
 
 	HousingQueue []HousingRequest // oldest first
 
+	Counts Counts  // running totals for the output files
 	Events []Event // not yet written to events.jsonl; the output module drains it
 }
 
-// Event is one line of events.jsonl (ODD §8). Only Mayor changes so far;
-// the other kinds arrive with T5.1.
-type Event struct {
-	Day      Tick     `json:"day"`
-	Type     string   `json:"type"`
+// Counts are running totals since day 0 that no state variable holds.
+// Births and deaths need none: they follow from People and Alive.
+type Counts struct {
+	Permits   int // lottery winners (ODD §6.4)
+	ZoneMoves int // people whose home moved to another zone (ODD §6.3)
+}
+
+// Event is one line of events.jsonl (ODD §8). Each kind embeds
+// EventHeader, whose fields JSON puts first on the line.
+type Event interface{ When() Tick }
+
+type EventHeader struct {
+	Day  Tick   `json:"day"`
+	Type string `json:"type"`
+}
+
+func (h EventHeader) When() Tick { return h.Day }
+
+// MayorEvent: type "mayor", a Mayor chosen (ODD §6.8).
+type MayorEvent struct {
+	EventHeader
 	Mayor    PersonID `json:"mayor"`           // or None if nobody could be chosen
 	Previous PersonID `json:"previous"`        // or None
 	Zone     string   `json:"zone"`            // the new Mayor's home zone
 	Reason   string   `json:"reason"`          // start, died, term or vacant
 	Mode     string   `json:"mode"`            // appointment or election
 	Votes    []int    `json:"votes,omitempty"` // elections: votes per zone's candidate, Up Top first; -1 for no candidate
+}
+
+// GeneratorEvent: type "failure" (the generator breaks down) or "repair"
+// (it runs again) (ODD §6.6).
+type GeneratorEvent struct {
+	EventHeader
+	OutageDays int     `json:"outageDays,omitempty"` // failures only
+	Condition  float64 `json:"condition"`
+	Parts      float64 `json:"parts"`
+}
+
+// RationingEvent: type "rationingOn" or "rationingOff" (ODD §6.7).
+type RationingEvent struct {
+	EventHeader
+	FoodStockDays float64 `json:"foodStockDays"`
+}
+
+// DepartmentEvent: type "understaffed" (workers fell below
+// output.understaffedShare of target) or "restaffed" (back above).
+type DepartmentEvent struct {
+	EventHeader
+	Department string  `json:"department"`
+	Workers    int     `json:"workers"`
+	Target     float64 `json:"target"`
 }

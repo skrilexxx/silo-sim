@@ -86,7 +86,7 @@ func (m *Module) choose(w *world.World, r *rng.Stream, reason string) {
 	if mayor != world.None {
 		zone = homeZone(w, mayor).String()
 	}
-	w.Events = append(w.Events, world.Event{Day: w.Day, Type: "mayor", Mayor: mayor, Previous: prev,
+	w.Events = append(w.Events, world.MayorEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "mayor"}, Mayor: mayor, Previous: prev,
 		Zone: zone, Reason: reason, Mode: m.cfg.Governance.Mode, Votes: votes})
 }
 

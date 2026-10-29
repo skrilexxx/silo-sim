@@ -117,6 +117,10 @@ func (m *Module) generator(w *world.World, r *rng.Stream) error {
 
 	if s.GeneratorDown > 0 {
 		s.GeneratorDown--
+		if s.GeneratorDown == 0 {
+			w.Events = append(w.Events, world.GeneratorEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "repair"},
+				Condition: s.GeneratorCondition, Parts: s.PartsStock})
+		}
 	}
 	if s.GeneratorDown == 0 {
 		c := s.GeneratorCondition - m.c.GeneratorWear
@@ -129,6 +133,8 @@ func (m *Module) generator(w *world.World, r *rng.Stream) error {
 			c = world.Clamp01(c - m.c.FailureConditionDrop)
 			s.GeneratorDown = m.outageDays(w, mechanical)
 			s.PartsStock -= min(s.PartsStock, m.c.PartsPerFailure)
+			w.Events = append(w.Events, world.GeneratorEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "failure"},
+				OutageDays: s.GeneratorDown, Condition: c, Parts: s.PartsStock})
 		}
 		s.GeneratorCondition = c
 	}
@@ -223,7 +229,16 @@ func (m *Module) rationsStep(w *world.World, _ *rng.Stream) error {
 		weighted += s.RationShares[z] * need[z]
 	}
 	out := total
-	s.Rationing = s.FoodStock < float64(m.rations.RationingBelowDays)*total
+	s.FoodNeed = total
+	if was := s.Rationing; was != (s.FoodStock < float64(m.rations.RationingBelowDays)*total) {
+		s.Rationing = !was
+		kind := "rationingOff"
+		if s.Rationing {
+			kind = "rationingOn"
+		}
+		w.Events = append(w.Events, world.RationingEvent{EventHeader: world.EventHeader{Day: w.Day, Type: kind},
+			FoodStockDays: s.FoodStock / total})
+	}
 	if s.Rationing {
 		out *= m.rations.RationingShare
 	}

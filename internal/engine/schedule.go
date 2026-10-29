@@ -33,7 +33,10 @@ const (
 
 // schedule gives each phase its name, how often it runs (on days that are
 // multiples of every), and whether it writes output (skipped during
-// warm-up unless output.logWarmup is set).
+// warm-up unless output.logWarmup is set). Daily logging runs in warm-up
+// too, because each row counts what happened since the one before: the
+// output module needs the counts at the end of warm-up, and itself writes
+// nothing until then.
 var schedule = [...]struct {
 	name   string
 	every  int
@@ -49,7 +52,7 @@ var schedule = [...]struct {
 	PhaseReproduction: {"reproduction", daily, false},
 	PhaseLifeStages:   {"life stages", daily, false},
 	PhasePartnering:   {"partnering", daily, false},
-	PhaseLogDaily:     {"logging", daily, true},
+	PhaseLogDaily:     {"logging", daily, false},
 	PhaseLottery:      {"lottery", everyMonth, false},
 	PhaseHousing:      {"housing", everyMonth, false},
 	PhaseStaffing:     {"staffing", everyMonth, false},
