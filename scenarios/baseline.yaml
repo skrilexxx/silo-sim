@@ -104,8 +104,8 @@ resources:                        # ODD §6.6
   generatorWear: 0.0004           # calibrate
   repairRate: 0.002               # ρ; condition settles at 1 − wear/ρ = 0.8 at full coverage
   failureBase: 0.002              # calibrate; f₀ × (1 − c)² ≈ 3 failures per century at c = 0.8
-  outageMinDays: 3
-  outageMaxDays: 14
+  outageMinDays: 3                # repair days with perfect Mechanical skill and full parts
+  outageMaxDays: 10               # cap; outage = min(10, ⌈3 / (skill × partsShare)⌉)
   failureConditionDrop: 0.1
   backupPower: 0.2
   capacityMargin: 1.3             # capacity = 1.3 × day-1 power demand

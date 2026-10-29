@@ -96,7 +96,7 @@ func TestBadRangeFailsWithKeyName(t *testing.T) {
 		{"workerAge: 18", "workerAge: 70", "work.workerAge (70) must be below work.retireAge (65)"},
 		{"shadowAge: 14", "shadowAge: 18", "work.shadowAge (18) must be below work.workerAge (18)"},
 		{"motherAgeMax: 40", "motherAgeMax: 17", "lottery.motherAgeMin (18) must be below lottery.motherAgeMax (17)"},
-		{"outageMaxDays: 14", "outageMaxDays: 2", "resources.outageMinDays (3) must be at most resources.outageMaxDays (2)"},
+		{"outageMaxDays: 10", "outageMaxDays: 2", "resources.outageMinDays (3) must be at most resources.outageMaxDays (2)"},
 		{"upTop: 0.32", "upTop: 0.40", "init.zoneSplit sums to"},
 		{"share: 0.30", "share: 0.25", "work.departments shares sums to"},
 		{"pairedMinAge: 20", "pairedMinAge: 16", "partnering.minAge (18) must be at most init.pairedMinAge (16)"},
@@ -136,7 +136,7 @@ func TestBadRangeFailsWithKeyName(t *testing.T) {
 func TestBoundaryValuesAccepted(t *testing.T) {
 	base := readBaseline(t)
 	for _, c := range []struct{ old, new string }{
-		{"outageMaxDays: 14", "outageMaxDays: 3"},              // fixed outage length
+		{"outageMaxDays: 10", "outageMaxDays: 3"},              // fixed outage length
 		{"maternalDeathBase: 0.002", "maternalDeathBase: 0.5"}, // risk exactly 1 at zero coverage
 		{"injuryChance: 0.0002", "injuryChance: 0.5"},          // 0.5 × Mechanical factor 2 = 1
 		{"invariantEvery: 365", "invariantEvery: 1"},           // check every tick

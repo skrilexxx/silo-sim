@@ -277,3 +277,36 @@ func TestDayOneFoodStock(t *testing.T) {
 		t.Errorf("40 adults, 60 children: stock %v, want %v", w.Silo.FoodStock, want)
 	}
 }
+
+// Outage length is ⌈outageMinDays / (average Mechanical worker skill ×
+// partsShare)⌉, capped at outageMaxDays. Shadows don't count.
+func TestOutageDays(t *testing.T) {
+	cfg := baseline(t)
+	rc := cfg.Resources
+	cases := []struct {
+		what   string
+		skills []float64 // of Mechanical workers
+		parts  float64
+		want   int
+	}{
+		{"perfect skill, full parts", []float64{1, 1}, rc.PartsPerFailure, rc.OutageMinDays},
+		{"usual skill", []float64{0.8, 0.9}, 100, 4}, // ⌈3 / 0.85⌉
+		{"green crew", []float64{0.2, 0.8}, 100, 6},  // ⌈3 / 0.5⌉
+		{"half the parts", []float64{1}, rc.PartsPerFailure / 2, 6},
+		{"short on both", []float64{0.5}, rc.PartsPerFailure / 2, rc.OutageMaxDays}, // ⌈12⌉ → cap
+		{"no parts", []float64{1}, 0, rc.OutageMaxDays},
+		{"no workers", nil, 100, rc.OutageMaxDays},
+	}
+	for _, tc := range cases {
+		w, m, _ := silo(t, cfg)
+		for i, sk := range tc.skills {
+			w.People[i].Stage, w.People[i].Department, w.People[i].Skill = world.Worker, mechanical, sk
+		}
+		// A low-skill shadow, ignored.
+		w.People[99].Stage, w.People[99].Department, w.People[99].Skill = world.Shadow, mechanical, 0.01
+		w.Silo.PartsStock = tc.parts
+		if got := m.outageDays(w, mechanical); got != tc.want {
+			t.Errorf("%s: %d days, want %d", tc.what, got, tc.want)
+		}
+	}
+}

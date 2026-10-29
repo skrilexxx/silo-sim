@@ -72,3 +72,34 @@ After that, health stays at 0 for good. The population falls to 643 by year 100.
 **Why:** ODD §6.6 sets up a feedback loop with gain above 1: health → Mechanical output → power → air → health. After a failure, supply ≤ 1.3 × 0.7 × mechanicalCoverage = 0.91 × coverage, and coverage ≈ min(1, 1.1 × health). Health is in balance where airDamage × (1 − powerFactor) = recoveryRate × medicalCoverage. With 0.05 and 0.01 that gives 0.05 × (1 − 1.0 h) = 0.011 h, so h* ≈ 0.82. Below that, health only falls. An outage of about 8 days or more on backup power (air → 0.26) pushes average health below 0.82. At c = 0.8 the tipping point is h* ≈ 0.73. Because people at health 0 die only 3× faster (k_h = 2), the silo lingers for decades instead of ending at once.
 
 **Open, agreed with Adam:** fix before T3.3, since hunger adds one more loss of health to the same loop. Candidates: airDamage and recoveryRate (both marked "Calibrate"), capacityMargin (a design choice), or a rule change to the loop.
+
+## 2026-10-29 — Outage length set by Mechanical skill and parts (T3.2a)
+
+**Why:** the entry above. The silo collapses after any outage longer than about 8 days. Adam's decision, a rule change rather than tuning: an outage lasts as long as Mechanical needs to fix it, ⌈outageMinDays / (average Mechanical worker skill × partsShare)⌉ days, capped at outageMaxDays. outageMinDays stays 3 (now: the repair time with perfect skill and full parts), and outageMaxDays goes from 14 to 10. partsShare = min(1, parts / partsPerFailure). No other parameter changed. In the show, the generator can stop for only a few days.
+
+**Code:** branch `t3.2a`, on top of `844fb60` (T3.2).
+**Setup:** `scenarios/baseline.yaml`, modules demography, health, work and resources. Seeds 1–10, no warm-up, 100 years.
+**Command:** `make stability` (the test `TestStability` in `internal/modules/resources/stability_test.go`).
+
+**Target (docs/tasks.md T3.2a):** after every failure, average health is back above 0.9 within a year.
+
+| Seed | Failures | Longest outage | Lowest avg health | Lowest air | Final condition | Final population |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 2 | 4 days | 0.932 | 0.410 | 0.800 | 9,767 |
+| 2 | 2 | 4 days | 0.933 | 0.410 | 0.800 | 9,761 |
+| 3 | 5 | 4 days | 0.932 | 0.410 | 0.800 | 9,754 |
+| 4 | 5 | 4 days | 0.927 | 0.410 | 0.800 | 9,784 |
+| 5 | 5 | 4 days | 0.927 | 0.410 | 0.800 | 9,748 |
+| 6 | 5 | 4 days | 0.931 | 0.410 | 0.797 | 9,784 |
+| 7 | 6 | 4 days | 0.914 | 0.401 | 0.798 | 9,776 |
+| 8 | 1 | 4 days | 0.933 | 0.410 | 0.789 | 9,784 |
+| 9 | 1 | 4 days | 0.933 | 0.410 | 0.800 | 9,775 |
+| 10 | 3 | 4 days | 0.921 | 0.408 | 0.798 | 9,777 |
+
+**Result: every seed survives every failure (10 of 10).** That's 35 failures in 1,000 years, 3.5 per century, inside the ODD §8 target of 1–6.
+
+**Observations**
+
+1. *Every outage lasted 4 days.* The average Mechanical skill stays near 0.85, and Supply keeps parts above 30. So in the baseline the rule behaves like a fixed 4-day outage. It matters only when Mechanical is green (after retraining or heavy losses) or when parts run short. That is when it should matter: a badly run silo gets longer outages and can still tip over (10 days is above the ~8-day tipping point).
+2. *The tipping point is still in the loop.* Average health below about 0.82 after a failure still cannot recover. The rule keeps the baseline away from it but doesn't remove it. T3.3 adds hunger to the same loop, so the stability check should be rerun after T3.3.
+3. *Runtime:* about 60 s per 100-year run with four modules, 10 runs in parallel.

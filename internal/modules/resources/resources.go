@@ -5,6 +5,7 @@ package resources
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/skrilexxx/silo-sim/internal/config"
 	"github.com/skrilexxx/silo-sim/internal/engine"
@@ -91,8 +92,8 @@ func (m *Module) demand(w *world.World) float64 {
 //
 //	c −= wear
 //	c += ρ × mechanicalCoverage × (1 − c)   if a repair day's parts are in stock (and uses them)
-//	failure with chance failChance(c): c −= drop, parts −= min(parts, partsPerFailure),
-//	                                   down for a uniform outageMinDays–outageMaxDays days
+//	failure with chance failChance(c): c −= drop, down for outageDays days,
+//	                                   then parts −= min(parts, partsPerFailure)
 //
 // Then supply = capacity × c × mechanicalCoverage, or backupPower ×
 // capacity while down. Coverages are yesterday's: the work step (§3 step
@@ -122,8 +123,8 @@ func (m *Module) generator(w *world.World, r *rng.Stream) error {
 		c = world.Clamp01(c)
 		if r.Bernoulli(m.failChance(c)) {
 			c = world.Clamp01(c - m.c.FailureConditionDrop)
+			s.GeneratorDown = m.outageDays(w, mechanical)
 			s.PartsStock -= min(s.PartsStock, m.c.PartsPerFailure)
-			s.GeneratorDown = r.IntRange(m.c.OutageMinDays, m.c.OutageMaxDays)
 		}
 		s.GeneratorCondition = c
 	}
@@ -135,6 +136,31 @@ func (m *Module) generator(w *world.World, r *rng.Stream) error {
 		s.PowerSupply = m.capacity * s.GeneratorCondition * cov
 	}
 	return nil
+}
+
+// ODD §6.6: outage length. Repair time is the work divided by the rate
+// Mechanical can do it at: ⌈outageMinDays / (skill × partsShare)⌉ days,
+// at most outageMaxDays. skill is the average skill of Mechanical workers
+// (shadows not counted); partsShare = min(1, parts / partsPerFailure),
+// from the stock before the failure takes its parts. No workers or no
+// parts gives the cap.
+func (m *Module) outageDays(w *world.World, mechanical int) int {
+	skill, workers := 0.0, 0
+	for _, id := range w.Alive {
+		if p := &w.People[id]; p.Stage == world.Worker && p.Department == mechanical {
+			skill += p.Skill
+			workers++
+		}
+	}
+	if workers > 0 {
+		skill /= float64(workers)
+	}
+	parts := 1.0
+	if m.c.PartsPerFailure > 0 {
+		parts = min(1, w.Silo.PartsStock/m.c.PartsPerFailure)
+	}
+	// A zero rate divides to +Inf, which the cap turns into outageMaxDays.
+	return int(min(float64(m.c.OutageMaxDays), math.Ceil(float64(m.c.OutageMinDays)/(skill*parts))))
 }
 
 // ODD §6.6: daily failure chance f₀ × (1 − c)².

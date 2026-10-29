@@ -1,7 +1,7 @@
 SCENARIO ?= scenarios/baseline.yaml
 SEED     ?= 42
 
-.PHONY: build test vet fmt check run update-golden milestone1
+.PHONY: build test vet fmt check run update-golden milestone1 stability
 
 build:
 	go build -o bin/silosim ./cmd/silosim
@@ -28,3 +28,7 @@ run: build
 # T1.5 milestone check: 10 seeds x 250 years, demography only (minutes).
 milestone1:
 	SILOSIM_MILESTONE=1 go test ./internal/modules/demography -run TestMilestone1 -v -timeout 60m | grep -E 'seed |^(ok|FAIL|---)'
+
+# T3.2a stability check: 10 seeds x 100 years, demography + health + work + resources.
+stability:
+	SILOSIM_STABILITY=1 go test ./internal/modules/resources -run TestStability -v -timeout 60m | grep -E 'seed |^(ok|FAIL|---)'
