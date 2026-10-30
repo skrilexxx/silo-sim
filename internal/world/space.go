@@ -16,9 +16,10 @@ type Space struct {
 	// and per day.
 	DescentHours, WalkHours float64
 
-	Location []int  // floor where the person is today; 0 while on the stairs
-	Stranded []bool // a worker or shadow cut off from every floor of their department
-	OffWork  []bool // stranded, on the stairs or away: does not work today (only matters for workers and shadows)
+	Location  []int  // floor where the person is today; 0 while on the stairs
+	WorkFloor []int  // usual work floor of a worker, shadow or worker on sick leave; 0 for none (porters, the stranded, everyone else)
+	Stranded  []bool // a worker or shadow cut off from every floor of their department
+	OffWork   []bool // stranded, on the stairs or away: does not work today (only matters for workers and shadows)
 
 	// A trip in progress has Dest > 0: it left From and reaches Dest on
 	// day Arrive. Away is the floor a person stays on after a trip, or 0.

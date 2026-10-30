@@ -191,7 +191,8 @@ type World struct {
 
 	// Part-2 state, one field per module, nil when the module is off
 	// (docs/architecture.md, Part-2 state).
-	Space *Space
+	Space   *Space
+	Network *Network
 }
 
 // Counts are running totals since day 0 that no state variable holds.

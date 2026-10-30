@@ -143,6 +143,11 @@ space:                            # ODD §6.10 (part 2, draft); used only when `
     it: [33, 34]
     supply: [72]                  # Mids
 
+network:                          # ODD §6.11 (part 2, draft); used only when `network` is in modules
+  weakTiesPerKind: 5              # k: coworker, neighbour and porter ties per person, each; guess
+  conversationsPerDay: 3          # c: conversations each person starts a day; guess
+  weakTieStrength: 0.3            # w_weak: weight of a weak tie against a strong one (1); guess
+
 governance:                       # ODD §6.8
   mode: appointment               # or: election
   term: 5y                        # or: life

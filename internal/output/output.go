@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"compress/gzip"
 	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -49,6 +50,8 @@ type Writer struct {
 	born0             int    // people on day 0; later ones were born
 	under             []bool // per department: below understaffedShare of target
 	ages              []int  // reused, in days
+	degrees           []int  // reused: ties per living person (network)
+	ties              []world.Tie
 
 	// Counts at the previous row.
 	births, deaths, permits int
@@ -126,7 +129,11 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 	for _, d := range w.Depts {
 		h = append(h, ","+d.Name+"Workers,"+d.Name+"Target"...)
 	}
-	h = append(h, ",mechanicalInZone,zoneMoves,mayor,mayorZone\n"...)
+	h = append(h, ",mechanicalInZone,zoneMoves,mayor,mayorZone"...)
+	if w.Network != nil {
+		h = append(h, ",meanTies,tiesP10,tiesP50,tiesP90"...)
+	}
+	h = append(h, '\n')
 	if _, err := o.yearly.Write(h); err != nil {
 		return err
 	}
@@ -358,9 +365,41 @@ func (o *Writer) logYearly(w *world.World, _ *rng.Stream) error {
 	if m := w.Silo.Mayor; m != world.None && w.People[m].Alive {
 		b = append(b, zoneOf(w, m).String()...)
 	}
+	if w.Network != nil {
+		b = o.appendTies(w, b)
+	}
 	o.row = append(b, '\n')
 	_, err := o.yearly.Write(o.row)
 	return err
+}
+
+// appendTies writes the degree distribution (ODD §6.11, Outputs): the mean
+// number of ties per living person and its 10th, 50th and 90th
+// percentiles, by nearest rank (the smallest value with at least p of
+// people at or below it).
+func (o *Writer) appendTies(w *world.World, b []byte) []byte {
+	o.degrees = o.degrees[:0]
+	total := 0
+	for _, id := range w.Alive {
+		o.ties = w.Network.Ties(w, id, o.ties[:0])
+		o.degrees = append(o.degrees, len(o.ties))
+		total += len(o.ties)
+	}
+	mean := 0.0
+	if n := len(o.degrees); n > 0 {
+		mean = float64(total) / float64(n)
+	}
+	b = appendF(b, mean, 4)
+	slices.Sort(o.degrees)
+	for _, p := range []float64{0.1, 0.5, 0.9} {
+		v := 0
+		if n := len(o.degrees); n > 0 {
+			v = o.degrees[int(math.Ceil(p*float64(n)))-1]
+		}
+		b = append(b, ',')
+		b = strconv.AppendInt(b, int64(v), 10)
+	}
+	return b
 }
 
 // checkDepartments logs a department whose workers fall below

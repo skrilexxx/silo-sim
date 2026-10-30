@@ -11,3 +11,8 @@ space:                    # M8, off; settings differ from the baseline's
   walkingHoursPerDay: 4
   officeFloors:
     it: [30]
+
+network:                  # M9, off
+  weakTiesPerKind: 2
+  conversationsPerDay: 7
+  weakTieStrength: 0.9

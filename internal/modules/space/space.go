@@ -95,6 +95,7 @@ func (m *Module) locate(w *world.World, r *rng.Stream) error {
 	s := w.Space
 	for len(s.Location) < len(w.People) {
 		s.Location, s.Stranded, s.OffWork = append(s.Location, 0), append(s.Stranded, false), append(s.OffWork, false)
+		s.WorkFloor = append(s.WorkFloor, 0)
 		s.From, s.Dest, s.Arrive, s.Away = append(s.From, 0), append(s.Dest, 0), append(s.Arrive, 0), append(s.Away, 0)
 	}
 	if m.seen == nil || !slices.Equal(m.seen, s.Broken) {
@@ -104,6 +105,7 @@ func (m *Module) locate(w *world.World, r *rng.Stream) error {
 	for _, id := range w.Alive {
 		p := &w.People[id]
 		home := w.Households[p.Household].Floor
+		s.WorkFloor[id] = m.workFloor(p, home)
 		if s.Dest[id] != 0 && !m.travel(w, id, home) {
 			continue // still on the stairs tomorrow
 		}
@@ -118,7 +120,7 @@ func (m *Module) locate(w *world.World, r *rng.Stream) error {
 			case m.porters:
 				floor = r.IntRange(m.lo[home-1], m.hi[home-1])
 			default:
-				if f := m.near[p.Department][home-1]; f != 0 {
+				if f := s.WorkFloor[id]; f != 0 {
 					floor = f
 				} else {
 					stranded = true
@@ -128,6 +130,22 @@ func (m *Module) locate(w *world.World, r *rng.Stream) error {
 		s.Location[id], s.Stranded[id], s.OffWork[id] = floor, stranded, stranded
 	}
 	return nil
+}
+
+// workFloor is where a worker, shadow or worker on sick leave usually
+// works (ODD §6.10): home for General services, the nearest connected
+// department floor otherwise; 0 for porters (no fixed floor), for the
+// stranded and for everyone else.
+func (m *Module) workFloor(p *world.Person, home int) int {
+	switch {
+	case p.Stage != world.Worker && p.Stage != world.Shadow && p.Stage != world.SickLeave:
+		return 0
+	case p.Department == m.general:
+		return home
+	case p.Department == m.porters:
+		return 0
+	}
+	return m.near[p.Department][home-1]
 }
 
 // ODD §6.10: trips. travel moves a trip on by a day and reports whether

@@ -38,6 +38,7 @@ type Scenario struct {
 	Rations     Rations    `yaml:"rations"`
 	Governance  Governance `yaml:"governance"`
 	Space       Space      `yaml:"space"`
+	Network     Network    `yaml:"network"`
 	Events      []Event    `yaml:"events,omitempty"`
 }
 
@@ -193,6 +194,13 @@ type Space struct {
 	FullDescentHours   float64          `yaml:"fullDescentHours"`
 	WalkingHoursPerDay float64          `yaml:"walkingHoursPerDay"`
 	OfficeFloors       map[string][]int `yaml:"officeFloors"` // department name → its office floors
+}
+
+// Network is the social network module (ODD §6.11).
+type Network struct {
+	WeakTiesPerKind     int     `yaml:"weakTiesPerKind"`
+	ConversationsPerDay int     `yaml:"conversationsPerDay"`
+	WeakTieStrength     float64 `yaml:"weakTieStrength"`
 }
 
 // HasOffices reports whether a department works on office floors: every

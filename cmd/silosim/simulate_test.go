@@ -288,3 +288,37 @@ func TestFrames(t *testing.T) {
 		}
 	}
 }
+
+// ODD §6.11 / T9.1: the network on changes nothing in daily.csv or
+// events.jsonl; yearly.csv keeps its baseline columns and adds the degree
+// distribution. The 20 years run the network invariant every tick.
+func TestNetworkNullSetting(t *testing.T) {
+	base := runGoldenSize(t, "../../scenarios/baseline.yaml")
+	net := runGoldenSize(t, "../../scenarios/baseline.yaml", "space", "network")
+	for _, f := range []string{"daily.csv", "events.jsonl"} {
+		if !bytes.Equal(readFile(t, filepath.Join(base, f)), readFile(t, filepath.Join(net, f))) {
+			t.Errorf("the network changed %s", f)
+		}
+	}
+	baseRows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(base, "yearly.csv")))), "\n")
+	netRows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(net, "yearly.csv")))), "\n")
+	if len(baseRows) != len(netRows) || !strings.HasSuffix(netRows[0], ",meanTies,tiesP10,tiesP50,tiesP90") {
+		t.Fatalf("yearly.csv: %d rows vs %d, header %q", len(netRows), len(baseRows), netRows[0])
+	}
+	for i := range baseRows {
+		rest, ok := strings.CutPrefix(netRows[i], baseRows[i]+",")
+		if !ok {
+			t.Fatalf("row %d does not start with the baseline row", i)
+		}
+		if i == 0 {
+			continue
+		}
+		cols := strings.Split(rest, ",")
+		mean, _ := strconv.ParseFloat(cols[0], 64)
+		p10, p50, p90 := atoi(t, cols[1]), atoi(t, cols[2]), atoi(t, cols[3])
+		if mean < 5 || mean > 30 || p10 > p50 || p50 > p90 {
+			t.Errorf("row %d: mean ties %v, percentiles %d %d %d", i, mean, p10, p50, p90)
+		}
+	}
+	t.Logf("year 20: %s", netRows[len(netRows)-1][len(baseRows[len(baseRows)-1])+1:])
+}

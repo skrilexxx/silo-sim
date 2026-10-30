@@ -246,6 +246,8 @@ func TestOfficeFloors(t *testing.T) {
 		{"    it: [33, 34]", "    it: [33, 34]\n    cooks: [50]", "space.officeFloors.cooks: not a department"},
 		{"walkingHoursPerDay: 8", "walkingHoursPerDay: 0", "space.walkingHoursPerDay = 0, must be greater than 0"},
 		{"fullDescentHours: 12", "fullDescentHours: 0", "space.fullDescentHours = 0, must be greater than 0"},
+		{"weakTieStrength: 0.3", "weakTieStrength: 1.5", "network.weakTieStrength = 1.5, must be between 0 and 1"},
+		{"weakTiesPerKind: 5", "weakTiesPerKind: -1", "network.weakTiesPerKind = -1, must not be negative"},
 	} {
 		got := loadErr(t, edit(t, base, c.old, c.new))
 		if !strings.Contains(got, c.want) {

@@ -218,3 +218,46 @@ func TestSpace(t *testing.T) {
 		t.Errorf("traveller or away worker rejected: %v", err)
 	}
 }
+
+// networked gives tiny()'s two living people (0 and 2) a neighbour tie.
+// Alive lists 2 first, so errors name person 2 when both sides break.
+func networked() *world.World {
+	w := tiny()
+	w.Network = &world.Network{Weak: [][]world.Tie{
+		{{Other: 2, Kind: world.TieNeighbour}}, nil, {{Other: 0, Kind: world.TieNeighbour}},
+	}}
+	return w
+}
+
+func TestNetwork(t *testing.T) {
+	if err := network(networked(), 1); err != nil {
+		t.Fatalf("valid network failed: %v", err)
+	}
+	cases := []struct {
+		want   string
+		k      int
+		break_ func(n *world.Network)
+	}{
+		{"person 0 has a neighbour tie with 2, who has it 0 times", 1, func(n *world.Network) { n.Weak[2] = nil }},
+		{"person 2 has a coworker tie with 0, who has it 0 times", 1, func(n *world.Network) { n.Weak[2][0].Kind = world.TieCoworker }},
+		{"person 2 has a neighbour tie with dead person 1", 1, func(n *world.Network) {
+			n.Weak[2] = append(n.Weak[2], world.Tie{Other: 1, Kind: world.TieNeighbour})
+		}},
+		{"person 0 has a coworker tie with themselves", 1, func(n *world.Network) {
+			n.Weak[0] = append(n.Weak[0], world.Tie{Other: 0, Kind: world.TieCoworker})
+		}},
+		{"person 2 has two weak ties with 0", 2, func(n *world.Network) {
+			n.Weak[0] = append(n.Weak[0], world.Tie{Other: 2, Kind: world.TieCoworker})
+			n.Weak[2] = append(n.Weak[2], world.Tie{Other: 0, Kind: world.TieCoworker})
+		}},
+		{"person 2 has more than 0 neighbour ties", 0, func(n *world.Network) {}},
+		{"person 2 has a stored kin tie", 1, func(n *world.Network) { n.Weak[0][0].Kind, n.Weak[2][0].Kind = world.TieKin, world.TieKin }},
+	}
+	for _, c := range cases {
+		w := networked()
+		c.break_(w.Network)
+		if err := network(w, c.k); err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("got %v, want %q", err, c.want)
+		}
+	}
+}

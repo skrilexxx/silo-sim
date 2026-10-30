@@ -88,7 +88,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
 *Answers Q1.* Beliefs spread person to person, so who knows whom decides what people hear.
 
 - [x] **T9.0 Spec: social network (ODD §6.11).** (2026-10-30, approved) Ties: partner, household, close kin, master–shadow, coworkers (same department and work floor, up to k), neighbours (same home floor, up to k), and weak cross-zone ties for Porters. Each day a person talks with a few contacts, picked from their ties by tie strength and floor distance.
-- [ ] **T9.1 Build and maintain the network.** Built on day 1, updated on birth, death, partnering, moving and job change.
+- [x] **T9.1 Build and maintain the network.** (2026-10-31) Built on day 1, updated on birth, death, partnering, moving and job change.
   - *Done when:* invariants: ties are symmetric and only between living people; degree distribution logged yearly.
 - [ ] **T9.2 Daily contacts.** k contacts per person per day, sampled by tie weight and distance.
   - *Done when:* the full run stays inside the T7.2 performance budget; contact counts by tie type logged.

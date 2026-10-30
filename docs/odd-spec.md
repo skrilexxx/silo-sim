@@ -499,16 +499,18 @@ With a full descent of H\_descent = 12 hours of walking and H\_walk = 8 walking 
 | Kin | Parent and child, and siblings (sharing a mother or a father), wherever they live: the relatives of §6.3 | 1 |
 | Master–shadow | A shadow and their master (§6.5) | 1 |
 | Coworker | Workers and shadows of the same department with the same work floor (§6.10); up to k each | w\_weak |
-| Neighbour | People aged 14 or more with the same home floor; up to k each | w\_weak |
-| Porter | A porter and an adult (18+) living in another zone; up to k each | w\_weak |
+| Neighbour | People of shadowing age (14, §6.5) or older with the same home floor; up to k each | w\_weak |
+| Porter | A porter and an adult (worker age, 18, §6.5) living in another zone; up to k each | w\_weak |
 
 The first four, the *strong* ties, follow from the household, partner, family and shadowing records and change with them at once. The last three, the *weak* ties, are drawn, which is how the network gets its randomness. Porters have no coworker ties (they have no fixed work floor); their porter ties are the silo's main bridges between zones, next to kin who moved away. Children under 14 have only strong ties.
 
 **Drawing and losing weak ties.** At the network step (§3 step 10.5), in the tick's shuffled order, anyone with fewer than k ties of a weak kind draws new ones, one at a time and uniformly at random, from the people eligible for that kind who also have fewer than k of it, until they have k or nobody is left. Both sides count the new tie. On day 1 everyone draws, in random order. A weak tie ends when either person dies, and also:
 
-- a neighbour tie, when either moves to another home floor;
-- a coworker tie, when either retires, changes department or gets another work floor (moving home, or a change in the stairs, can do that); sick leave and being off work for a day (§6.10) don't end it;
-- a porter tie, when the porter retires or leaves Porters. Moving zone doesn't end it.
+- a neighbour tie, when the two no longer share a home floor;
+- a coworker tie, when the two no longer share a department and work floor: one retired, changed department or got another work floor (moving home, or a change in the stairs, can do that). Sick leave and being away or on the stairs (§6.10) keep the work floor, so they don't end it; a stranded worker has no work floor, so being stranded does;
+- a porter tie, when neither of the two is a porter any more (the porter retired or left Porters). Moving zone doesn't end it.
+
+Each rule looks only at the two people's state today, not at what changed.
 
 The lost ties are drawn again at the next network step.
 

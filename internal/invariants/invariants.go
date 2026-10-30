@@ -29,7 +29,8 @@ import (
 //     tested in cmd/silosim, not checked per tick.
 //
 // Part 2 (draft): every living person is on a real floor, and workers on
-// their department's floors (space, ODD §6.10).
+// their department's floors (space, ODD §6.10); weak ties are symmetric
+// and between the living (network, ODD §6.11).
 func Check(w *world.World, cfg *config.Scenario) error {
 	for _, check := range []func(*world.World) error{countsAgree, oneHousehold, homeCapacity, partnerships, unitRanges, foodConserved} {
 		if err := check(w); err != nil {
@@ -42,7 +43,53 @@ func Check(w *world.World, cfg *config.Scenario) error {
 	if err := work(w, cfg.Work); err != nil {
 		return err
 	}
-	return space(w)
+	if err := space(w); err != nil {
+		return err
+	}
+	return network(w, cfg.Network.WeakTiesPerKind)
+}
+
+// ODD §6.11 (draft): every weak tie of a living person joins two different
+// living people, appears once in each one's list with the same kind, and
+// nobody holds more than k of a kind. Strong ties follow from the records,
+// which the other checks cover.
+func network(w *world.World, k int) error {
+	n := w.Network
+	if n == nil {
+		return nil
+	}
+	for _, a := range w.Alive {
+		var count [world.NumTieKinds]int
+		for i, t := range n.Weak[a] {
+			b := t.Other
+			switch {
+			case b == a:
+				return fmt.Errorf("person %d has a %s tie with themselves", a, t.Kind)
+			case !w.People[b].Alive:
+				return fmt.Errorf("person %d has a %s tie with dead person %d", a, t.Kind, b)
+			case !t.Kind.Weak():
+				return fmt.Errorf("person %d has a stored %s tie, but only weak ties are stored", a, t.Kind)
+			}
+			for _, u := range n.Weak[a][:i] {
+				if u.Other == b {
+					return fmt.Errorf("person %d has two weak ties with %d", a, b)
+				}
+			}
+			back := 0
+			for _, u := range n.Weak[b] {
+				if u.Other == a && u.Kind == t.Kind {
+					back++
+				}
+			}
+			if back != 1 {
+				return fmt.Errorf("person %d has a %s tie with %d, who has it %d times", a, t.Kind, b, back)
+			}
+			if count[t.Kind]++; count[t.Kind] > k {
+				return fmt.Errorf("person %d has more than %d %s ties", a, k, t.Kind)
+			}
+		}
+	}
+	return nil
 }
 
 // ODD §6.10 (draft), checked after the location step, the last of the

@@ -19,6 +19,7 @@ const (
 	PhaseReproduction Phase = 800
 	PhaseLifeStages   Phase = 900
 	PhasePartnering   Phase = 1000
+	PhaseNetwork      Phase = 1050 // part 2: ties and conversations (ODD §6.11)
 	PhaseLogDaily     Phase = 1100
 	PhaseLottery      Phase = 1200
 	PhaseHousing      Phase = 1300
@@ -52,6 +53,7 @@ var schedule = []phaseInfo{
 	{PhaseReproduction, "reproduction", daily, false},
 	{PhaseLifeStages, "life stages", daily, false},
 	{PhasePartnering, "partnering", daily, false},
+	{PhaseNetwork, "network", daily, false},
 	{PhaseLogDaily, "logging", daily, false},
 	{PhaseLottery, "lottery", everyMonth, false},
 	{PhaseHousing, "housing", everyMonth, false},
