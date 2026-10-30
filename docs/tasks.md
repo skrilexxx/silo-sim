@@ -79,7 +79,7 @@ Demography only. Until later milestones, stub what other modules provide: health
 
 ## Milestone 6 — Calibration
 
-- [ ] **T6.1 Calibrate.** Sweep the parameters marked "Calibrate" in ODD §7, 100 seeds per setting, record every attempt and result in `docs/calibration-log.md`.
+- [x] **T6.1 Calibrate.** (2026-10-30) Sweep the parameters marked "Calibrate" in ODD §7, 100 seeds per setting, record every attempt and result in `docs/calibration-log.md`.
   - *Done when:* every calibration target passes in ≥ 90 of 100 seeds. If a target can't be met by tuning, the rule is wrong: change the spec first, then the code.
 - [ ] **T6.2 Freeze baseline v1.** Update `scenarios/baseline.yaml` with calibrated values, update ODD §7, regenerate the golden hash, tag `baseline-v1`.
 
