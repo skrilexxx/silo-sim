@@ -1,6 +1,6 @@
-# Silo Baseline Model — ODD Spec v0.1
+# Silo Baseline Model — ODD Spec v1.0 (baseline-v1)
 
-Oct 28, 2026 · Adam Kopřiva · exported from the living doc
+Oct 30, 2026 · Adam Kopřiva · frozen with `scenarios/baseline.yaml` at tag `baseline-v1`; changes since v0.1 are in docs/calibration-log.md
 
 ## 1. Purpose and patterns
 
@@ -19,10 +19,10 @@ The baseline simulates Silo 18 running normally under the Pact, with no dissent,
 
 **Definition of done for v1 of the code:**
 
-- [ ] Patterns 1–6 hold in at least 90 of 100 runs with different seeds
-- [ ] The same seed gives byte-identical output
-- [ ] All invariant tests in section 8 pass
-- [ ] One run of 200 years finishes in under a minute on a laptop
+- [x] Patterns 1–6 hold in at least 90 of 100 runs with different seeds (96–100 of 100; calibration log, 2026-10-30)
+- [x] The same seed gives byte-identical output
+- [x] All invariant tests in section 8 pass
+- [x] One run of 200 years finishes in under a minute on a laptop (60.7 s for 50 + 200 years with other programs open, T5.4)
 
 **Out of scope for the baseline** (later modules): beliefs and dissent, relics, surveillance, cleaning, covert lottery denial, rebellion, Silo 1, other silos, money.
 
@@ -337,17 +337,19 @@ Every number the model uses, in one place. Each one becomes a field in the scena
 | Gompertz A, B | 0.0002, 0.085 per year | Real-world shape; median death about 67 | 6.1 |
 | Extra infant hazard | 0.02 per year | Guess | 6.1 |
 | Health multiplier k\_h | 2 | Guess | 6.1 |
-| Hunger damage d\_hunger | 0.02 per day at zero intake | Calibrate | 6.2 |
-| Air damage d\_air | 0.05 per day at zero air | Calibrate | 6.2 |
+| Hunger damage d\_hunger | 0.02 per day at zero intake | Calibrate; default kept in T6.1 | 6.2 |
+| Air damage d\_air | 0.05 per day at zero air | Calibrate; default kept in T6.1 | 6.2 |
 | Injury chance | 0.0002 per day, × department factor | Guess | 6.2 |
 | Illness chance | 0.0005 per day | Guess | 6.2 |
-| Recovery r | 0.01 per day at full coverage | Calibrate | 6.2 |
-| Coverage need | 0.84 × day-1 target headcount, every department | Calibrate: full staff gives output / need ≈ 1.1 at the measured skill × health 0.92 | 6.2, 6.6 |
+| Recovery r | 0.01 per day at full coverage | Calibrate; default kept in T6.1 | 6.2 |
+| Coverage need | 0.84 × day-1 target headcount, every department | Calibrate (default kept in T6.1): full staff gives output / need ≈ 1.1 at the measured skill × health 0.92 | 6.2, 6.6 |
 | Maternal death | 0.002 × (2 − coverage) | Guess | 6.2 |
-| Partner search rate | 0.0009 per day (about every 3 years) | Calibrate | 6.3 |
-| Partner weights | Same zone ×4, same department ×2, same sex ×0.05, age scale 5 years | Guess; same sex: calibrate | 6.3 |
+| Partnering age | 18+ | Guess | 6.3 |
+| Partner search rate | 0.0009 per day (about every 3 years) | Calibrate; default kept in T6.1 | 6.3 |
+| Partner weights | Same zone ×4, same department ×2, same sex ×0.05, age scale 5 years | Guess; same sex: calibrate (default kept in T6.1) | 6.3 |
 | Max permits per month | 40 | Guess | 6.4 |
 | Conception window | 365 days | Show | 6.4 |
+| Open windows in E | 0.8 × open windows | About the chance a window ends in pregnancy | 6.4 |
 | Daily conception chance | 0.0044 | About 80% within a year, real-world | 6.4 |
 | Pregnancy | 270 days | Real-world | 6.4 |
 | Girls at birth | 50% | Matches the day-1 split | 6.4 |
@@ -356,14 +358,20 @@ Every number the model uses, in one place. Each one becomes a field in the scena
 | Follow a parent's trade | 60% | Guess | 6.5 |
 | Cross-zone placement | 5% | Guess | 6.5 |
 | Max shadows per master | 2 | Guess | 6.5 |
+| Master | Worker with skill above 0.5 | Guess | 6.5 |
+| Shadow output | 0.3 × skill × health | Guess | 6.5 |
 | Skill growth α | 0.00044 per day (0.8 after about 10 years) | Guess | 6.5 |
 | Retraining | Below 80% of target; start skill 0.2 | Guess | 6.5 |
+| Sick leave | After 90 days in a row below health 0.3; back to work at 0.3 | Guess | 6.5 |
+| All-zone departments by zone | 36 / 40 / 24% of their workers Up Top / Mids / Down Deep | Follows from the zone split | 5, 6.5 |
 | Mechanical couples stay Down Deep | While Mechanical is below target; otherwise 50/50 | Guess | 6.3 |
-| Generator wear | 0.0004 per day | Calibrate | 6.6 |
-| Repair rate ρ | 0.002 (condition settles at 0.8) | Calibrate | 6.6 |
-| Failure f₀ | 0.002 (about 3 per century at c = 0.8) | Calibrate | 6.6 |
+| Generator wear | 0.0004 per day | Calibrate; default kept in T6.1 | 6.6 |
+| Repair rate ρ | 0.002 (condition settles at 0.8) | Calibrate; default kept in T6.1 | 6.6 |
+| Failure f₀ | 0.002 (about 3 per century at c = 0.8) | Calibrate; default kept in T6.1 | 6.6 |
 | Outage length | ⌈3 / (Mechanical skill × parts share)⌉ days, at most 10; condition −0.1 | Guess; the show: the generator can stop for a few days only | 6.6 |
 | Backup power | 17.3% of capacity (≈ 26% of day-1 demand) | Guess | 6.6 |
+| Power demand | 1 per person, 150 per farm floor (abstract units) | Design choice | 6.6 |
+| Air recovery | A third of the gap to powerFactor per day (0.333) | Guess | 6.6 |
 | Generator capacity | 1.5 × day-1 demand | Design choice: full power after a failure (1.5 × 0.7 ≥ 1) | 6.6 |
 | Parts | Supply 1.2 a day at full coverage; repair 1 a day; failure 30 | Guess | 6.6 |
 | Food per unit of farm output | 11,900 kcal | Calibrated to a 5% surplus (4.7% measured; calibration log, 2026-10-29) | 6.6 |
@@ -393,14 +401,14 @@ Counts in a row (births, deaths, permits, people who changed zone) are what happ
 
 ### Invariant tests (must always pass)
 
-- [ ] Counts agree: people alive = sum over zones = sum over households
-- [ ] Every living person is in exactly one household; no floor exceeds its home capacity
-- [ ] Partnerships are symmetric and both partners are alive
-- [ ] No pregnancy without an open window; windows only for eligible couples
-- [ ] Food is conserved exactly: tomorrow's stock = today's stock + produced − handed out
-- [ ] Every 0–1 variable stays within 0–1
-- [ ] Nobody acts after the tick they died
-- [ ] Same seed → byte-identical output files; different seeds → different files
+- [x] Counts agree: people alive = sum over zones = sum over households
+- [x] Every living person is in exactly one household; no floor exceeds its home capacity
+- [x] Partnerships are symmetric and both partners are alive
+- [x] No pregnancy without an open window; windows only for eligible couples
+- [x] Food is conserved exactly: tomorrow's stock = today's stock + produced − handed out
+- [x] Every 0–1 variable stays within 0–1
+- [x] Nobody acts after the tick they died
+- [x] Same seed → byte-identical output files; different seeds → different files
 
 ### Calibration targets
 

@@ -3,7 +3,8 @@
 # Other scenarios start with `extends: baseline.yaml` and override only what changes.
 #   The path is relative to the child file. Sections merge key by key; lists
 #   (modules, departments) replace the parent's list whole.
-# Values marked "calibrate" are starting points for milestone 6 (docs/tasks.md).
+# Baseline v1 (tag baseline-v1). Values marked "calibrate" were checked in T6.1: only
+#   kcalPerFarmUnit was changed; the others keep their defaults (docs/calibration-log.md).
 # Units: probabilities and rates are per day unless the key says otherwise.
 
 name: baseline
