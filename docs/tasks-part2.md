@@ -78,7 +78,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
 *Answers Q1 and Q2.* Distance decides who meets whom, how fast rebels can gather, and how fast Judicial can reach the Down Deep.
 
 - [x] **T8.0 Spec: location and travel (ODD §6.10).** (2026-10-30, approved) Decision D3. Each department gets work floors (farms and Mechanical already have them; the others get floors in their zone). Travel time = floors crossed × hours per floor (≈ 12 h top to bottom), turned into days at ~8 walking hours a day, so a full descent is about 2 days. Stair segments are intact or broken; a broken segment blocks travel, as at levels 90–92 in S2. Porters cross zones as part of their job.
-- [ ] **T8.1 Floors and daily location.** Work floors per department, each person's home and work floor, daily location (work floor on working days, otherwise home).
+- [x] **T8.1 Floors and daily location.** (2026-10-30) Work floors per department, each person's home and work floor, daily location (work floor on working days, otherwise home).
   - *Done when:* invariant: every living person has a location on a real floor; workers are on their department's floors.
 - [ ] **T8.2 Trips and stair segments.** Trips as scheduled events with arrival day; 143 stair segments with an intact/broken state; a trip through a broken segment is impossible.
   - *Done when:* 1 → 144 takes 2 days; breaking segment 90–91 makes every Down Deep → Up Top trip impossible (test).

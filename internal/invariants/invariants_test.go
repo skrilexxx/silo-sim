@@ -144,3 +144,62 @@ func TestDeadPeopleNotRangeChecked(t *testing.T) {
 		t.Errorf("dead person's health was checked: %v", err)
 	}
 }
+
+// spaced adds space state to tiny(): floor 1 Up Top, 2 Down Deep; person 0
+// a retired Up Topper at home, person 2 a Mechanical worker whose
+// department works on floor 2, where she lives.
+func spaced() *world.World {
+	w := tiny()
+	w.Depts = []world.Department{{Name: "mechanical", Zone: world.DownDeep}, {Name: "porters", Zone: world.AllZones}}
+	w.People[0].Stage = world.Retired
+	w.People[2].Stage, w.People[2].Department = world.Worker, 0
+	w.Space = &world.Space{
+		Broken:     []bool{false},
+		DeptFloors: [][]int{{2}, nil},
+		Location:   []int{1, 0, 2},
+		Stranded:   []bool{false, false, false},
+	}
+	return w
+}
+
+func TestSpace(t *testing.T) {
+	if err := space(spaced()); err != nil {
+		t.Fatalf("valid world failed: %v", err)
+	}
+	cases := []struct {
+		want   string
+		break_ func(w *world.World)
+	}{
+		{"person 0 is on floor 3, not a real floor", func(w *world.World) { w.Space.Location[0] = 3 }},
+		{"person 0 is on floor 0, not a real floor", func(w *world.World) { w.Space.Location[0] = 0 }},
+		{"person 2 has no location", func(w *world.World) { w.Space.Location = w.Space.Location[:2] }},
+		{"person 0 is on floor 2 (stranded false), want home floor 1", func(w *world.World) { w.Space.Location[0] = 2 }},
+		{"mechanical worker 2 is on floor 1 (stranded false)", func(w *world.World) {
+			w.Households[1].Floor, w.Households[0].Floor = 1, 2 // she lives and stands on 1, not on her department's floor 2
+			w.Space.Location[0], w.Space.Location[2] = 2, 1
+		}},
+		{"mechanical worker 2 is on floor 2 (stranded true)", func(w *world.World) { w.Space.Stranded[2] = true }},
+		{"mechanical worker 2 is on floor 1 (stranded true)", func(w *world.World) { // stranded, but floor 2 is reachable
+			w.Households[1].Floor, w.Households[0].Floor = 1, 2
+			w.Space.Location[0], w.Space.Location[2], w.Space.Stranded[2] = 2, 1, true
+		}},
+		{"porter 2 is on floor 1, not connected to home floor 2", func(w *world.World) {
+			w.People[2].Department, w.Space.Broken[0], w.Space.Location[2] = 1, true, 1
+		}},
+	}
+	for _, c := range cases {
+		w := spaced()
+		c.break_(w)
+		if err := space(w); err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("got %v, want %q", err, c.want)
+		}
+	}
+	// Stranded at home when the stairs cut her off is valid.
+	w := spaced()
+	w.Households[1].Floor, w.Households[0].Floor = 1, 2
+	w.Space.Location[0], w.Space.Location[2], w.Space.Stranded[2] = 2, 1, true
+	w.Space.Broken[0] = true
+	if err := space(w); err != nil {
+		t.Errorf("stranded worker rejected: %v", err)
+	}
+}

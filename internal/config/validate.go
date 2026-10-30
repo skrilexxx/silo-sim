@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"reflect"
 	"slices"
@@ -102,6 +103,8 @@ func (s *Scenario) Validate() error {
 		{"resources.outageMinDays", float64(s.Resources.OutageMinDays)},
 		{"output.invariantEvery", float64(s.Output.InvariantEvery)},
 		{"output.frameEvery", float64(s.Output.FrameEvery)},
+		{"space.fullDescentHours", s.Space.FullDescentHours},
+		{"space.walkingHoursPerDay", s.Space.WalkingHoursPerDay},
 	}
 	for i, d := range s.Work.Departments {
 		positive = append(positive, struct {
@@ -175,6 +178,28 @@ func (s *Scenario) Validate() error {
 		}
 		if e.Type == "" {
 			add("events[%d].type is empty", i)
+		}
+	}
+
+	// ODD §6.10: office floors. That each lies in its department's zone and
+	// is not a farm or Mechanical floor is checked when the space module
+	// starts, once the floors exist.
+	floors := 3 * s.Init.FloorsPerZone
+	names := slices.Sorted(maps.Keys(s.Space.OfficeFloors))
+	for _, name := range names {
+		i := slices.IndexFunc(s.Work.Departments, func(d Department) bool { return d.Name == name })
+		if i < 0 || !HasOffices(s.Work.Departments[i]) {
+			add("space.officeFloors.%s: not a department that works on office floors", name)
+		}
+		for _, f := range s.Space.OfficeFloors[name] {
+			if f < 1 || f > floors {
+				add("space.officeFloors.%s: floor %d, must be 1 to %d", name, f, floors)
+			}
+		}
+	}
+	for _, d := range s.Work.Departments {
+		if HasOffices(d) && len(s.Space.OfficeFloors[d.Name]) == 0 {
+			add("space.officeFloors has no floors for %s", d.Name)
 		}
 	}
 

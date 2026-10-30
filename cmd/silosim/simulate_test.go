@@ -184,23 +184,41 @@ func TestGolden(t *testing.T) {
 	}
 }
 
+// runGoldenSize runs a scenario at the golden test's size, seed and
+// invariant interval (every tick), with extra modules switched on.
+func runGoldenSize(t *testing.T, path string, extra ...string) string {
+	t.Helper()
+	golden := loadInto(t, goldenScenario)
+	cfg := loadInto(t, path)
+	cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, golden.WarmupYears, golden.Years, golden.Population
+	cfg.Output.InvariantEvery = golden.Output.InvariantEvery
+	cfg.Modules = append(cfg.Modules, extra...)
+	return mustSimulate(t, cfg)
+}
+
+func sameFrozenFiles(t *testing.T, a, b, why string) {
+	t.Helper()
+	for _, f := range frozenFiles {
+		if !bytes.Equal(readFile(t, filepath.Join(a, f)), readFile(t, filepath.Join(b, f))) {
+			t.Errorf("different %s: %s", f, why)
+		}
+	}
+}
+
 // T7.5: with every part-2 module off, part2-off.yaml writes the same files
 // as baseline.yaml. Both run at the golden size, so this is as fast as the
 // golden test; TestGolden ties baseline at that size to baseline-v1.
 func TestPart2OffEqualsBaseline(t *testing.T) {
-	golden := loadInto(t, goldenScenario)
-	run := func(path string) string {
-		cfg := loadInto(t, path)
-		cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, golden.WarmupYears, golden.Years, golden.Population
-		cfg.Output.InvariantEvery = golden.Output.InvariantEvery
-		return mustSimulate(t, cfg)
-	}
-	base, off := run("../../scenarios/baseline.yaml"), run("../../scenarios/part2-off.yaml")
-	for _, f := range frozenFiles {
-		if !bytes.Equal(readFile(t, filepath.Join(base, f)), readFile(t, filepath.Join(off, f))) {
-			t.Errorf("part2-off.yaml wrote a different %s from baseline.yaml: a part-2 setting leaks into the baseline", f)
-		}
-	}
+	sameFrozenFiles(t, runGoldenSize(t, "../../scenarios/baseline.yaml"), runGoldenSize(t, "../../scenarios/part2-off.yaml"),
+		"part2-off.yaml differs from baseline.yaml, so a part-2 setting leaks into the baseline")
+}
+
+// ODD §6.10: the space module on, at its null setting (stairs intact, no
+// trips), changes nothing in the baseline's files; the 20 years also run
+// the space invariant every tick (T8.1).
+func TestSpaceNullSettingEqualsBaseline(t *testing.T) {
+	sameFrozenFiles(t, runGoldenSize(t, "../../scenarios/baseline.yaml"), runGoldenSize(t, "../../scenarios/baseline.yaml", "space"),
+		"the space module at its null setting changed the baseline")
 }
 
 func atoi(t *testing.T, s string) int {

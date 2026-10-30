@@ -37,6 +37,7 @@ type Scenario struct {
 	Resources   Resources  `yaml:"resources"`
 	Rations     Rations    `yaml:"rations"`
 	Governance  Governance `yaml:"governance"`
+	Space       Space      `yaml:"space"`
 	Events      []Event    `yaml:"events,omitempty"`
 }
 
@@ -185,6 +186,20 @@ type Governance struct {
 	Mode        string  `yaml:"mode"`
 	Term        string  `yaml:"term"`
 	OwnZoneVote float64 `yaml:"ownZoneVote"`
+}
+
+// Space is the location and travel module (ODD §6.10).
+type Space struct {
+	FullDescentHours   float64          `yaml:"fullDescentHours"`
+	WalkingHoursPerDay float64          `yaml:"walkingHoursPerDay"`
+	OfficeFloors       map[string][]int `yaml:"officeFloors"` // department name → its office floors
+}
+
+// HasOffices reports whether a department works on office floors: every
+// department but Farms and Mechanical (pure work floors) and the
+// all-zone ones (General services, Porters).
+func HasOffices(d Department) bool {
+	return d.Zone != "all" && d.Name != "farms" && d.Name != "mechanical"
 }
 
 // TermYears reads governance.term: "<n>y" gives n ≥ 1, "life" gives 0.

@@ -26,6 +26,8 @@ func streamID(name string) (uint64, bool) {
 		return 8, true
 	case "events":
 		return 9, true // scripted events (ODD §5), so their draws shift no module's
+	case "space":
+		return 10, true
 	}
 	return 0, false
 }

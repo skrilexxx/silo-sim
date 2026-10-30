@@ -6,6 +6,7 @@ package invariants
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/skrilexxx/silo-sim/internal/config"
 	"github.com/skrilexxx/silo-sim/internal/world"
@@ -26,6 +27,9 @@ import (
 //     The Mayor may be dead until the next yearly step (ODD §6.8).
 //   - same seed → identical files, different seeds → different files:
 //     tested in cmd/silosim, not checked per tick.
+//
+// Part 2 (draft): every living person is on a real floor, and workers on
+// their department's floors (space, ODD §6.10).
 func Check(w *world.World, cfg *config.Scenario) error {
 	for _, check := range []func(*world.World) error{countsAgree, oneHousehold, homeCapacity, partnerships, unitRanges, foodConserved} {
 		if err := check(w); err != nil {
@@ -35,7 +39,64 @@ func Check(w *world.World, cfg *config.Scenario) error {
 	if err := reproduction(w, cfg.Lottery); err != nil {
 		return err
 	}
-	return work(w, cfg.Work)
+	if err := work(w, cfg.Work); err != nil {
+		return err
+	}
+	return space(w)
+}
+
+// ODD §6.10 (draft), checked after the location step, the last of the
+// tick: every living person is on a real floor. Workers and shadows are on
+// a floor of their department connected to home (General services at
+// home, Porters anywhere connected to home), or stranded at home when no
+// department floor is connected. Everyone else is at home.
+func space(w *world.World) error {
+	s := w.Space
+	if s == nil {
+		return nil
+	}
+	general, porters := world.None, world.None
+	for i, d := range w.Depts {
+		switch d.Name {
+		case "general":
+			general = i
+		case "porters":
+			porters = i
+		}
+	}
+	for _, id := range w.Alive {
+		if int(id) >= len(s.Location) {
+			return fmt.Errorf("person %d has no location", id)
+		}
+		p, loc := &w.People[id], s.Location[id]
+		home := w.Households[p.Household].Floor
+		if loc < 1 || loc > len(w.Floors) {
+			return fmt.Errorf("person %d is on floor %d, not a real floor", id, loc)
+		}
+		working := p.Stage == world.Worker || p.Stage == world.Shadow
+		switch {
+		case !working || p.Department == general:
+			if loc != home || s.Stranded[id] {
+				return fmt.Errorf("person %d is on floor %d (stranded %v), want home floor %d", id, loc, s.Stranded[id], home)
+			}
+		case p.Department == porters:
+			if !s.Connected(home, loc) || s.Stranded[id] {
+				return fmt.Errorf("porter %d is on floor %d, not connected to home floor %d", id, loc, home)
+			}
+		default:
+			floors := s.DeptFloors[p.Department]
+			reachable := slices.ContainsFunc(floors, func(f int) bool { return s.Connected(home, f) })
+			ok := reachable && !s.Stranded[id] && slices.Contains(floors, loc) && s.Connected(home, loc)
+			if s.Stranded[id] {
+				ok = !reachable && loc == home
+			}
+			if !ok {
+				return fmt.Errorf("%s worker %d is on floor %d (stranded %v), home floor %d, department floors %v",
+					w.Depts[p.Department].Name, id, loc, s.Stranded[id], home, floors)
+			}
+		}
+	}
+	return nil
 }
 
 // ODD §8: people alive = sum over zones = sum over households.

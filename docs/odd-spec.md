@@ -168,7 +168,6 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 
 ### Every day
 
-0.5. **Location** *(part 2, draft)* — trips that end today arrive; every person's day location; stranded workers (6.10)
 1. **Generator** — Supply's new parts added, then wear, repair, failure check, outage countdown → power supply (6.6)
 2. **Life support** — water and air from power and Mechanical output (6.6)
 3. **Food production** — farm output, scaled by power, added to the stock (6.6)
@@ -191,6 +190,10 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 
 15. **Snapshot** — age pyramid and department table written (8)
 16. **Governance** — if the Mayor died or the term ended, a new Mayor is chosen by appointment or election (6.8)
+
+### Every day, last *(part 2, draft)*
+
+16.5. **Location** — where every person is the next day, from the day's final state; travellers due tomorrow are placed at their destination; stranded workers (6.10). Day 1's locations are set when the module starts. It comes last, after the monthly and yearly steps, so a department or home that changed today counts from tomorrow
 
 ### Update rules
 
@@ -454,7 +457,7 @@ pact:
 
 Where a department has several floors, a person works on the one nearest their home floor, the lower-numbered one on a tie, among those connected to it. The work floor follows from today's home floor, so it changes when a person moves (§6.3) or changes department (§6.5). Shadows use the same rule as their department's workers, whatever floor their master is on.
 
-**Where people are.** Each day, at the location step (§3 step 0.5), every living person gets one *day location*:
+**Where people are.** At the end of each day, at the location step (§3 step 16.5), every living person gets their *day location* for the next day, from the day's final state; day 1's are set when the module starts. Coming last, the step sees every change of the day (a new shadow, a retrained worker, a move), and nothing happens between it and the next day's first step:
 
 - a worker or shadow is on their work floor (the baseline has no rest days: output is computed every day);
 - everyone else (children, retired, sick leave) is on their home floor;
@@ -471,7 +474,7 @@ hours = |from - to| \times \frac{H_{descent}}{143}, \qquad days = \max\left(1, \
 With a full descent of H\_descent = 12 hours of walking and H\_walk = 8 walking hours a day, floor 1 → 144 takes 2 days, and any trip within one zone (at most 47 floors, 3.9 hours) takes 1 day. One day is the model's tick, so even a short trip takes a day.
 
 - A trip can start only between connected floors, and only for a person who is not already on one. Otherwise it is refused, and the module that asked decides what that means.
-- The traveller is on the stairs from the departure day until the arrival day, departure + days, and arrives at that day's location step. While on the stairs they don't work, as if stranded.
+- The traveller is on the stairs from the departure day until the arrival day, departure + days, and is on the destination floor from the arrival day on (placed there by the location step the evening before). While on the stairs they don't work, as if stranded.
 - If a segment on the route breaks during the trip, the traveller stops on the floor next to the break on their side and arrives there on the planned day.
 - After arriving, the person is *away*: their day location is the floor they reached, and they don't work, until a module sends them on another trip. A trip back to the home floor ends being away.
 - A death ends the trip.
@@ -488,7 +491,7 @@ With a full descent of H\_descent = 12 hours of walking and H\_walk = 8 walking 
 | Walking per day H\_walk | 8 hours | Guess |
 | Office floors | Administration 1, Sheriff 1, Judicial 2–3, Medical 12, Education 20, IT 33–34, Supply 72 | Guess; Up Top for the first six, Mids for Supply (§6.5 zones). Sheriff and the Mayor's office near the cafeteria at the top \[Likely\] |
 
-Ranges checked at load: both hours strictly greater than 0. Every department with office floors lists at least one, each a residential floor (not a farm or Mechanical floor) in the department's zone. Farms, Mechanical, General services and Porters list none.
+Ranges checked at load: both hours strictly greater than 0. Every department with office floors lists at least one floor inside the silo; Farms, Mechanical, General services and Porters list none. That each office floor is a residential floor (not a farm or Mechanical floor) in the department's zone is checked when the module starts, once the floors exist.
 
 ## 7. Parameters
 

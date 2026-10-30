@@ -25,6 +25,7 @@ const (
 	PhaseStaffing     Phase = 1400
 	PhaseSnapshot     Phase = 1500
 	PhaseGovernance   Phase = 1600
+	PhaseLocation     Phase = 1650 // part 2: where everyone is the next day (ODD §6.10)
 )
 
 // ODD §2 Scales: a year is 365 ticks; monthly steps run every 30 ticks.
@@ -57,6 +58,7 @@ var schedule = []phaseInfo{
 	{PhaseStaffing, "staffing", everyMonth, false},
 	{PhaseSnapshot, "snapshot", DaysPerYear, true},
 	{PhaseGovernance, "governance", DaysPerYear, false},
+	{PhaseLocation, "location", daily, false},
 }
 
 type phaseInfo struct {

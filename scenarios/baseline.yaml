@@ -131,6 +131,18 @@ rations:                          # ODD §6.7
   rationingShare: 0.9
   weights: { upTop: 1.0, mids: 1.0, downDeep: 1.0 }   # policy lever; 1.0 everywhere = equal
 
+space:                            # ODD §6.10 (part 2, draft); used only when `space` is in modules
+  fullDescentHours: 12            # hours of walking from floor 1 to 144; guess (2 days at 8 h a day)
+  walkingHoursPerDay: 8           # guess
+  officeFloors:                   # residential floors in the department's zone; guesses
+    administration: [1]           # the Mayor's office, near the cafeteria
+    sheriff: [1]
+    judicial: [2, 3]
+    medical: [12]
+    education: [20]
+    it: [33, 34]
+    supply: [72]                  # Mids
+
 governance:                       # ODD §6.8
   mode: appointment               # or: election
   term: 5y                        # or: life

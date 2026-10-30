@@ -3,7 +3,11 @@
 # events.jsonl byte-identical to baseline.yaml; `make check` runs the comparison
 # (cmd/silosim TestPart2OffEqualsBaseline).
 # Each part-2 milestone adds its module's section here at a NON-null setting, so the
-# guard catches any setting that acts while its module is off. No part-2 module exists
-# yet (M8 adds the first).
+# guard catches any setting that acts while its module is off.
 extends: baseline.yaml
 name: part2-off
+
+space:                    # M8, off; settings differ from the baseline's
+  walkingHoursPerDay: 4
+  officeFloors:
+    it: [30]

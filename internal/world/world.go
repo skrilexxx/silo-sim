@@ -188,6 +188,10 @@ type World struct {
 
 	Counts Counts  // running totals for the output files
 	Events []Event // not yet written to events.jsonl; the output module drains it
+
+	// Part-2 state, one field per module, nil when the module is off
+	// (docs/architecture.md, Part-2 state).
+	Space *Space
 }
 
 // Counts are running totals since day 0 that no state variable holds.

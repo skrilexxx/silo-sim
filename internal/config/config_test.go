@@ -232,3 +232,24 @@ func TestScriptedEvents(t *testing.T) {
 		t.Errorf("baseline has events %v (err %v), want none", s.Events, err)
 	}
 }
+
+// ODD §6.10: office floors name departments that work on office floors,
+// cover every one of them, and lie inside the silo.
+func TestOfficeFloors(t *testing.T) {
+	base := readBaseline(t)
+	for _, c := range []struct{ old, new, want string }{
+		{"    it: [33, 34]\n", "", "space.officeFloors has no floors for it"},
+		{"    it: [33, 34]", "    it: []", "space.officeFloors has no floors for it"},
+		{"    it: [33, 34]", "    it: [33, 145]", "space.officeFloors.it: floor 145, must be 1 to 144"},
+		{"    it: [33, 34]", "    it: [33, 34]\n    farms: [50]", "space.officeFloors.farms: not a department that works on office floors"},
+		{"    it: [33, 34]", "    it: [33, 34]\n    porters: [50]", "space.officeFloors.porters: not a department"},
+		{"    it: [33, 34]", "    it: [33, 34]\n    cooks: [50]", "space.officeFloors.cooks: not a department"},
+		{"walkingHoursPerDay: 8", "walkingHoursPerDay: 0", "space.walkingHoursPerDay = 0, must be greater than 0"},
+		{"fullDescentHours: 12", "fullDescentHours: 0", "space.fullDescentHours = 0, must be greater than 0"},
+	} {
+		got := loadErr(t, edit(t, base, c.old, c.new))
+		if !strings.Contains(got, c.want) {
+			t.Errorf("%q: got %q, want %q", c.new, got, c.want)
+		}
+	}
+}
