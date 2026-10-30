@@ -1,8 +1,10 @@
-# Silo Baseline Model — ODD Spec v1.0 (baseline-v1)
+# Silo Model — ODD Spec v2 draft (baseline-v1 + part 2)
 
-Oct 30, 2026 · Adam Kopřiva · frozen with `scenarios/baseline.yaml` at tag `baseline-v1`; changes since v0.1 are in docs/calibration-log.md
+Oct 30, 2026 · Adam Kopřiva · sections 1.1 and 2–8 are frozen with `scenarios/baseline.yaml` at tag `baseline-v1` (changes since v0.1 are in docs/calibration-log.md); sections marked "draft" belong to part 2 (`docs/tasks-part2.md`) and change milestone by milestone
 
 ## 1. Purpose and patterns
+
+### 1.1 Baseline
 
 The baseline simulates Silo 18 running normally under the Pact, with no dissent, no cleanings and no rebellion. It is the control group: every later experiment is measured against it.
 
@@ -25,6 +27,61 @@ The baseline simulates Silo 18 running normally under the Pact, with no dissent,
 - [x] One run of 200 years finishes in under a minute on a laptop (60.7 s for 50 + 200 years with other programs open, T5.4)
 
 **Out of scope for the baseline** (later modules): beliefs and dissent, relics, surveillance, cleaning, covert lottery denial, rebellion, Silo 1, other silos, money.
+
+### 1.2 Part 2: rebellion (draft)
+
+Part 2 adds the people, beliefs and institutions the baseline left out, so the model can answer the questions the project exists for. The baseline (§1.1) stays frozen: with every part-2 module off, `scenarios/baseline.yaml` gives byte-identical output to `baseline-v1`. The plan is in `docs/tasks-part2.md`; sections 6.10–6.16 are written milestone by milestone.
+
+**Research questions.** Each one is answered by outputs listed under "Outcome metrics" below.
+
+| # | Question | Answered by |
+| --- | --- | --- |
+| Q1 | How often does a rebellion start, and what sets it off? | Time to first rebellion; rebellions per century; trigger of each rebellion |
+| Q2 | Can a rebellion kill the silo, and by which route? | Share of rebellions ending in collapse; cause of collapse |
+| Q3 | Which regime response keeps the silo alive afterwards: crackdown, reform, or wiping memory? | Time to collapse and endings, compared across response strategies (§6.15) |
+| Q4 | Does Silo 1's threat make Silo 18 more stable or more fragile? | Q1–Q3 metrics compared across Silo 1 settings `off`, `watch`, `full` (§6.16) |
+
+The answers are **conditional and comparative**. The agents follow rules, not human judgment, so the model shows what follows from its assumptions ("if dissent works like Epstein's rule, reform keeps the silo alive more often than crackdown"), not what real people would do. Claims compare scenarios run on the same seeds; absolute numbers, such as "a rebellion every 112 years", are reported but not relied on.
+
+**Definitions**
+
+- **Active rebel:** an adult (18+) whom the activation rule of §6.14 makes active on a given day.
+- **Unrest:** at least 1% of adults active on 3 days in a row, without meeting the rebellion test. Logged; not a rebellion.
+- **Rebellion:** starts when, on 7 days in a row, at least 5% of adults are active **and** at least one collective action (§6.14) is under way on one of those days: a strike in a critical department (Mechanical, Farms, Supply, Medical), a clash with Judicial, or rebels holding a floor. Its start day is the first of the 7 days. It ends when fewer than 1% of adults are active for 30 days in a row, or at collapse. Only one rebellion runs at a time.
+- **Trigger:** the scripted event (`events:` in the scenario, T7.4) that happened within the 365 days before the start, or "none". With no scripted events, every rebellion is "none", and Q1's trigger question is answered by experiments that script shocks.
+- **Endings** (one per rebellion; collapse takes precedence):
+  - *Suppressed:* it ends with the regime still in place.
+  - *Regime change:* rebels hold the IT floors and the Mayor's office for 30 days in a row. The regime is replaced and the scenario's post-change policy applies (§6.15). The run continues.
+  - *Split:* a stair segment broken during the rebellion is still broken 90 days later, and at least 1,000 people live on each side of it.
+  - *Collapse:* see below.
+- **Collapse** (the silo is dead, and the run stops), on the first day any of these holds; the cause is recorded:
+  1. air or water below 0.2 for 30 days in a row;
+  2. a Safeguard goes off (§6.16);
+  3. population below the **point of no return** P\_min.
+
+  P\_min is measured, not guessed (T12.6): runs start from damaged states (population cut to 9,000, 8,000, 7,000 … and Mechanical cut by 10%, 20% …), and P\_min is the highest population at which fewer than 5% of seeds recover to above 9,000 within 50 years. Until it is measured, test 3 is off. The baseline already shows why the last person is the wrong line: in the T3.2 collapse, health was 0 and the silo still held 643 people in year 100. Canon agrees: Silo 17, with fewer than a hundred survivors and later one, is a dead silo.
+- **Extinction:** the last person dies. Logged only, in runs that set `output.runAfterCollapse: true` to see how a dead silo empties.
+
+**Canon patterns** (calibration and validation targets for part 2). They are checked on `scenarios/canon.yaml`, the regime at the show's settings, 300 measured years, 100 seeds. These are the only targets part-2 parameters are tuned to.
+
+| # | Pattern | Source | Check |
+| --- | --- | --- | --- |
+| C1 | **Long peace:** rebellions are rare, but they do happen | The Rebellion ~140 years before S1; the next in S2 | Mean rate across seeds between 0.3 and 2 rebellions per century |
+| C2 | **Visible failures trigger revolts:** a cleaner who walks away matters more than slow hardship | Juliette (S1E10); Silo 17's cleaner | A rebellion within 5 years after a scripted cleaning failure is at least 3× as likely as in a 5-year window without one |
+| C3 | **Revolts start Down Deep and use the generator** | The S2 uprising | ≥ 60% of rebellions start with most active rebels living Down Deep; ≥ 50% of those include a Mechanical strike |
+| C4 | **Crushed rebellions are forgotten** | Freedom Day, lost records, Vitamin D+ | 40 years after a suppressed rebellion, < 10% of adults hold the true-history flag (§6.12) |
+| C5 | **A rebellion can end a silo** | Silo 17 | With Silo 1 on `full`, 5–50% of rebellions end in collapse |
+
+C1 bounds the rebellion rate, which is also what Q1 measures. That is deliberate but limited: C1 is a wide plausibility check (no constant revolts, no eternal peace), never a target to tune toward a point. Q1's answer is what *changes* the rate, read from comparisons between scenarios.
+
+**Outcome metrics**
+
+- *Per run:* time to first rebellion (censored at the end of the run if none); number of rebellions and unrest spells; for each rebellion, its start, trigger, starting zone, peak share of active adults, duration, collective actions, deaths, arrests, damage, and ending; time and cause of collapse (censored if none).
+- *Across seeds:* survival curves (Kaplan–Meier) for time to first rebellion and time to collapse; rebellions per century and the share of each ending, with 95% confidence intervals.
+
+**Run settings for part 2.** 50 warm-up years plus **300 measured years**. Rebellions are rare by design, so longer runs and more seeds are the price of saying anything about how they end. Calibration uses 100 seeds; the final experiments (T15.5) use **1,000 seeds per scenario**. `scenarios/baseline.yaml` keeps its 200 measured years.
+
+**Outputs for viewers.** Everything a later UI needs is written to files during the run; a viewer only reads them and can never change a run. Part 2 adds `rebellions.jsonl`, outcome fields in `run.json`, and optional `frames.csv.gz`, a per-floor snapshot in long format (day, floor, metric, value), written every `output.frameEvery` days (default 30). Each module registers its own metrics. Frames are off by default and are switched on for runs meant to be replayed.
 
 ## 2. Entities, state variables and scales
 
@@ -323,9 +380,64 @@ How a Mayor is chosen and how long they serve are two separate settings. In the 
 - **Election (scenario toggle):** each zone puts up its most skilled senior worker living there; every adult (18+) votes for their own zone's candidate with an 80% chance, otherwise for a candidate drawn uniformly from all of them, their own included (so about 87% back their own zone). A voter whose zone has no candidate always draws. Most votes wins; a tie is drawn at random. Without beliefs, this simply measures how zone size decides an election.
 - **Term (scenario toggle):** a 5-year term (default), or for life, so a Mayor serves until death. A life term works with either way of choosing; it removes any regular, peaceful change of leader, which matters once dissent is modeled.
 
+### 6.9 The Pact (draft)
+
+The Pact is modelled as a **rule table**, not as prose. The agents can't read text, so a rule exists in the model only if a module detects its offences and punishes them. The table lives in the scenario file under `pact:`. A rule whose detecting or enforcing module is switched off does nothing, so the baseline is unaffected. The show never shows the Pact in full, so the table holds only rules the show establishes. The syndrome rule (S1E6) is left out because none of Q1–Q4 needs it.
+
+Each row says what is forbidden, which offences break it, how hard it is to see, and what follows:
+
+| Field | Meaning |
+| --- | --- |
+| id | Short name, unique |
+| active | Whether the rule is in force (a Pact rewrite switches it) |
+| offences | Offence types that break it. Modules produce offences: `holdRelic`, `tradeRelic`, `speakForbidden`, `askToGoOut`, `unpermittedConception`, `contactAttempt`, `organise`, `violence`, `sabotage` |
+| detection | Multiplies the daily detection chance of §6.13 for these offences (1 = normal) |
+| penalty | First offence and repeat offence, from the penalty list below |
+| enforcer | Who carries out the penalty: Sheriff, Judicial, or Silo 1 |
+| visibility | 0–1: how widely an enforcement is seen. It scales the effect on fear and legitimacy (§6.12, §6.14) |
+
+**Penalties:** `warning`, `confiscate` (relics), `prison(days)` and `mines(days)` (no work, no contacts outside the place of detention), `cleaning` (death, public), `flagFamily` (covert lottery denial for the household, §6.13). A `contactAttempt` can also bring Silo 1's response (§6.16), which the table doesn't control.
+
+**The canon Pact** (default for `scenarios/canon.yaml`):
+
+| id | Forbids | Offences | Detection | Penalty: first / repeat | Enforcer | Visibility | Source |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| noRelics | Owning or trading objects from before the silo | holdRelic, tradeRelic | 1.0 | confiscate + prison(90) / prison(365) | Judicial | 0.5 | Show: relics banned down to a Pez dispenser (S1) |
+| noForbiddenTalk | Speaking about the outside, the time before, or other silos | speakForbidden | 0.5 | warning / prison(180) | Judicial | 0.3 | Show: questioning the rules can lead to cleaning (S1) |
+| goingOut | Saying "I want to go out" | askToGoOut | 1.0 | cleaning / — | Sheriff | 1.0 | Show: the request is binding (S1E1) |
+| lottery | Conceiving without a permit or removing one's own implant | unpermittedConception | 0.8 | prison(180) + flagFamily / cleaning | Judicial | 0.6 | Show: implants and lottery (S1E1) |
+| noContact | Radio contact, digging toward other silos, opening the doors below | contactAttempt | 0.7 | cleaning / — | Judicial | 0.2 | Show: Safeguard and the Directive (S2–S3) |
+| noViolence | Attacking officers or damaging the silo's systems | violence, sabotage | 1.0 | mines(730) / cleaning | Judicial | 0.8 | Show: S2 uprising |
+| noOrganising | Unauthorised gatherings and strikes | organise | 0.6 | prison(90) / mines(365) | Judicial | 0.7 | Show: Mechanical treated as rebels (S2) [Likely] |
+
+Detection weights, penalties and visibilities are guesses, to be checked by the sensitivity analysis (T15.3). Calibration (C1–C5) may tune them as a group, never row by row toward a wanted outcome.
+
+**Rewriting the Pact** is a change to rows: a rule switched on or off, a penalty raised or lowered, or a new rule added. It happens through a scripted event (`events:` in the scenario, T7.4) or a regime response (§6.15). Season 3's rewrite under Camille is the canon example. Rules the regime may add, off in the canon Pact:
+
+| id | Forbids | Effect | Penalty |
+| --- | --- | --- | --- |
+| travelPermits | Crossing zones without a permit | Fewer cross-zone contacts (§6.11), slower rebel gathering | warning / prison(30) |
+| curfew | Being away from one's home floor at night | Fewer contacts outside the household | warning / prison(30) |
+
+Format in the scenario file (illustrative; the exact keys are fixed when M11 implements it):
+
+```yaml
+pact:
+  rules:
+    - id: noRelics
+      active: true
+      offences: [holdRelic, tradeRelic]
+      detection: 1.0
+      penalty: { first: [confiscate, prison90], repeat: [prison365] }
+      enforcer: judicial
+      visibility: 0.5
+```
+
 ## 7. Parameters
 
 Every number the model uses, in one place. Each one becomes a field in the scenario file with this default; "Calibrate" means the value is a starting point to tune in the first calibration task, not something to defend.
+
+The table below is the frozen baseline set. Part-2 parameters are listed in their draft sections (6.9 onward) and move into this table when their milestone is done.
 
 **Ranges checked at load.** No parameter may be negative. These must lie in [0, 1]: every daily chance and percentage; α, ρ, f₀ and the air recovery share (so the updates in 6.5 and 6.6 cannot overshoot); every amount subtracted from, or compared with, a 0–1 variable (injury and illness cost, condition drop, wear, start skill, master skill, sick-leave health); hunger and air damage; recovery; the open-window weight; the shadow output factor; the retraining threshold. Also maternalDeathBase ≤ 0.5 and injuryChance × the largest injury factor ≤ 1, so every derived daily probability stays ≤ 1. These must be strictly greater than 0, because they are divisors or define quantities that must exist: Gompertz A and B (so the day-1 age table ends), floors per zone, the coverage need factor, every department share, adult kcal, the age-gap scale, power demand per person, the capacity margin, kcal per farm unit, target and starting population, window, pregnancy and minimum outage length, and the invariant interval. invariantEvery is an integer ≥ 1. Ages are ordered (shadow < worker < retire, mother min < max, partnering min age ≤ day-1 pairing age), outage min ≤ max, farm and Mechanical floors each fewer than the floors per zone (every zone keeps a residential floor), the home capacity margin is at least 1, and zone splits and department shares each sum to 1.
 
