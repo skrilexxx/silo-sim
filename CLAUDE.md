@@ -1,6 +1,6 @@
 # CLAUDE.md — silosim
 
-Agent-based simulation of Silo 18 (from the TV series *Silo*) in Go. The current goal is the **baseline**: a silo of ~10,000 people running normally under the Pact for 200 years, with no dissent or rebellion. Later modules (beliefs, cleaning, rebellion) build on it. This is also a likely university thesis, so the owner (Adam) must be able to explain every rule in the model.
+Agent-based simulation of Silo 18 (from the TV series *Silo*) in Go. The **baseline** (part 1, tag `baseline-v1`) is done and frozen: a silo of ~10,000 people running normally under the Pact for 200 years, with no dissent or rebellion. The current goal is **part 2**: modules for space, social ties, beliefs, regime control, rebellion, regime response and Silo 1, built on top of the baseline without changing it. This is also a likely university thesis, so the owner (Adam) must be able to explain every rule in the model.
 
 ## Read first
 
@@ -8,7 +8,8 @@ Agent-based simulation of Silo 18 (from the TV series *Silo*) in Go. The current
 | --- | --- |
 | `docs/odd-spec.md` | **Source of truth for model behaviour** (ODD protocol). Section numbers like §6.4 refer to it. |
 | `docs/architecture.md` | Where code lives, engine and module design, randomness, testing. |
-| `docs/tasks.md` | The build plan. Work on exactly one task at a time. |
+| `docs/tasks-part2.md` | The build plan for part 2 (current). Work on exactly one task at a time. |
+| `docs/tasks.md` | The build plan for part 1 (done); its "how to run a task" still applies. |
 | `scenarios/baseline.yaml` | The complete parameter set and the real config shape. The YAML snippet in ODD §5 is only illustrative. |
 | `docs/lore-reference.md` | Show canon behind the spec. Background only; never overrides the spec. |
 
@@ -19,6 +20,12 @@ Agent-based simulation of Silo 18 (from the TV series *Silo*) in Go. The current
 - If the spec is ambiguous, contradictory, or a rule can't work as written: **stop and ask**. Propose the exact spec wording to change. Never pick an interpretation silently.
 - Every submodel function starts with a comment naming its ODD section, e.g. `// ODD §6.4: lottery permits`.
 - When a task changes model behaviour, the same commit updates `docs/odd-spec.md` if the spec was wrong or incomplete.
+
+### The baseline is frozen
+- With every part-2 module off, `scenarios/baseline.yaml` gives `daily.csv`, `yearly.csv` and `events.jsonl` byte-identical to `baseline-v1`. Part-2 work never moves the golden hash.
+- Each new module gets its own RNG stream, appended in `internal/rng/streams.go`; existing stream IDs never change.
+- New per-person state lives in the module's own slices on `World` (indexed by PersonID, nil when the module is off), never as new fields on `Person`. See `docs/architecture.md`, Part-2 state.
+- Each milestone starts with a spec task (`T*.0`) that changes only docs and the scenario file. Adam approves it before any code task in that milestone starts.
 
 ### Numbers come from config
 - No numeric constants in module code except 0, 1 and unit conversions (365 days a year). Every rate, age, share and threshold is a field in `scenarios/baseline.yaml` and the typed config.
@@ -49,7 +56,8 @@ Agent-based simulation of Silo 18 (from the TV series *Silo*) in Go. The current
 4. End with a summary for Adam, in plain language:
    - the rule implemented, in 2–4 sentences, as if explaining it to a thesis examiner;
    - test results, including any statistical numbers;
-   - any spec change or open question.
+   - any spec change or open question;
+   - for part 2: how many parameters the task added, and how many have a basis other than "guess".
 
 ## Commands
 

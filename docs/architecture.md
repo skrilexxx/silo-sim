@@ -1,4 +1,4 @@
-# Architecture — silosim baseline
+# Architecture — silosim
 
 How the ODD spec (`docs/odd-spec.md`) becomes Go code. The spec says *what* the model does; this file says *where* it lives and *how* the code is organised. If the two disagree, the spec wins and this file gets fixed.
 
@@ -7,8 +7,9 @@ How the ODD spec (`docs/odd-spec.md`) becomes Go code. The spec says *what* the 
 1. **Reproducible.** Same scenario file + same seed → byte-identical output on the same machine.
 2. **Modular.** The baseline is five modules. Later experiments (beliefs, dissent, cleaning, rebellion, Silo 1) are new modules switched on in a scenario file, without touching the core.
 3. **Checkable.** Invariants and a golden test catch silent bugs, because a broken simulation still produces plausible numbers.
-4. **Fast enough.** 250 simulated years (50 warm-up + 200 measured) of ~10,000 people in under a minute on a laptop, so 100-seed batches are practical.
+4. **Fast enough.** 250 simulated years (50 warm-up + 200 measured) of ~10,000 people in under a minute on a laptop, so 100-seed batches are practical. With every part-2 module on, 350 years (50 + 300) in under 3 minutes.
 5. **Boring dependencies.** Go standard library + `gopkg.in/yaml.v3`. Nothing else without asking.
+6. **Baseline frozen.** With every part-2 module off, `scenarios/baseline.yaml` writes `daily.csv`, `yearly.csv` and `events.jsonl` byte-identical to tag `baseline-v1`. `run.json` is not compared: it holds the runtime and the resolved scenario, which gains part-2 sections.
 
 ## Project layout
 
@@ -23,30 +24,40 @@ silosim/
 │   ├── config/               # scenario loading, `extends`, strict validation
 │   ├── rng/                  # seeded random streams (PCG), one per module
 │   ├── world/                # state: Person, Household, Floor, Department, Silo; indexes
-│   ├── engine/               # tick loop, schedule.go (THE step order), module registry
+│   ├── engine/               # tick loop, schedule.go (THE step order), module registry, agenda.go
 │   ├── initpop/              # day-1 generator (ODD §5)
 │   ├── modules/
 │   │   ├── demography/       # 6.1 mortality, 6.3 partnering + housing, 6.4 lottery + reproduction
 │   │   ├── health/           # 6.2 health and Medical
 │   │   ├── work/             # 6.5 life stages, shadowing, skill, output, retraining
 │   │   ├── resources/        # 6.6 generator, power, water, air, food, parts; 6.7 rations
-│   │   └── governance/       # 6.8 Mayor
+│   │   ├── governance/       # 6.8 Mayor
+│   │   ├── space/            # M8: 6.10 location, trips, stair segments
+│   │   ├── network/          # M9: 6.11 ties and daily contacts
+│   │   ├── beliefs/          # M10: 6.12 legitimacy, knowledge, relics, Vitamin D+
+│   │   ├── control/          # M11: 6.13 surveillance, Judicial, sentences, cleaning
+│   │   ├── rebellion/        # M12: 6.14 grievance, activation, collective action, collapse
+│   │   ├── regime/           # M13: 6.15 policy and response strategies
+│   │   └── silo1/            # M14: 6.16 Silo 1
 │   ├── invariants/           # ODD §8 invariant checks
-│   ├── output/               # daily.csv, yearly.csv, events.jsonl, run.json
+│   ├── output/               # daily.csv, yearly.csv, events.jsonl, run.json, rebellions.jsonl, frames.csv.gz
 │   └── report/               # calibration targets → pass/fail table
 ├── scenarios/
-│   └── baseline.yaml         # the complete default parameter set
+│   ├── baseline.yaml         # the complete default parameter set (part-2 modules off)
+│   ├── part2-off.yaml        # every part-2 module listed but off; must equal baseline (T7.5)
+│   └── canon.yaml            # part 2 at the show's settings; calibration target (§1.2)
 ├── testdata/golden/          # golden-run hashes
 ├── docs/
 │   ├── odd-spec.md           # source of truth for model behaviour
 │   ├── lore-reference.md     # show canon behind the spec
 │   ├── architecture.md       # this file
-│   ├── tasks.md              # build plan, one task per Claude Code session
-│   └── calibration-log.md    # created in milestone 6
+│   ├── tasks.md              # build plan, part 1 (baseline, done)
+│   ├── tasks-part2.md        # build plan, part 2 (rebellion)
+│   └── calibration-log.md    # calibration runs and the spec changes they caused
 └── analysis/                 # optional Python plots; never imported by Go
 ```
 
-`internal/` keeps everything private to this module. Only `cmd/silosim` is an entry point.
+`internal/` keeps everything private to this module. Only `cmd/silosim` is an entry point. The part-2 module folders are planned, one per milestone, and appear when their milestone starts.
 
 ## Core types (sketch, not final code)
 
@@ -74,30 +85,56 @@ Rules for state:
 - Ages are derived from `BirthDay` and `Day`. Never store age.
 - Every value in 0–1 (health, skill, condition, air, water) is clamped by one helper, `world.Clamp01`, and checked by the invariants.
 
+### Part-2 state
+
+Part-2 modules add state (legitimacy, knowledge flags, location, ties, sentences…) that other modules must read: the rebellion module reads legitimacy, the control module reads location. The rule "modules share state only through `World`" still holds, so that state lives on `World`, typed:
+
+```go
+// world/beliefs.go — the type lives in world, the beliefs module owns and writes it
+type Beliefs struct {
+    Legitimacy []float64           // indexed by PersonID
+    Knows      [][numFlags]bool    // indexed by PersonID
+}
+
+// world/world.go
+type World struct {
+    ...
+    Beliefs *Beliefs               // nil when the beliefs module is off
+}
+
+// a reader in another module
+if w.Beliefs != nil { l := w.Beliefs.Legitimacy[id] }
+```
+
+- **One pointer field per part-2 module, nil when it is off.** The owning module creates it in `Init` and is the only writer; others read it and check for nil. Types are checked by the compiler; there is no lookup by name and no type assertion.
+- **Per-person data are slices indexed by `PersonID`, never new fields on `Person`.** `Person` is read by every daily step and its layout is tuned for the cache (T5.4); the baseline's struct stays as frozen as its output.
+- **Births:** at the start of each of its steps, the owning module extends its slices to `len(w.People)` and initialises the newcomers by its own rule (for example legitimacy from the parents). There are no birth hooks. Dead people keep their entries, as they keep theirs in `People`.
+- **Deaths, moves, job changes:** a module that must react compares the world with what it last recorded (for example the household it stored for each person). If that gets expensive, a world-level change log (births, deaths, moves per tick) is added in T9.0, where the network first needs it, and not before.
+
 ## Engine: modules, steps and the schedule
 
 The ODD schedule (§3) interleaves submodels: generator → life support → food → rations → work → health → deaths → … A module therefore does not "run" as one block. It registers **steps**, and the engine runs all steps in the fixed order defined in one file.
 
 ```go
-// engine/schedule.go — the ONLY place the order and frequency live. Mirrors ODD §3 step numbers.
+// engine/schedule.go — the ONLY place the order and frequency live. Phase = 100 × ODD §3 step number.
 type Phase int
 const (
-    PhaseGenerator    Phase = 1
-    PhaseLifeSupport  Phase = 2
-    PhaseFood         Phase = 3
-    PhaseRations      Phase = 4
-    PhaseWork         Phase = 5
-    PhaseHealth       Phase = 6
-    PhaseDeaths       Phase = 7
-    PhaseReproduction Phase = 8
-    PhaseLifeStages   Phase = 9
-    PhasePartnering   Phase = 10
-    PhaseLogDaily     Phase = 11
-    PhaseLottery      Phase = 12 // every 30 days
-    PhaseHousing      Phase = 13 // every 30 days
-    PhaseStaffing     Phase = 14 // every 30 days
-    PhaseSnapshot     Phase = 15 // every 365 days
-    PhaseGovernance   Phase = 16 // every 365 days
+    PhaseGenerator    Phase = 100
+    PhaseLifeSupport  Phase = 200
+    PhaseFood         Phase = 300
+    PhaseRations      Phase = 400
+    PhaseWork         Phase = 500
+    PhaseHealth       Phase = 600
+    PhaseDeaths       Phase = 700
+    PhaseReproduction Phase = 800
+    PhaseLifeStages   Phase = 900
+    PhasePartnering   Phase = 1000
+    PhaseLogDaily     Phase = 1100
+    PhaseLottery      Phase = 1200 // every 30 days
+    PhaseHousing      Phase = 1300 // every 30 days
+    PhaseStaffing     Phase = 1400 // every 30 days
+    PhaseSnapshot     Phase = 1500 // every 365 days
+    PhaseGovernance   Phase = 1600 // every 365 days
 )
 
 // engine/module.go
@@ -114,6 +151,8 @@ type Step struct {
 }
 ```
 
+**Spaced phases (part 2).** Phase numbers are 100 × the ODD §3 step, so a part-2 step fits between two baseline steps without renumbering them: a step after deaths and before reproduction is phase 750, and ODD §3 lists it as step 7.5. The schedule is a table sorted by phase (not an array indexed by it), still one step per phase, still the only place order and frequency live. The baseline phases keep their relative order, so the spacing alone does not move the golden hash (T7.3). Each new phase is added to ODD §3 in its milestone's spec task before any code uses it.
+
 The engine:
 
 1. Loads the scenario, builds the module list from `modules:`, checks `Requires`.
@@ -122,13 +161,36 @@ The engine:
 4. At the start of each tick, shuffles `Alive` with the engine's own stream (ODD §3: random order each tick).
 5. Runs invariants every `output.invariantEvery` ticks (every tick in tests).
 6. Skips the output phases (logging, snapshot) during warm-up unless `output.logWarmup: true`.
+7. Ends the run after the tick in which a collapse (ODD §1.2) is recorded: the rebellion module sets one `World` field with the day and cause, and the engine stops unless `output.runAfterCollapse` is true. The output module writes the cause to `run.json`.
 
 A step that is disabled because its module is off simply does not run. Modules must not reach into other modules' internals; they share state only through `world.World`. If a step needs a value from a module that is off (for example food intake when `resources` is off), the scenario is invalid and loading fails. The baseline always runs all five.
+
+## Agenda: scheduled actions
+
+Part 2 has actions that take days: a trip down the stairs (M8), a prison sentence (M11), a dosing period (M10), the Safeguard's delay (M14). They go on the **agenda**, a queue of actions due on a later day. (It is not called "events": `World.Events` already means lines for `events.jsonl`.)
+
+```go
+// engine/agenda.go
+type Entry struct {
+    Day    world.Tick
+    Phase  Phase                    // fires just before this phase's step
+    Module string                   // owner; its handler and stream are used
+    Kind   string                   // e.g. "arrive", "release"
+    Data   int64                    // payload, usually a PersonID
+}
+```
+
+- **Order:** a min-heap (`container/heap`) keyed by day, then phase, then insertion number. Two entries due at the same day and phase fire in the order they were scheduled, so ties are deterministic.
+- **Firing:** before a phase's step runs, the engine fires every entry due today at that phase, in key order, through the owning module's handler for that kind, with the owning module's random stream. A phase with due entries but no step still fires them. An entry must be due later than the phase that schedules it (a later day, or later the same day); scheduling into the past is an error, so nothing is silently moved to another day.
+- **Cancellation:** `Schedule` returns a handle; cancelling marks the entry, and a marked entry is dropped when it reaches the top (lazy deletion), so cancelling is O(1). An arrested traveller's arrival is cancelled this way.
+- **Scripted events** (`events:` in the scenario, T7.4) are agenda entries added at load time. Each event type names its fixed phase in the module that registers it, draws from its own `events` stream, and is logged to `events.jsonl` when it fires.
+- The agenda is engine state, not world state: modules schedule and cancel through it, never read it.
 
 ## Randomness
 
 - `math/rand/v2` with `rand.NewPCG(seed, streamID)`.
 - **One seed, one stream per module.** `streamID` is a fixed constant per module name (written in `rng/streams.go`, never computed from map order). The engine has its own stream for shuffling.
+- New part-2 modules get stream IDs 9 and up, appended at the end of `streams.go`. Existing IDs never change.
 - Why streams instead of one generator: switching on a new module (say, dissent) must not shift every random draw in demography. With separate streams the baseline parts of two scenarios see the same random numbers, so differences between scenarios come from the new module, not from noise. This is the "common random numbers" technique.
 - Banned: the global `math/rand` functions, `time.Now()` anywhere in the simulation, and ranging over a Go map in simulation logic (map order is random). Sort keys first if a map is unavoidable.
 - One simulation runs in one goroutine. `silosim batch` runs many seeds in parallel, one goroutine each.
@@ -138,6 +200,8 @@ A step that is disabled because its module is off simply does not run. Modules m
 - `scenarios/baseline.yaml` is the **complete** parameter set; every number in ODD §7 appears there with a comment pointing to the ODD section.
 - Other scenarios start with `extends: baseline.yaml` and override only what changes. The path is relative to the child file. Sections merge key by key, so `rations: { weights: { upTop: 1.5 } }` changes one weight and keeps the rest; lists (`modules`, `departments`) replace the parent's list whole. Chains are allowed; loops fail.
 - Loading is strict: unknown keys fail (`yaml.Decoder.KnownFields(true)`, checked in each file), missing keys fail (checked after merging), out-of-range values fail with a message naming the key. Range rules are listed in ODD §7. All problems are reported at once.
+- **A module is on if and only if it is listed in `modules:`.** Part-2 parameters live in `baseline.yaml` with every part-2 module left out of `modules:`, so the loader still sees one complete parameter set; `canon.yaml` and the experiment scenarios extend it. A module's section is loaded and validated even when the module is off. `part2-off.yaml` keeps the baseline module list and differs only in part-2 sections, and must give the same files (T7.5).
+- Each part-2 module also has a **null setting** (surveillance 0, no relics, Silo 1 `off`): on, but doing nothing that reaches the baseline state. It is a separate test per module, not part of the frozen-baseline check.
 - Modules read parameters only from the typed config struct. **No numbers in module code** except 0, 1 and unit conversions (365 days a year).
 
 ## Outputs
@@ -149,7 +213,15 @@ One folder per run: `runs/<scenario>-<seed>/`
 | `daily.csv` | every tick after warm-up | ODD §8 daily columns |
 | `yearly.csv` | every 365 ticks | median age, age pyramid, department headcount vs target, Mechanical workers in their zone, zone changes, Mayor |
 | `events.jsonl` | on event | generator failure/repair, rationing on/off, Mayor change, department below 50% |
-| `run.json` | start and end | resolved scenario (after `extends`), seed, git commit, Go version, runtime |
+| `run.json` | start and end | resolved scenario (after `extends`), seed, git commit, Go version, runtime; part 2 adds outcome fields (below) |
+| `rebellions.jsonl` | when a rebellion ends (or at the end of the run) | one line per rebellion: start, trigger, starting zone, peak share of active adults, duration, collective actions, deaths, arrests, damage, ending (ODD §1.2) |
+| `frames.csv.gz` | every `output.frameEvery` days (default 30), only if switched on | per-floor snapshot in long format: `day,floor,metric,value` |
+
+**Part-2 outcome fields in `run.json`:** day of the first rebellion, number of rebellions and unrest spells, day and cause of collapse. A run that ends without one writes `null` (censored, ODD §1.2), so survival curves can be built from `run.json` alone.
+
+**Frames** are off by default and switched on for runs meant to be replayed (M16). They are written with `compress/gzip` from the standard library. Each module registers its per-floor metrics with the output module as a name and a function `func(*world.World) []float64` returning one value per floor (144); the baseline registers population, households and average health. Writing frames happens in the logging phase, not inside other steps, and never draws random numbers.
+
+**Columns added by part-2 modules** to `daily.csv` or `yearly.csv` appear only when that module is on, after the baseline columns. That is what keeps the baseline's bytes frozen.
 
 Floats are written with a fixed format so files diff cleanly: 4 decimals (`strconv.AppendFloat(b, x, 'f', 4, 64)`), or 1 for food stock in days and department targets. That's finer than any change the model makes in a day, and keeps a 250-year `daily.csv` near 10 MB. JSON in `events.jsonl` uses Go's shortest exact form.
 
@@ -161,7 +233,9 @@ silosim batch  --scenario scenarios/baseline.yaml --seeds 1-100 [--workers 8] --
 silosim report --batch runs/batch-001            # calibration targets, pass/fail per pattern
 ```
 
-A progress line in the terminal is enough. A live terminal dashboard (for example Bubble Tea) can come later as its own task; it must only read state, never change it.
+A progress line in the terminal is enough.
+
+**Viewer rule.** Everything a UI shows is written to files during the run. No viewer, live or after the fact, reads the simulation's memory or changes a run: `silosim serve` (M16) and any later terminal viewer read only files under `runs/`. A run with a viewer open is therefore the same run as one without.
 
 ## Testing
 
@@ -171,7 +245,10 @@ A progress line in the terminal is enough. A live terminal dashboard (for exampl
 | Statistical tests | Rules with known expected rates, e.g. conception within a 365-day window ≈ 80% over 10,000 trials; median death age 65–69 with health 1 | When the submodel is written |
 | Invariants | ODD §8 list, as functions `func(w *world.World) error` | Every tick in tests, every year in runs |
 | Golden test | 1,000 people, 20 years, seed 1: SHA-256 of `daily.csv` stored in `testdata/golden/` | Every `make check`; update only with `make update-golden` (runs `go test ./cmd/silosim -run TestGolden -update`; `go test ./... -update` fails in packages without the flag) and a reason in the commit message |
-| Calibration | 100 seeds, `silosim report` | Milestone 6 |
+| Calibration | 100 seeds, `silosim report` | Milestone 6 (baseline); T12.8 and T15.4 (canon patterns C1–C5) |
+| Frozen baseline | `part2-off.yaml` gives the same `daily.csv`, `yearly.csv` and `events.jsonl` as `baseline.yaml` | Every `make check`, from T7.5 |
+| Module alone | Each part-2 module on its own: off, null setting, on; then combined | Every part-2 module task |
+| Agenda | Ordering by day and phase, same-tick ties in insertion order, cancellation | T7.3 |
 
 The golden test is the main guard against silent changes: any change to model behaviour changes the hash, so it can never happen by accident.
 
@@ -183,3 +260,5 @@ Rough cost: 10,000 people × 91,250 ticks ≈ 0.9 billion person-days, each with
 - Partner search only for the few people who start searching today (ODD §6.3), not a scan of everyone every day.
 - Department output and coverage computed once per tick, not per person.
 - Profile with `go test -bench` and `pprof` before optimising anything.
+
+**Part 2: ≤ 3 minutes** for a full run (50 + 300 years) with every module on. The final experiments use 1,000 seeds per scenario (ODD §1.2): at 3 minutes a run on 8 workers that is about 6 hours per scenario, which is what T15.5 plans with. The likely hot spot is daily contacts (M9): each person samples k contacts from their own ties; nothing scans all pairs of people. The same rules apply as above: no allocation per person per tick, module slices grown on birth and not rebuilt, and per-floor or per-department totals computed once per tick.
