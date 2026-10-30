@@ -75,6 +75,11 @@ func run1(cfg *config.Scenario, dir string, modules []engine.Module) error {
 	if err != nil {
 		return err
 	}
+	for _, m := range modules {
+		if fs, ok := m.(output.FrameSource); ok {
+			out.AddFrameMetrics(fs.FrameMetrics()...)
+		}
+	}
 	e, err := engine.New(cfg, w, append(modules, out))
 	if err != nil {
 		out.Close()

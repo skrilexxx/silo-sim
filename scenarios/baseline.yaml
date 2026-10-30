@@ -20,6 +20,8 @@ output:
   dir: runs
   logWarmup: false
   invariantEvery: 365             # ticks between invariant checks in normal runs (tests: every tick)
+  frames: false                   # frames.csv.gz, per-floor snapshots for replay viewers (ODD §1.2, §8)
+  frameEvery: 30                  # days between frames, when frames is on
   understaffedShare: 0.5          # events.jsonl logs a department below this share of its target (ODD §8)
 
 init:                             # ODD §5

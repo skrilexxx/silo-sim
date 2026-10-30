@@ -101,6 +101,7 @@ func (s *Scenario) Validate() error {
 		{"lottery.pregnancyDays", float64(s.Lottery.PregnancyDays)},
 		{"resources.outageMinDays", float64(s.Resources.OutageMinDays)},
 		{"output.invariantEvery", float64(s.Output.InvariantEvery)},
+		{"output.frameEvery", float64(s.Output.FrameEvery)},
 	}
 	for i, d := range s.Work.Departments {
 		positive = append(positive, struct {

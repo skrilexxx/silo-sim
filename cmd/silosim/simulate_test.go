@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -208,4 +210,63 @@ func atoi(t *testing.T, s string) int {
 		t.Fatal(err)
 	}
 	return n
+}
+
+// T7.6: frames.csv.gz only exists when switched on; then, on every frame
+// day, population summed over floors equals daily.csv's, and the same seed
+// writes the same bytes.
+func TestFrames(t *testing.T) {
+	if _, err := os.Stat(filepath.Join(mustSimulate(t, loadInto(t, goldenScenario)), "frames.csv.gz")); !os.IsNotExist(err) {
+		t.Errorf("frames off, but frames.csv.gz exists (err %v)", err)
+	}
+
+	runFrames := func() string {
+		cfg := loadInto(t, goldenScenario)
+		cfg.Years, cfg.Output.Frames = 3, true
+		return mustSimulate(t, cfg)
+	}
+	dir := runFrames()
+	if !bytes.Equal(readFile(t, filepath.Join(dir, "frames.csv.gz")), readFile(t, filepath.Join(runFrames(), "frames.csv.gz"))) {
+		t.Error("same seed wrote different frames.csv.gz")
+	}
+
+	daily := map[string]string{} // day → population
+	for _, line := range strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(dir, "daily.csv")))), "\n")[1:] {
+		cols := strings.SplitN(line, ",", 3)
+		daily[cols[0]] = cols[1]
+	}
+	gz, err := gzip.NewReader(bytes.NewReader(readFile(t, filepath.Join(dir, "frames.csv.gz"))))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := io.ReadAll(gz)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if lines[0] != "day,floor,metric,value" {
+		t.Fatalf("header %q", lines[0])
+	}
+	var days []string
+	sums := map[string]int{}
+	for _, line := range lines[1:] {
+		cols := strings.Split(line, ",")
+		if cols[2] != "population" {
+			continue
+		}
+		if len(days) == 0 || days[len(days)-1] != cols[0] {
+			days = append(days, cols[0])
+		}
+		sums[cols[0]] += atoi(t, cols[3])
+	}
+	// 3 years = 1095 days: frames on days 30, 60, …, 1080; 3 metrics × 144 floors each.
+	if len(days) != 36 || days[0] != "30" || days[35] != "1080" || len(lines)-1 != 36*3*144 {
+		t.Fatalf("frames on %d days (%v … %v), %d rows; want 36 days from 30 to 1080, %d rows",
+			len(days), days[0], days[len(days)-1], len(lines)-1, 36*3*144)
+	}
+	for _, d := range days {
+		if strconv.Itoa(sums[d]) != daily[d] {
+			t.Errorf("day %s: floors sum to %d people, daily.csv says %s", d, sums[d], daily[d])
+		}
+	}
 }

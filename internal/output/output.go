@@ -4,6 +4,7 @@ package output
 
 import (
 	"bufio"
+	"compress/gzip"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -32,6 +33,15 @@ type Writer struct {
 	yearly *bufio.Writer
 	events *bufio.Writer
 	row    []byte // reused, so logging allocates nothing per tick
+	dir    string
+
+	// frames.csv.gz, only if output.frames is on (nil otherwise).
+	frames     *bufio.Writer
+	gz         *gzip.Writer
+	framesFile *os.File
+	frameEvery world.Tick
+	metrics    []FrameMetric
+	vals       []float64 // one per floor, reused
 
 	w                 *world.World
 	warmupDays        world.Tick // 0 if warm-up is logged too
@@ -52,10 +62,22 @@ const (
 	bands     = topBand/bandYears + 1
 )
 
+// FrameMetric is one per-floor value in frames.csv.gz: Fill writes one
+// value per floor into v (v[i] is floor i+1). It only reads the world.
+type FrameMetric struct {
+	Name string
+	Fill func(w *world.World, v []float64)
+}
+
+// FrameSource is a module with per-floor metrics for frames.csv.gz.
+type FrameSource interface {
+	FrameMetrics() []FrameMetric
+}
+
 // New creates daily.csv, yearly.csv and events.jsonl in dir. Headers are
 // written in Init, once the departments are known.
 func New(dir string) (*Writer, error) {
-	o := &Writer{}
+	o := &Writer{dir: dir, metrics: baselineMetrics}
 	for _, f := range []struct {
 		name string
 		buf  **bufio.Writer
@@ -105,7 +127,33 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 		h = append(h, ","+d.Name+"Workers,"+d.Name+"Target"...)
 	}
 	h = append(h, ",mechanicalInZone,zoneMoves,mayor,mayorZone\n"...)
-	_, err := o.yearly.Write(h)
+	if _, err := o.yearly.Write(h); err != nil {
+		return err
+	}
+	if cfg.Output.Frames {
+		return o.openFrames(w, cfg.Output.FrameEvery)
+	}
+	return nil
+}
+
+// AddFrameMetrics adds a module's metrics after the baseline's, in the
+// order given, so the file's row order is fixed.
+func (o *Writer) AddFrameMetrics(ms ...FrameMetric) {
+	o.metrics = append(o.metrics, ms...)
+}
+
+func (o *Writer) openFrames(w *world.World, every int) error {
+	f, err := os.Create(filepath.Join(o.dir, "frames.csv.gz"))
+	if err != nil {
+		return err
+	}
+	// gzip's header holds no time or name unless set, so the same seed
+	// gives the same bytes.
+	o.framesFile, o.gz = f, gzip.NewWriter(f)
+	o.frames = bufio.NewWriter(o.gz)
+	o.frameEvery = world.Tick(every)
+	o.vals = make([]float64, len(w.Floors))
+	_, err = o.frames.WriteString("day,floor,metric,value\n")
 	return err
 }
 
@@ -131,6 +179,11 @@ func (o *Writer) logDaily(w *world.World, _ *rng.Stream) error {
 	if o.warmupDays == 0 || w.Day > o.warmupDays {
 		if err := o.writeDaily(w, births-o.births, deaths-o.deaths, permits-o.permits); err != nil {
 			return err
+		}
+		if o.frames != nil && w.Day%o.frameEvery == 0 {
+			if err := o.writeFrame(w); err != nil {
+				return err
+			}
 		}
 	} else {
 		o.zoneMoves = w.Counts.ZoneMoves
@@ -194,6 +247,64 @@ func (o *Writer) writeDaily(w *world.World, births, deaths, permits int) error {
 	o.row = append(b, '\n')
 	_, err := o.daily.Write(o.row)
 	return err
+}
+
+// writeFrame writes one row per floor and metric, metrics in registration
+// order, floors from 1 to 144 (ODD §1.2, Outputs for viewers).
+func (o *Writer) writeFrame(w *world.World) error {
+	for _, m := range o.metrics {
+		clear(o.vals)
+		m.Fill(w, o.vals)
+		for i, v := range o.vals {
+			b := strconv.AppendInt(o.row[:0], int64(w.Day), 10)
+			b = append(b, ',')
+			b = strconv.AppendInt(b, int64(i+1), 10)
+			b = append(b, ',')
+			b = append(b, m.Name...)
+			b = appendTrimmed(append(b, ','), v)
+			o.row = append(b, '\n')
+			if _, err := o.frames.Write(o.row); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// baselineMetrics are the frames every run has: people, households and
+// average health per floor (0 on a floor where nobody lives).
+var baselineMetrics = []FrameMetric{
+	{"population", func(w *world.World, v []float64) {
+		for _, h := range w.Households {
+			if h.Floor != world.None {
+				v[h.Floor-1] += float64(len(h.Members))
+			}
+		}
+	}},
+	{"households", func(w *world.World, v []float64) {
+		for _, h := range w.Households {
+			if h.Floor != world.None {
+				v[h.Floor-1]++
+			}
+		}
+	}},
+	{"health", func(w *world.World, v []float64) {
+		people := make([]int, len(v))
+		for _, h := range w.Households {
+			if h.Floor == world.None {
+				continue
+			}
+			for _, id := range h.Members {
+				v[h.Floor-1] += w.People[id].Health
+			}
+			people[h.Floor-1] += len(h.Members)
+		}
+		for i, n := range people {
+			if n > 0 {
+				v[i] /= float64(n)
+			}
+		}
+	}},
 }
 
 // ODD §8: yearly.csv: the median age in years, the age pyramid (women
@@ -308,6 +419,13 @@ func (o *Writer) Close() error {
 			err = cerr
 		}
 	}
+	if o.frames != nil {
+		for _, step := range []func() error{o.frames.Flush, o.gz.Close, o.framesFile.Close} {
+			if serr := step(); err == nil {
+				err = serr
+			}
+		}
+	}
 	return err
 }
 
@@ -334,6 +452,21 @@ func flag(on bool) int {
 
 func appendF(b []byte, x float64, prec int) []byte {
 	return strconv.AppendFloat(append(b, ','), x, 'f', prec, 64)
+}
+
+// appendTrimmed writes x with 4 decimals, like the CSV files, minus
+// trailing zeros: counts come out as "73", not "73.0000", which keeps a
+// 250-year frames file small.
+func appendTrimmed(b []byte, x float64) []byte {
+	n := len(b)
+	b = strconv.AppendFloat(b, x, 'f', 4, 64)
+	for len(b) > n && b[len(b)-1] == '0' {
+		b = b[:len(b)-1]
+	}
+	if b[len(b)-1] == '.' {
+		b = b[:len(b)-1]
+	}
+	return b
 }
 
 // coverage is a department's coverage, or 1 if there is no such

@@ -70,7 +70,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
 - [x] **T7.4 Scripted events in scenarios.** (2026-10-30) `events:` in the YAML injects a shock on a given day: for example `{day: 20000, type: cleaningFailure}` or `{day: 30000, type: vitaminDWater, days: 365}`. Types are added by later milestones; this task builds the mechanism. Shocks you control are how experiments separate cause from effect.
   - *Done when:* an event type registered by a test module fires on the right day, in a fixed phase, and is logged to `events.jsonl`.
 - [x] **T7.5 Baseline regression guard.** (2026-10-30) `scenarios/part2-off.yaml` (every part-2 module listed but switched off) must equal `baseline.yaml` byte for byte. Runs in `make check`.
-- [ ] **T7.6 Frames output.** `frames.csv.gz`, a per-floor snapshot in long format (`day, floor, metric, value`), every `output.frameEvery` days (default 30), off by default. Modules register metrics; the baseline registers population, households and average health per floor. This is the data a replay viewer (M16) draws from.
+- [x] **T7.6 Frames output.** (2026-10-30) `frames.csv.gz`, a per-floor snapshot in long format (`day, floor, metric, value`), every `output.frameEvery` days (default 30), off by default. Modules register metrics; the baseline registers population, households and average health per floor. This is the data a replay viewer (M16) draws from.
   - *Done when:* with frames off, the golden hash is unchanged; with frames on, a 250-year run's file stays under 50 MB, and the per-floor population summed over floors equals `daily.csv`'s population on the same day.
 
 ## Milestone 8: Space and travel

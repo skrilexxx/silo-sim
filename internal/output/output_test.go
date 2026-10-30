@@ -3,6 +3,7 @@ package output
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -112,5 +113,38 @@ func TestScriptedEventLogged(t *testing.T) {
 	data, _ := os.ReadFile(filepath.Join(dir, "events.jsonl"))
 	if got := strings.TrimSpace(string(data)); got != `{"day":3,"type":"scripted","event":"testShock"}` {
 		t.Errorf("events.jsonl = %q", got)
+	}
+}
+
+func TestAppendTrimmed(t *testing.T) {
+	for x, want := range map[float64]string{0: "0", 73: "73", 100: "100", 0.5: "0.5", 0.91234: "0.9123", 0.00004: "0"} {
+		if got := string(appendTrimmed(nil, x)); got != want {
+			t.Errorf("%v: got %q, want %q", x, got, want)
+		}
+	}
+}
+
+// Baseline frame metrics: dissolved households and empty floors count as 0.
+func TestBaselineFrameMetrics(t *testing.T) {
+	w := &world.World{
+		People: []world.Person{{Health: 1}, {Health: 0.5}, {Health: 0.2}},
+		Floors: make([]world.Floor, 3),
+		Households: []world.Household{
+			{Floor: 1, Members: []world.PersonID{0, 1}},
+			{Floor: world.None}, // dissolved
+			{Floor: 3, Members: []world.PersonID{2}},
+		},
+	}
+	want := map[string][]float64{
+		"population": {2, 0, 1},
+		"households": {1, 0, 1},
+		"health":     {0.75, 0, 0.2},
+	}
+	for _, m := range baselineMetrics {
+		v := make([]float64, 3)
+		m.Fill(w, v)
+		if !slices.Equal(v, want[m.Name]) {
+			t.Errorf("%s = %v, want %v", m.Name, v, want[m.Name])
+		}
 	}
 }

@@ -59,6 +59,8 @@ type Output struct {
 	Dir            string `yaml:"dir"`
 	LogWarmup      bool   `yaml:"logWarmup"`
 	InvariantEvery int    `yaml:"invariantEvery"`
+	Frames         bool   `yaml:"frames"`
+	FrameEvery     int    `yaml:"frameEvery"`
 
 	UnderstaffedShare float64 `yaml:"understaffedShare"`
 }

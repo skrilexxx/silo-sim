@@ -218,7 +218,7 @@ One folder per run: `runs/<scenario>-<seed>/`
 
 **Part-2 outcome fields in `run.json`:** day of the first rebellion, number of rebellions and unrest spells, day and cause of collapse. A run that ends without one writes `null` (censored, ODD §1.2), so survival curves can be built from `run.json` alone.
 
-**Frames** are off by default and switched on for runs meant to be replayed (M16). They are written with `compress/gzip` from the standard library. Each module registers its per-floor metrics with the output module as a name and a function `func(*world.World) []float64` returning one value per floor (144); the baseline registers population, households and average health. Writing frames happens in the logging phase, not inside other steps, and never draws random numbers.
+**Frames** are off by default (`output.frames`) and switched on for runs meant to be replayed (M16). They are written with `compress/gzip` from the standard library, in the logging phase on measured days that are multiples of `output.frameEvery`, and never draw random numbers. A metric is an `output.FrameMetric`: a name and `Fill(w *world.World, v []float64)`, which writes one value per floor into `v` (`v[i]` is floor i+1). The output module holds the baseline's three (population, households, average health); a part-2 module adds its own by implementing `output.FrameSource` (`FrameMetrics() []FrameMetric`), which `run1` in `cmd/silosim` collects in module order, so row order is fixed. Size: a 250-year run with the three baseline metrics writes 4.4 MB (T7.6); each extra metric adds about 1.5 MB.
 
 **Columns added by part-2 modules** to `daily.csv` or `yearly.csv` appear only when that module is on, after the baseline columns. That is what keeps the baseline's bytes frozen.
 
