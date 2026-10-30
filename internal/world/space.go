@@ -16,16 +16,26 @@ type Space struct {
 	// and per day.
 	DescentHours, WalkHours float64
 
-	Location  []int  // floor where the person is today; 0 while on the stairs
-	WorkFloor []int  // usual work floor of a worker, shadow or worker on sick leave; 0 for none (porters, the stranded, everyone else)
-	Stranded  []bool // a worker or shadow cut off from every floor of their department
-	OffWork   []bool // stranded, on the stairs or away: does not work today (only matters for workers and shadows)
+	Location   []int  // floor where the person is today; 0 while on the stairs
+	Travelling int    // people on the stairs today
+	WorkFloor  []int  // usual work floor of a worker, shadow or worker on sick leave; 0 for none (porters, the stranded, everyone else)
+	Stranded   []bool // a worker or shadow cut off from every floor of their department
+	OffWork    []bool // stranded, on the stairs or away: does not work today (only matters for workers and shadows)
 
 	// A trip in progress has Dest > 0: it left From and reaches Dest on
 	// day Arrive. Away is the floor a person stays on after a trip, or 0.
 	From, Dest []int
 	Arrive     []Tick
 	Away       []int
+}
+
+// Where is a person's day location (§6.10); someone born today has none
+// until the evening's location step, and is at home.
+func (s *Space) Where(w *World, id PersonID) int {
+	if int(id) < len(s.Location) {
+		return s.Location[id]
+	}
+	return w.Households[w.People[id].Household].Floor
 }
 
 // Connected reports whether every stair segment between floors a and b is
@@ -73,5 +83,6 @@ func (s *Space) StartTrip(id PersonID, today Tick, to int) error {
 	}
 	s.From[id], s.Dest[id], s.Arrive[id] = from, to, today+Tick(s.TripDays(from, to))
 	s.Location[id], s.OffWork[id] = 0, true
+	s.Travelling++
 	return nil
 }

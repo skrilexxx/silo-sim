@@ -198,9 +198,9 @@ type Space struct {
 
 // Network is the social network module (ODD §6.11).
 type Network struct {
-	WeakTiesPerKind     int     `yaml:"weakTiesPerKind"`
-	ConversationsPerDay int     `yaml:"conversationsPerDay"`
-	WeakTieStrength     float64 `yaml:"weakTieStrength"`
+	WeakTiesPerKind      int     `yaml:"weakTiesPerKind"`
+	StrongTieDailyChance float64 `yaml:"strongTieDailyChance"`
+	WeakTieStrength      float64 `yaml:"weakTieStrength"`
 }
 
 // HasOffices reports whether a department works on office floors: every

@@ -64,6 +64,7 @@ func (s *Scenario) Validate() error {
 		{"governance.ownZoneVote", s.Governance.OwnZoneVote},
 		{"output.understaffedShare", s.Output.UnderstaffedShare},
 		{"network.weakTieStrength", s.Network.WeakTieStrength},
+		{"network.strongTieDailyChance", s.Network.StrongTieDailyChance},
 	}
 	for _, u := range unit {
 		if u.v < 0 || u.v > 1 {

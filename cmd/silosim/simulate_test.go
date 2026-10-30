@@ -289,9 +289,10 @@ func TestFrames(t *testing.T) {
 	}
 }
 
-// ODD §6.11 / T9.1: the network on changes nothing in daily.csv or
+// ODD §6.11 / T9.1–T9.2: the network on changes nothing in daily.csv or
 // events.jsonl; yearly.csv keeps its baseline columns and adds the degree
-// distribution. The 20 years run the network invariant every tick.
+// distribution and expected conversations a day by tie kind. The 20 years run the
+// network invariant every tick.
 func TestNetworkNullSetting(t *testing.T) {
 	base := runGoldenSize(t, "../../scenarios/baseline.yaml")
 	net := runGoldenSize(t, "../../scenarios/baseline.yaml", "space", "network")
@@ -300,9 +301,15 @@ func TestNetworkNullSetting(t *testing.T) {
 			t.Errorf("the network changed %s", f)
 		}
 	}
+	pop := map[string]string{} // day → population, from daily.csv
+	for _, line := range strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(net, "daily.csv")))), "\n")[1:] {
+		cols := strings.SplitN(line, ",", 3)
+		pop[cols[0]] = cols[1]
+	}
 	baseRows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(base, "yearly.csv")))), "\n")
 	netRows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(net, "yearly.csv")))), "\n")
-	if len(baseRows) != len(netRows) || !strings.HasSuffix(netRows[0], ",meanTies,tiesP10,tiesP50,tiesP90") {
+	if len(baseRows) != len(netRows) || !strings.HasSuffix(netRows[0], ",meanTies,tiesP10,tiesP50,tiesP90,"+
+		"talksPartner,talksHousehold,talksKin,talksMasterShadow,talksCoworker,talksNeighbour,talksPorter") {
 		t.Fatalf("yearly.csv: %d rows vs %d, header %q", len(netRows), len(baseRows), netRows[0])
 	}
 	for i := range baseRows {
@@ -318,6 +325,22 @@ func TestNetworkNullSetting(t *testing.T) {
 		p10, p50, p90 := atoi(t, cols[1]), atoi(t, cols[2]), atoi(t, cols[3])
 		if mean < 5 || mean > 30 || p10 > p50 || p50 > p90 {
 			t.Errorf("row %d: mean ties %v, percentiles %d %d %d", i, mean, p10, p50, p90)
+		}
+		// T9.2: expected conversations a day, by tie kind. Each one
+		// involves two people; at p_s = 0.5 and about 10 ties a head (a
+		// third strong) that is roughly 2–5 a person a day.
+		talks := 0.0
+		for _, c := range cols[4:] {
+			x, err := strconv.ParseFloat(c, 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			talks += x
+		}
+		day := strings.SplitN(baseRows[i], ",", 2)[0]
+		perHead := 2 * talks / float64(atoi(t, pop[day]))
+		if perHead < 2 || perHead > 5 {
+			t.Errorf("row %d: %.3f expected conversations per person per day, want 2–5", i, perHead)
 		}
 	}
 	t.Logf("year 20: %s", netRows[len(netRows)-1][len(baseRows[len(baseRows)-1])+1:])

@@ -175,3 +175,45 @@ func TestShuffle(t *testing.T) {
 		t.Error("shuffle left the order unchanged")
 	}
 }
+
+// Keyed draws depend only on the keys: the same keys give the same number
+// in any order, and over many keys the numbers are uniform.
+func TestKeyed(t *testing.T) {
+	k, err := NewKeyed(42, "talk")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := k.Float64(7, 3, 9)
+	for range 3 {
+		k.Float64(1, 2, 3)
+	}
+	if b := k.Float64(7, 3, 9); a != b {
+		t.Errorf("same keys gave %v then %v", a, b)
+	}
+	other, _ := NewKeyed(43, "talk")
+	if other.Float64(7, 3, 9) == a {
+		t.Error("another seed gave the same number")
+	}
+
+	// 200,000 draws over consecutive keys, 20 bins: each holds 10,000;
+	// chi-square with 19 degrees of freedom stays under 43.8 (p = 0.001).
+	var bins [20]int
+	sum := 0.0
+	for day := range uint64(1000) {
+		for pair := range uint64(200) {
+			x := k.Float64(day, pair, pair+1)
+			if x < 0 || x >= 1 {
+				t.Fatalf("draw %v outside [0, 1)", x)
+			}
+			bins[int(x*20)]++
+			sum += x
+		}
+	}
+	chi := 0.0
+	for _, n := range bins {
+		chi += math.Pow(float64(n)-10000, 2) / 10000
+	}
+	if chi > 43.8 || math.Abs(sum/200000-0.5) > 0.003 {
+		t.Errorf("chi-square %.1f, mean %.4f", chi, sum/200000)
+	}
+}

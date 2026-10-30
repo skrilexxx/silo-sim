@@ -98,6 +98,7 @@ func (m *Module) locate(w *world.World, r *rng.Stream) error {
 		s.WorkFloor = append(s.WorkFloor, 0)
 		s.From, s.Dest, s.Arrive, s.Away = append(s.From, 0), append(s.Dest, 0), append(s.Arrive, 0), append(s.Away, 0)
 	}
+	s.Travelling = 0
 	if m.seen == nil || !slices.Equal(m.seen, s.Broken) {
 		m.connect(s)
 		m.seen = slices.Clone(s.Broken)
@@ -164,6 +165,7 @@ func (m *Module) travel(w *world.World, id world.PersonID, home int) bool {
 	s.Dest[id] = dest
 	if s.Arrive[id] > w.Day+1 {
 		s.Location[id], s.Stranded[id], s.OffWork[id] = 0, false, true
+		s.Travelling++
 		return false
 	}
 	s.Dest[id], s.Away[id] = 0, dest

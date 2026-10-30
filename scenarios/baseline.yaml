@@ -145,8 +145,8 @@ space:                            # ODD §6.10 (part 2, draft); used only when `
 
 network:                          # ODD §6.11 (part 2, draft); used only when `network` is in modules
   weakTiesPerKind: 5              # k: coworker, neighbour and porter ties per person, each; guess
-  conversationsPerDay: 3          # c: conversations each person starts a day; guess
-  weakTieStrength: 0.3            # w_weak: weight of a weak tie against a strong one (1); guess
+  strongTieDailyChance: 0.5       # p_s: chance a strong tie is used on a day; a weak one w_weak × p_s; guess
+  weakTieStrength: 0.3            # w_weak: a weak tie is used w_weak times as often as a strong one; guess
 
 governance:                       # ODD §6.8
   mode: appointment               # or: election

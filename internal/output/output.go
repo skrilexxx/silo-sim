@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -132,6 +133,10 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 	h = append(h, ",mechanicalInZone,zoneMoves,mayor,mayorZone"...)
 	if w.Network != nil {
 		h = append(h, ",meanTies,tiesP10,tiesP50,tiesP90"...)
+		for k := range world.NumTieKinds {
+			name := k.String()
+			h = append(h, ",talks"+strings.ToUpper(name[:1])+name[1:]...)
+		}
 	}
 	h = append(h, '\n')
 	if _, err := o.yearly.Write(h); err != nil {
@@ -373,10 +378,10 @@ func (o *Writer) logYearly(w *world.World, _ *rng.Stream) error {
 	return err
 }
 
-// appendTies writes the degree distribution (ODD §6.11, Outputs): the mean
+// appendTies writes the network columns (ODD §6.11, Outputs): the mean
 // number of ties per living person and its 10th, 50th and 90th
 // percentiles, by nearest rank (the smallest value with at least p of
-// people at or below it).
+// people at or below it), then expected conversations a day by tie kind.
 func (o *Writer) appendTies(w *world.World, b []byte) []byte {
 	o.degrees = o.degrees[:0]
 	total := 0
@@ -398,6 +403,22 @@ func (o *Writer) appendTies(w *world.World, b []byte) []byte {
 		}
 		b = append(b, ',')
 		b = strconv.AppendInt(b, int64(v), 10)
+	}
+	// Expected conversations today, by tie kind: each tie between two
+	// people who can reach each other, counted once, with its kind's daily
+	// chance. Conversations are drawn only when a module asks (ODD §6.11),
+	// so their number is logged as its expectation.
+	var talks [world.NumTieKinds]float64
+	n := w.Network
+	for _, a := range w.Alive {
+		for _, t := range n.TiesOf(w, a) {
+			if a < t.Other && n.Reachable(w, a, t.Other) {
+				talks[t.Kind] += n.Chance[t.Kind]
+			}
+		}
+	}
+	for _, x := range talks {
+		b = appendF(b, x, 1)
 	}
 	return b
 }

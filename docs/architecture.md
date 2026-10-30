@@ -110,6 +110,7 @@ if w.Beliefs != nil { l := w.Beliefs.Legitimacy[id] }
 - **Per-person data are slices indexed by `PersonID`, never new fields on `Person`.** `Person` is read by every daily step and its layout is tuned for the cache (T5.4); the baseline's struct stays as frozen as its output.
 - **Births:** at the start of each of its steps, the owning module extends its slices to `len(w.People)` and initialises the newcomers by its own rule (for example legitimacy from the parents). There are no birth hooks. Dead people keep their entries, as they keep theirs in `People`.
 - **Deaths, moves, job changes:** a module that must react compares the world with what it last recorded (for example the household it stored for each person). If that gets expensive, a world-level change log (births, deaths, moves per tick) is added in T9.0, where the network first needs it, and not before.
+- **Reading the network (M9):** use `World.Network.TiesOf(w, id)` (cached as of the last network step; `Ties` rebuilds from scratch) and `World.Network.Talk(w, a, b, kind)` to ask whether a tie is used today. Iterate over the people who have something to pass on and ask about their ties; never draw conversations for the whole silo.
 
 ## Engine: modules, steps and the schedule
 
@@ -192,6 +193,7 @@ An entry is a day, a phase and a closure. The closure carries what the action ne
 - `math/rand/v2` with `rand.NewPCG(seed, streamID)`.
 - **One seed, one stream per module.** `streamID` is a fixed constant per module name (written in `rng/streams.go`, never computed from map order). The engine has its own stream for shuffling.
 - New part-2 modules get stream IDs 9 and up, appended at the end of `streams.go`. Existing IDs never change.
+- **Keyed draws** (`rng.Keyed`, T9.2): a number that depends only on the run seed, a stream name and the keys asked about (for conversations: day, lower person ID, higher person ID), not on how often or in what order it is asked. It mixes the keys with the splitmix64 finalizer. Use it where several modules must agree on one draw without storing it, and where drawing everything would cost too much: whether a tie is used today (ODD §6.11). It is still seeded per run and per stream, so determinism and common random numbers hold.
 - Why streams instead of one generator: switching on a new module (say, dissent) must not shift every random draw in demography. With separate streams the baseline parts of two scenarios see the same random numbers, so differences between scenarios come from the new module, not from noise. This is the "common random numbers" technique.
 - Banned: the global `math/rand` functions, `time.Now()` anywhere in the simulation, and ranging over a Go map in simulation logic (map order is random). Sort keys first if a map is unavoidable.
 - One simulation runs in one goroutine. `silosim batch` runs many seeds in parallel, one goroutine each.

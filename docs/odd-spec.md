@@ -178,7 +178,7 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 8. **Reproduction** — conceptions in open windows, births due today, expired windows closed (6.4)
 9. **Life stages** — child → shadow at 14, shadow → worker at 18, worker ↔ sick leave, worker → retired (6.5)
 10. **Partnering** — unpartnered adults may pair up (6.3)
-10.5. **Network** *(part 2, draft)* — weak ties ended and drawn again; the day's conversations (6.11)
+10.5. **Network** *(part 2, draft)* — weak ties ended and drawn again; the connected runs of floors for the day's conversations (6.11)
 11. **Logging** — daily metrics written (8)
 
 ### Every 30 days
@@ -218,7 +218,7 @@ The baseline is deliberately simple: people follow fixed rules, and only populat
 | Prediction | None |
 | Sensing | People know their partner, household, master and department; nothing more |
 | Interaction | Partnering, shadowing, shared rations within a zone, competition for lottery permits and homes |
-| Stochasticity | Deaths, injuries, illness, conception, partner choice, generator failures, lottery draws; all from one seed, with one random stream per module so adding a module does not shift the others' draws |
+| Stochasticity | Deaths, injuries, illness, conception, partner choice, generator failures, lottery draws; all from one seed, with one random stream per module so adding a module does not shift the others' draws. *Part 2:* whether a tie is used on a day (§6.11) comes from a counter-based stream, a function of the seed, the day and the pair, so it is the same whoever asks and costs nothing until asked |
 | Collectives | Households, departments, zones |
 | Observation | Daily silo-wide metrics, yearly snapshots, an event log; see section 8 |
 
@@ -514,23 +514,17 @@ Each rule looks only at the two people's state today, not at what changed.
 
 The lost ties are drawn again at the next network step.
 
-**Conversations.** After the ties are updated, every living person, in the tick's shuffled order, starts c conversations. Each picks one of their ties with weight equal to its strength, among the ties they can reach today: neither is on the stairs, and their day locations are connected (§6.10). Each tie is picked at most once per person per day; with fewer reachable ties than c, they start fewer. A conversation is between two people, and either may pass something to the other (§6.12), so on average a person takes part in about 2c a day. Today's conversations, with the kind of tie each used, are kept until the next network step for the steps that use them later in the day.
+**Conversations.** A tie is *used* on a day, meaning the two talk, with a chance set by its kind: p\_s for a strong tie, w\_weak × p\_s for a weak one. Each tie and day gets one draw, independent of every other tie and day. It can only be used if the two can reach each other: neither is on the stairs, and the stairs connect their day locations (§6.10). A conversation is between two people, and either may pass something to the other (§6.12). On average a person talks p\_s × (strong ties + w\_weak × weak ties) times a day: about 3.5 for an adult with 4 strong and 10 weak ties at the defaults.
+
+The draw for a tie and a day depends only on the run's seed, the day and the pair, never on who asks or in what order (a counter-based random stream, §4). Conversations are therefore not generated for the whole silo each day. A module that needs one asks whether a given tie is used today, and gets the same answer from either end. The cost then follows the people who have something to pass on, not the population: with every tie drawn every day the network took more run time than the whole baseline (T9.2).
 
 There is no distance weight. Distance acts through who a person's ties are (neighbours share a floor, coworkers a work floor) and through one hard limit, the stairs: when they break, kin and porter ties across the break go silent until they are repaired.
 
-**Outputs** (only when the module is on, as extra columns of yearly.csv): the mean number of ties per person and its 10th, 50th and 90th percentiles at the snapshot, and the number of conversations since the previous row by tie kind (partner, household, kin, master–shadow, coworker, neighbour, porter).
+**Outputs** (only when the module is on, as extra columns of yearly.csv): the mean number of ties per person and its 10th, 50th and 90th percentiles at the snapshot, and the expected number of conversations that day by tie kind (partner, household, kin, master–shadow, coworker, neighbour, porter): the sum of the daily chances of the ties whose two people can reach each other. Conversations are drawn only when asked for, so their expected number is what is logged.
 
 **Off and null.** With the module off, nothing of this exists. With it on, the network changes no baseline state and draws only from its own stream, so `daily.csv` and `events.jsonl` are byte-identical to a run without it; `yearly.csv` keeps its baseline columns and gains the network's.
 
-**Parameters** (move to §7 when M9 is done):
-
-| Parameter | Default | Basis |
-| --- | --- | --- |
-| Weak ties per kind k | 5 | Guess: a few close neighbours and workmates out of about 90 people on a floor |
-| Conversations started per day c | 3 | Guess; sets how fast news travels, so it is checked against C4 (§1.2) in T12.8 |
-| Weak tie strength w\_weak | 0.3 | Guess: a weak tie is picked about a third as often as a strong one |
-
-Ranges checked at load: k and c are integers ≥ 0; w\_weak is in [0, 1].
+**Parameters:** weak ties per kind k, strong tie daily chance p\_s and weak tie strength w\_weak, in §7 (M9 done, 2026-10-31).
 
 ## 7. Parameters
 
@@ -538,7 +532,7 @@ Every number the model uses, in one place. Each one becomes a field in the scena
 
 The table below is the frozen baseline set. Part-2 parameters are listed in their draft sections (6.9 onward) and move into this table when their milestone is done.
 
-**Ranges checked at load.** No parameter may be negative. These must lie in [0, 1]: every daily chance and percentage; α, ρ, f₀ and the air recovery share (so the updates in 6.5 and 6.6 cannot overshoot); every amount subtracted from, or compared with, a 0–1 variable (injury and illness cost, condition drop, wear, start skill, master skill, sick-leave health); hunger and air damage; recovery; the open-window weight; the shadow output factor; the retraining threshold. Also maternalDeathBase ≤ 0.5 and injuryChance × the largest injury factor ≤ 1, so every derived daily probability stays ≤ 1. These must be strictly greater than 0, because they are divisors or define quantities that must exist: Gompertz A and B (so the day-1 age table ends), floors per zone, the coverage need factor, every department share, adult kcal, the age-gap scale, power demand per person, the capacity margin, kcal per farm unit, target and starting population, window, pregnancy and minimum outage length, and the invariant and frame intervals. invariantEvery and frameEvery are integers ≥ 1. Ages are ordered (shadow < worker < retire, mother min < max, partnering min age ≤ day-1 pairing age), outage min ≤ max, farm and Mechanical floors each fewer than the floors per zone (every zone keeps a residential floor), the home capacity margin is at least 1, and zone splits and department shares each sum to 1. Part 2: both walking hours are strictly greater than 0; every department with office floors lists at least one floor inside the silo, and Farms, Mechanical, General services and Porters list none. That each office floor is a residential floor (not a farm or Mechanical floor) in the department's zone is checked when the space module starts, once the floors exist.
+**Ranges checked at load.** No parameter may be negative. These must lie in [0, 1]: every daily chance and percentage; α, ρ, f₀ and the air recovery share (so the updates in 6.5 and 6.6 cannot overshoot); every amount subtracted from, or compared with, a 0–1 variable (injury and illness cost, condition drop, wear, start skill, master skill, sick-leave health); hunger and air damage; recovery; the open-window weight; the shadow output factor; the retraining threshold. Also maternalDeathBase ≤ 0.5 and injuryChance × the largest injury factor ≤ 1, so every derived daily probability stays ≤ 1. These must be strictly greater than 0, because they are divisors or define quantities that must exist: Gompertz A and B (so the day-1 age table ends), floors per zone, the coverage need factor, every department share, adult kcal, the age-gap scale, power demand per person, the capacity margin, kcal per farm unit, target and starting population, window, pregnancy and minimum outage length, and the invariant and frame intervals. invariantEvery and frameEvery are integers ≥ 1. Ages are ordered (shadow < worker < retire, mother min < max, partnering min age ≤ day-1 pairing age), outage min ≤ max, farm and Mechanical floors each fewer than the floors per zone (every zone keeps a residential floor), the home capacity margin is at least 1, and zone splits and department shares each sum to 1. Part 2: both walking hours are strictly greater than 0; every department with office floors lists at least one floor inside the silo, and Farms, Mechanical, General services and Porters list none. That each office floor is a residential floor (not a farm or Mechanical floor) in the department's zone is checked when the space module starts, once the floors exist. The weak ties per kind k is an integer ≥ 0; p\_s and w\_weak are in [0, 1].
 
 | Parameter | Default | Basis | Used in |
 | --- | --- | --- | --- |
@@ -598,6 +592,9 @@ The table below is the frozen baseline set. Part-2 parameters are listed in thei
 | Full descent H\_descent | 12 hours of walking, floor 1 → 144 | Guess. Not stated on screen; a reviewer's estimate is about a day top to bottom, fan discussion calls a full climb multi-day (lore reference). With 8 walking hours a day it takes 2 days, which fits both | 6.10 |
 | Walking per day H\_walk | 8 hours | Guess | 6.10 |
 | Office floors | Administration 1, Sheriff 1, Judicial 2–3, Medical 12, Education 20, IT 33–34, Supply 72 | Guess; Up Top for the first six, Mids for Supply (§6.5 zones). Sheriff and the Mayor's office near the cafeteria at the top \[Likely\] | 6.10 |
+| Weak ties per kind k | 5 | Guess: a few close neighbours and workmates out of about 90 people on a floor | 6.11 |
+| Strong tie daily chance p\_s | 0.5 | Guess: family and close work ties talk on about every other day; sets how fast news travels, so it is checked against C4 (§1.2) in T12.8 | 6.11 |
+| Weak tie strength w\_weak | 0.3 | Guess: a weak tie is used about a third as often as a strong one (0.15 a day) | 6.11 |
 
 ## 8. Outputs, tests and validation
 

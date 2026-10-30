@@ -70,3 +70,36 @@ func (s *Stream) WeightedIndex(w []float64) int {
 func (s *Stream) Shuffle(n int, swap func(i, j int)) {
 	s.r.Shuffle(n, swap)
 }
+
+// Keyed gives random numbers that depend only on the run seed, a stream
+// name and the keys asked about, never on how often or in what order they
+// are asked (a counter-based generator). Several modules can then agree
+// on one draw without storing it: whether a tie is used today is the same
+// number whoever asks (ODD §6.11).
+type Keyed struct {
+	base uint64
+}
+
+// NewKeyed returns the keyed generator for one stream under one run seed.
+func NewKeyed(seed uint64, name string) (*Keyed, error) {
+	id, ok := streamID(name)
+	if !ok {
+		return nil, fmt.Errorf("rng: no stream for %q (add it to streams.go)", name)
+	}
+	return &Keyed{base: mix(mix(seed) ^ id)}, nil
+}
+
+// Float64 returns a uniform number in [0, 1) for the keys a, b, c.
+func (k *Keyed) Float64(a, b, c uint64) float64 {
+	h := mix(mix(mix(k.base^a)^b) ^ c)
+	return float64(h>>11) * 0x1p-53
+}
+
+// mix is the splitmix64 finalizer: every input bit changes about half the
+// output bits.
+func mix(x uint64) uint64 {
+	x += 0x9e3779b97f4a7c15
+	x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9
+	x = (x ^ (x >> 27)) * 0x94d049bb133111eb
+	return x ^ (x >> 31)
+}

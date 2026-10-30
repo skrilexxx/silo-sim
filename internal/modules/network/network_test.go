@@ -1,6 +1,7 @@
 package network
 
 import (
+	"math"
 	"slices"
 	"testing"
 
@@ -54,7 +55,7 @@ func newSilo(t *testing.T) *silo {
 	cfg.Space.OfficeFloors = map[string][]int{"it": {1}}
 	cfg.Space.FullDescentHours, cfg.Space.WalkingHoursPerDay = 12, 8
 	cfg.Work.ShadowAge, cfg.Work.WorkerAge, cfg.Work.MaxShadowsPerMaster = 14, 18, 2
-	cfg.Network.WeakTiesPerKind = 2
+	cfg.Network.WeakTiesPerKind, cfg.Network.StrongTieDailyChance, cfg.Network.WeakTieStrength = 2, 0.5, 0.3
 	cfg.Output.InvariantEvery = 1
 	r, _ := rng.New(1, "network")
 	return &silo{t: t, w: w, cfg: cfg, r: r}
@@ -273,4 +274,80 @@ func TestStrandedKeepCoworkers(t *testing.T) {
 	}
 	s.want(g, world.TieCoworker, e, f)
 	s.want(e, world.TieCoworker, f, g)
+}
+
+// couple puts B into A's household as A's partner.
+func (s *silo) couple(a, b world.PersonID) {
+	w := s.w
+	hb := w.People[b].Household
+	w.Households[hb].Members, w.Households[hb].Floor = nil, world.None
+	w.People[b].Household = w.People[a].Household
+	w.Households[w.People[a].Household].Members = append(w.Households[w.People[a].Household].Members, b)
+	w.People[a].Partner, w.People[b].Partner = b, a
+}
+
+// ODD §6.11: whether two people talk today is one draw for the pair,
+// the same whoever asks and however often; travellers and ties across
+// broken stairs are silent.
+func TestTalk(t *testing.T) {
+	s := newSilo(t)
+	s.cfg.Network.StrongTieDailyChance = 1 // every reachable tie talks
+	mum := s.add(60, world.Retired, world.None, 1)
+	a := s.add(35, world.Retired, world.None, 6)
+	b := s.add(35, world.Retired, world.None, 6)
+	trav := s.add(40, world.Retired, world.None, 6)
+	s.w.People[a].Mother = mum
+	s.couple(a, b)
+	s.start()
+	w, n := s.w, s.w.Network
+	if !n.Talk(w, a, b, world.TiePartner) || !n.Talk(w, a, mum, world.TieKin) || !n.Talk(w, mum, a, world.TieKin) {
+		t.Error("reachable ties at chance 1 should talk")
+	}
+	if err := w.Space.StartTrip(trav, w.Day, 1); err != nil {
+		t.Fatal(err)
+	}
+	if n.Talk(w, trav, a, world.TieNeighbour) || n.Talk(w, a, trav, world.TieNeighbour) {
+		t.Error("a traveller talked")
+	}
+	w.Space.Broken[2] = true // floors 1 and 6 cut apart
+	s.day()
+	if n.Talk(w, a, mum, world.TieKin) {
+		t.Error("talk across broken stairs")
+	}
+}
+
+// ODD §6.11: a strong tie is used on a day with chance p_s, a weak one
+// with w_weak × p_s, the same from both ends. 20,000 days at p_s = 0.5,
+// w_weak = 0.3: partners talk on 50% of days, neighbours on 15%.
+func TestTalkRates(t *testing.T) {
+	s := newSilo(t)
+	s.cfg.Network.WeakTiesPerKind, s.cfg.Network.StrongTieDailyChance, s.cfg.Network.WeakTieStrength = 0, 0.5, 0.3
+	a := s.add(40, world.Retired, world.None, 2)
+	p := s.add(40, world.Retired, world.None, 2)
+	nb := s.add(40, world.Retired, world.None, 2)
+	s.couple(a, p)
+	s.start()
+	w, n := s.w, s.w.Network
+	const days = 20000
+	partner, neighbour := 0, 0
+	for range days {
+		w.Day++
+		if n.Talk(w, a, p, world.TiePartner) {
+			partner++
+		}
+		if n.Talk(w, a, nb, world.TieNeighbour) != n.Talk(w, nb, a, world.TieNeighbour) {
+			t.Fatalf("day %d: the two ends disagree", w.Day)
+		}
+		if n.Talk(w, nb, a, world.TieNeighbour) {
+			neighbour++
+		}
+	}
+	for _, c := range []struct {
+		what      string
+		got, want float64
+	}{{"partner", float64(partner) / days, 0.5}, {"neighbour", float64(neighbour) / days, 0.15}} {
+		if math.Abs(c.got-c.want) > 0.018 { // about 5 standard errors at 0.5
+			t.Errorf("%s talked on %.4f of days, want %.2f", c.what, c.got, c.want)
+		}
+	}
 }

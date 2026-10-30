@@ -45,6 +45,8 @@ type Module struct {
 	stamp               []int // last update a person was listed as a drawer
 	update              int
 	ties                []world.Tie
+
+	touched []world.PersonID // whose ties may have changed since the last step: changed keys, both ends of a weak tie drawn or ended
 }
 
 func New() *Module { return &Module{porters: world.None} }
@@ -70,8 +72,19 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	m.floors = len(w.Floors)
 	m.byFloor, m.dirtyFloor = make([][]world.PersonID, m.floors), make([]bool, m.floors)
 	m.byWork, m.dirtyWork = make([][]world.PersonID, len(w.Depts)*m.floors), make([]bool, len(w.Depts)*m.floors)
-	w.Network = &world.Network{}
-	m.run(w, r)
+	talks, err := rng.NewKeyed(cfg.Seed, "talk")
+	if err != nil {
+		return err
+	}
+	n := &world.Network{Talks: talks}
+	for kind := range world.NumTieKinds {
+		n.Chance[kind] = cfg.Network.StrongTieDailyChance
+		if kind.Weak() {
+			n.Chance[kind] *= cfg.Network.WeakTieStrength
+		}
+	}
+	w.Network = n
+	m.step(w, r)
 	return nil
 }
 
@@ -79,10 +92,29 @@ func (m *Module) Steps() []engine.Step {
 	return []engine.Step{{Phase: engine.PhaseNetwork, Run: m.step}}
 }
 
-// ODD §6.11 / §3 step 10.5: weak ties ended and drawn again.
+// ODD §6.11 / §3 step 10.5: weak ties ended and drawn again; the ties
+// cache and the connected runs of floors brought up to date, for the
+// conversations other modules ask about today.
 func (m *Module) step(w *world.World, r *rng.Stream) error {
 	m.run(w, r)
+	m.connect(w)
+	w.Network.Forget(w, m.touched, m.ties)
+	m.touched = m.touched[:0]
 	return nil
+}
+
+// connect labels each floor with the run of connected floors it is in: a
+// broken segment starts a new run.
+func (m *Module) connect(w *world.World) {
+	n := w.Network
+	n.Part = append(n.Part[:0], 0)
+	for f := 1; f < m.floors; f++ {
+		run := n.Part[f-1]
+		if w.Space.Broken[f-1] {
+			run++
+		}
+		n.Part = append(n.Part, run)
+	}
 }
 
 func (m *Module) run(w *world.World, r *rng.Stream) {
@@ -125,6 +157,7 @@ func (m *Module) scan(w *world.World) {
 		}
 		m.keys[id] = now
 		m.changed = append(m.changed, id)
+		m.touched = append(m.touched, id)
 		m.move(m.byFloor, m.dirtyFloor, &m.dirtyF, id, old.floor, now.floor)
 		m.move(m.byWork, m.dirtyWork, &m.dirtyW, id, old.work, now.work)
 		if old.master != now.master {
@@ -222,6 +255,7 @@ func (m *Module) endTies(w *world.World, id world.PersonID) {
 		}
 		o := t.Other
 		n.Weak[o] = slices.DeleteFunc(n.Weak[o], func(u world.Tie) bool { return u.Other == id })
+		m.touched = append(m.touched, id, o)
 		m.cnt[id][t.Kind-world.TieCoworker]--
 		m.cnt[o][t.Kind-world.TieCoworker]--
 		ko := m.keys[o]
@@ -369,6 +403,7 @@ func (m *Module) tie(w *world.World, a, b world.PersonID, kind world.TieKind) {
 	n.Weak[b] = append(n.Weak[b], world.Tie{Other: a, Kind: kind})
 	m.cnt[a][kind-world.TieCoworker]++
 	m.cnt[b][kind-world.TieCoworker]++
+	m.touched = append(m.touched, a, b)
 	m.ties = append(m.ties, world.Tie{Other: b, Kind: kind})
 }
 

@@ -14,5 +14,5 @@ space:                    # M8, off; settings differ from the baseline's
 
 network:                  # M9, off
   weakTiesPerKind: 2
-  conversationsPerDay: 7
+  strongTieDailyChance: 0.9
   weakTieStrength: 0.9

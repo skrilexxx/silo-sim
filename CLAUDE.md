@@ -32,7 +32,7 @@ Agent-based simulation of Silo 18 (from the TV series *Silo*) in Go. The **basel
 - New parameter → add it to `baseline.yaml` with a comment and an ODD § reference, and to ODD §7.
 
 ### Determinism (non-negotiable)
-- Randomness only through the `rng.Stream` given to the module. Never the global `math/rand`, never `time.Now()` in simulation code.
+- Randomness only through the `rng.Stream` given to the module, or an `rng.Keyed` generator for draws that must not depend on call order (see `docs/architecture.md`, Randomness). Never the global `math/rand`, never `time.Now()` in simulation code.
 - Never range over a Go map in simulation logic. Use slices, or sort the keys.
 - No goroutines inside a single run. Parallelism only across seeds in `batch`.
 - The step order lives only in `internal/engine/schedule.go`. Do not reorder phases without a spec change.
