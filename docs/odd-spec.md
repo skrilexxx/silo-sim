@@ -178,6 +178,7 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 8. **Reproduction** — conceptions in open windows, births due today, expired windows closed (6.4)
 9. **Life stages** — child → shadow at 14, shadow → worker at 18, worker ↔ sick leave, worker → retired (6.5)
 10. **Partnering** — unpartnered adults may pair up (6.3)
+10.5. **Network** *(part 2, draft)* — weak ties ended and drawn again; the day's conversations (6.11)
 11. **Logging** — daily metrics written (8)
 
 ### Every 30 days
@@ -484,6 +485,50 @@ With a full descent of H\_descent = 12 hours of walking and H\_walk = 8 walking 
 **Off and null.** With the module off, none of this exists and the baseline runs as before. With the module on, all stairs intact and no module starting trips (the null setting), nobody is stranded, travels or is away. The only new random draws are the porters' floors, on this module's own stream, so the baseline's output files are byte-identical to a run with the module off.
 
 **Parameters:** full descent, walking per day and office floors, in §7 (M8 done, 2026-10-30).
+
+### 6.11 Social network (draft)
+
+*Answers Q1.* Beliefs spread person to person (§6.12), and rebels join when enough of their ties have joined (§6.14), so who knows whom decides what people hear and who moves together. The network is ties, which last, plus conversations, drawn from the ties each day. It needs the space module, because coworkers share a work floor and nobody talks across broken stairs (§6.10).
+
+**Ties.** A tie joins two living people; it has no direction, and a pair has at most one, of the first kind in this list that applies:
+
+| Kind | Who | Strength |
+| --- | --- | --- |
+| Partner | The two partners (§6.3) | 1 |
+| Household | Everyone living in the same household | 1 |
+| Kin | Parent and child, and siblings (sharing a mother or a father), wherever they live: the relatives of §6.3 | 1 |
+| Master–shadow | A shadow and their master (§6.5) | 1 |
+| Coworker | Workers and shadows of the same department with the same work floor (§6.10); up to k each | w\_weak |
+| Neighbour | People aged 14 or more with the same home floor; up to k each | w\_weak |
+| Porter | A porter and an adult (18+) living in another zone; up to k each | w\_weak |
+
+The first four, the *strong* ties, follow from the household, partner, family and shadowing records and change with them at once. The last three, the *weak* ties, are drawn, which is how the network gets its randomness. Porters have no coworker ties (they have no fixed work floor); their porter ties are the silo's main bridges between zones, next to kin who moved away. Children under 14 have only strong ties.
+
+**Drawing and losing weak ties.** At the network step (§3 step 10.5), in the tick's shuffled order, anyone with fewer than k ties of a weak kind draws new ones, one at a time and uniformly at random, from the people eligible for that kind who also have fewer than k of it, until they have k or nobody is left. Both sides count the new tie. On day 1 everyone draws, in random order. A weak tie ends when either person dies, and also:
+
+- a neighbour tie, when either moves to another home floor;
+- a coworker tie, when either retires, changes department or gets another work floor (moving home, or a change in the stairs, can do that); sick leave and being off work for a day (§6.10) don't end it;
+- a porter tie, when the porter retires or leaves Porters. Moving zone doesn't end it.
+
+The lost ties are drawn again at the next network step.
+
+**Conversations.** After the ties are updated, every living person, in the tick's shuffled order, starts c conversations. Each picks one of their ties with weight equal to its strength, among the ties they can reach today: neither is on the stairs, and their day locations are connected (§6.10). Each tie is picked at most once per person per day; with fewer reachable ties than c, they start fewer. A conversation is between two people, and either may pass something to the other (§6.12), so on average a person takes part in about 2c a day. Today's conversations, with the kind of tie each used, are kept until the next network step for the steps that use them later in the day.
+
+There is no distance weight. Distance acts through who a person's ties are (neighbours share a floor, coworkers a work floor) and through one hard limit, the stairs: when they break, kin and porter ties across the break go silent until they are repaired.
+
+**Outputs** (only when the module is on, as extra columns of yearly.csv): the mean number of ties per person and its 10th, 50th and 90th percentiles at the snapshot, and the number of conversations since the previous row by tie kind (partner, household, kin, master–shadow, coworker, neighbour, porter).
+
+**Off and null.** With the module off, nothing of this exists. With it on, the network changes no baseline state and draws only from its own stream, so `daily.csv` and `events.jsonl` are byte-identical to a run without it; `yearly.csv` keeps its baseline columns and gains the network's.
+
+**Parameters** (move to §7 when M9 is done):
+
+| Parameter | Default | Basis |
+| --- | --- | --- |
+| Weak ties per kind k | 5 | Guess: a few close neighbours and workmates out of about 90 people on a floor |
+| Conversations started per day c | 3 | Guess; sets how fast news travels, so it is checked against C4 (§1.2) in T12.8 |
+| Weak tie strength w\_weak | 0.3 | Guess: a weak tie is picked about a third as often as a strong one |
+
+Ranges checked at load: k and c are integers ≥ 0; w\_weak is in [0, 1].
 
 ## 7. Parameters
 
