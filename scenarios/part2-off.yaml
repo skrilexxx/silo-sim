@@ -1,0 +1,9 @@
+# Baseline regression guard (T7.5): every part-2 module's settings, with every part-2
+# module switched off (left out of `modules`). It must write daily.csv, yearly.csv and
+# events.jsonl byte-identical to baseline.yaml; `make check` runs the comparison
+# (cmd/silosim TestPart2OffEqualsBaseline).
+# Each part-2 milestone adds its module's section here at a NON-null setting, so the
+# guard catches any setting that acts while its module is off. No part-2 module exists
+# yet (M8 adds the first).
+extends: baseline.yaml
+name: part2-off

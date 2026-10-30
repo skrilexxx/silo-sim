@@ -243,9 +243,9 @@ A progress line in the terminal is enough.
 | Unit tests | Each submodel on a tiny hand-built world (5–50 people), checking the rule in ODD §6 | Every task |
 | Statistical tests | Rules with known expected rates, e.g. conception within a 365-day window ≈ 80% over 10,000 trials; median death age 65–69 with health 1 | When the submodel is written |
 | Invariants | ODD §8 list, as functions `func(w *world.World) error` | Every tick in tests, every year in runs |
-| Golden test | 1,000 people, 20 years, seed 1: SHA-256 of `daily.csv` stored in `testdata/golden/` | Every `make check`; update only with `make update-golden` (runs `go test ./cmd/silosim -run TestGolden -update`; `go test ./... -update` fails in packages without the flag) and a reason in the commit message |
+| Golden test | 1,000 people, 20 years, seed 1: SHA-256 of `daily.csv`, `yearly.csv` and `events.jsonl` stored in `testdata/golden/` (the last two since T7.5, checked equal to `baseline-v1`) | Every `make check`; update only with `make update-golden` (runs `go test ./cmd/silosim -run TestGolden -update`; `go test ./... -update` fails in packages without the flag) and a reason in the commit message |
 | Calibration | 100 seeds, `silosim report` | Milestone 6 (baseline); T12.8 and T15.4 (canon patterns C1–C5) |
-| Frozen baseline | `part2-off.yaml` gives the same `daily.csv`, `yearly.csv` and `events.jsonl` as `baseline.yaml` | Every `make check`, from T7.5 |
+| Frozen baseline | `part2-off.yaml` gives the same `daily.csv`, `yearly.csv` and `events.jsonl` as `baseline.yaml`, at the golden size; with the golden test this ties every part-2 build to `baseline-v1` | Every `make check`, from T7.5 |
 | Module alone | Each part-2 module on its own: off, null setting, on; then combined | Every part-2 module task |
 | Agenda | Ordering by day and phase, same-tick ties in insertion order, cancellation | T7.3 |
 

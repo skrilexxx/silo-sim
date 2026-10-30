@@ -19,12 +19,16 @@ import (
 // The golden test lives only in this package, because `go test ./... -update`
 // would fail in every package that does not define the flag. Use
 // `make update-golden`.
-var update = flag.Bool("update", false, "rewrite testdata/golden/daily.sha256")
+var update = flag.Bool("update", false, "rewrite the hashes in testdata/golden")
 
 const (
-	goldenScenario = "../../testdata/golden/scenario.yaml"
-	goldenHash     = "../../testdata/golden/daily.sha256"
+	goldenDir      = "../../testdata/golden"
+	goldenScenario = goldenDir + "/scenario.yaml"
 )
+
+// frozenFiles are the outputs that must stay byte-identical to baseline-v1
+// (docs/architecture.md, Goals). run.json is not one: it holds the runtime.
+var frozenFiles = []string{"daily.csv", "yearly.csv", "events.jsonl"}
 
 // loadInto loads a scenario and points its output at a fresh temp folder.
 func loadInto(t *testing.T, path string) *config.Scenario {
@@ -153,22 +157,47 @@ func TestUnbuiltModuleFails(t *testing.T) {
 	}
 }
 
+// Each frozen file's SHA-256 is stored as <name>.sha256 (daily.sha256 for
+// daily.csv). yearly and events were added in T7.5, checked equal to
+// baseline-v1.
 func TestGolden(t *testing.T) {
 	dir := mustSimulate(t, loadInto(t, goldenScenario))
-	sum := sha256.Sum256(readFile(t, filepath.Join(dir, "daily.csv")))
-	got := hex.EncodeToString(sum[:])
+	for _, f := range frozenFiles {
+		sum := sha256.Sum256(readFile(t, filepath.Join(dir, f)))
+		got := hex.EncodeToString(sum[:])
+		hashFile := filepath.Join(goldenDir, strings.TrimSuffix(f, filepath.Ext(f))+".sha256")
 
-	if *update {
-		if err := os.WriteFile(goldenHash, []byte(got+"\n"), 0o644); err != nil {
-			t.Fatal(err)
+		if *update {
+			if err := os.WriteFile(hashFile, []byte(got+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			t.Logf("golden %s hash updated to %s", f, got)
+			continue
 		}
-		t.Logf("golden hash updated to %s", got)
-		return
+		want := strings.TrimSpace(string(readFile(t, hashFile)))
+		if got != want {
+			t.Errorf("golden %s changed:\n got  %s\n want %s\n"+
+				"If the change is on purpose, run `make update-golden` and give the reason in the commit message.", f, got, want)
+		}
 	}
-	want := strings.TrimSpace(string(readFile(t, goldenHash)))
-	if got != want {
-		t.Errorf("golden daily.csv changed:\n got  %s\n want %s\n"+
-			"If the change is on purpose, run `make update-golden` and give the reason in the commit message.", got, want)
+}
+
+// T7.5: with every part-2 module off, part2-off.yaml writes the same files
+// as baseline.yaml. Both run at the golden size, so this is as fast as the
+// golden test; TestGolden ties baseline at that size to baseline-v1.
+func TestPart2OffEqualsBaseline(t *testing.T) {
+	golden := loadInto(t, goldenScenario)
+	run := func(path string) string {
+		cfg := loadInto(t, path)
+		cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, golden.WarmupYears, golden.Years, golden.Population
+		cfg.Output.InvariantEvery = golden.Output.InvariantEvery
+		return mustSimulate(t, cfg)
+	}
+	base, off := run("../../scenarios/baseline.yaml"), run("../../scenarios/part2-off.yaml")
+	for _, f := range frozenFiles {
+		if !bytes.Equal(readFile(t, filepath.Join(base, f)), readFile(t, filepath.Join(off, f))) {
+			t.Errorf("part2-off.yaml wrote a different %s from baseline.yaml: a part-2 setting leaks into the baseline", f)
+		}
 	}
 }
 
