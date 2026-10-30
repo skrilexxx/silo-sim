@@ -13,6 +13,8 @@ warmupYears: 50
 years: 200
 population: 10000                 # day-1 size (ODD §5)
 modules: [demography, health, work, resources, governance]
+# events: scripted shocks (ODD §5), none in the baseline. Each is { day: <run day in the
+#   measured years>, type: <a type defined by a module that is on> }, e.g. { day: 20000, type: cleaningFailure }.
 
 output:
   dir: runs

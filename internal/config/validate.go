@@ -13,6 +13,8 @@ import (
 // (0.30 + 0.20 + … is not exactly 1 in binary).
 const sumTolerance = 1e-9
 
+const daysPerYear = 365
+
 // Validate checks value ranges. Every error names the key, and all
 // problems are reported at once rather than one per run.
 func (s *Scenario) Validate() error {
@@ -161,6 +163,18 @@ func (s *Scenario) Validate() error {
 	}
 	if _, err := s.Governance.TermYears(); err != nil {
 		errs = append(errs, err)
+	}
+
+	// ODD §5: scripted events fall in the measured years; warm-up is
+	// thrown away, and a shock there would never be seen.
+	warmupDays, lastDay := s.WarmupYears*daysPerYear, (s.WarmupYears+s.Years)*daysPerYear
+	for i, e := range s.Events {
+		if e.Day <= warmupDays || e.Day > lastDay {
+			add("events[%d].day = %d, must be in the measured years, %d to %d", i, e.Day, warmupDays+1, lastDay)
+		}
+		if e.Type == "" {
+			add("events[%d].type is empty", i)
+		}
 	}
 
 	// Fewer homes than households would leave people homeless on day 1.

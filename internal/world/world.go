@@ -234,6 +234,13 @@ type RationingEvent struct {
 	FoodStockDays float64 `json:"foodStockDays"`
 }
 
+// ScriptedEvent: type "scripted", a shock from the scenario's events: list
+// (ODD §5). What it causes is logged by the module that defines it.
+type ScriptedEvent struct {
+	EventHeader
+	Event string `json:"event"`
+}
+
 // DepartmentEvent: type "understaffed" (workers fell below
 // output.understaffedShare of target) or "restaffed" (back above).
 type DepartmentEvent struct {

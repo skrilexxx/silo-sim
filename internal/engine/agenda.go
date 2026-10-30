@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"fmt"
 
+	"github.com/skrilexxx/silo-sim/internal/rng"
 	"github.com/skrilexxx/silo-sim/internal/world"
 )
 
@@ -107,4 +108,64 @@ func (q *entries) Pop() any {
 	old[len(old)-1] = nil
 	*q = old[:len(old)-1]
 	return e
+}
+
+// EventType is a kind of scripted event (ODD §5) that a module defines:
+// on the event's day, Fire runs just before Phase's step, with the
+// engine's events stream, so its draws shift no module's.
+type EventType struct {
+	Name  string
+	Phase Phase
+	Fire  func(w *world.World, r *rng.Stream) error
+}
+
+// EventSource is a module that defines scripted event types.
+type EventSource interface {
+	EventTypes() []EventType
+}
+
+// scheduleEvents puts every scripted event of the scenario on the agenda,
+// in file order, so events on the same day and phase fire in that order.
+// An event whose type no module on defines stops the run before it
+// starts: a misspelt or switched-off shock must not pass silently.
+func (e *Engine) scheduleEvents(modules []Module) error {
+	types := map[string]EventType{} // looked up by name only, never ranged over
+	owner := map[string]string{}
+	for _, m := range modules {
+		src, ok := m.(EventSource)
+		if !ok {
+			continue
+		}
+		for _, t := range src.EventTypes() {
+			if t.Phase.slot() < 0 {
+				return fmt.Errorf("module %q defines event type %q at unknown phase %d", m.Name(), t.Name, t.Phase)
+			}
+			if o, dup := owner[t.Name]; dup {
+				return fmt.Errorf("modules %q and %q both define event type %q", o, m.Name(), t.Name)
+			}
+			types[t.Name], owner[t.Name] = t, m.Name()
+		}
+	}
+	stream, err := rng.New(e.cfg.Seed, "events")
+	if err != nil {
+		return err
+	}
+	for i, ev := range e.cfg.Events {
+		t, ok := types[ev.Type]
+		if !ok {
+			return fmt.Errorf("events[%d]: no module that is on defines event type %q", i, ev.Type)
+		}
+		_, err := e.agenda.Schedule(world.Tick(ev.Day), t.Phase, func(w *world.World) error {
+			w.Events = append(w.Events, world.ScriptedEvent{
+				EventHeader: world.EventHeader{Day: w.Day, Type: "scripted"}, Event: t.Name})
+			if err := t.Fire(w, stream); err != nil {
+				return fmt.Errorf("event %q: %w", t.Name, err)
+			}
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("events[%d]: %w", i, err)
+		}
+	}
+	return nil
 }

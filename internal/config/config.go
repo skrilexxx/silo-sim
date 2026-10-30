@@ -37,6 +37,15 @@ type Scenario struct {
 	Resources   Resources  `yaml:"resources"`
 	Rations     Rations    `yaml:"rations"`
 	Governance  Governance `yaml:"governance"`
+	Events      []Event    `yaml:"events,omitempty"`
+}
+
+// Event is a scripted shock (ODD §5, Scripted events): on Day, the module
+// that defines Type makes it happen. Day counts from the run's first day,
+// warm-up included, like the day column of the output files.
+type Event struct {
+	Day  int    `yaml:"day"`
+	Type string `yaml:"type"`
 }
 
 // Zones holds one value per zone: a share of people or a policy weight.
@@ -287,21 +296,21 @@ func lookup(m *yaml.Node, key string) *yaml.Node {
 }
 
 // missingKeys reports every struct field with no key in the YAML. A field
-// tagged omitempty is optional. Without this check a forgotten key would
-// silently become zero.
+// tagged omitempty may be absent, but what it holds is checked when it is
+// there (each scripted event needs all its keys). Without this check a
+// forgotten key would silently become zero.
 func missingKeys(n *yaml.Node, t reflect.Type, path string) []error {
 	var errs []error
 	switch t.Kind() {
 	case reflect.Struct:
 		for i := range t.NumField() {
 			name, opts, _ := strings.Cut(t.Field(i).Tag.Get("yaml"), ",")
-			if opts == "omitempty" {
-				continue
-			}
 			key := joinPath(path, name)
 			child := lookup(n, name)
 			if child == nil {
-				errs = append(errs, fmt.Errorf("missing key %s", key))
+				if opts != "omitempty" {
+					errs = append(errs, fmt.Errorf("missing key %s", key))
+				}
 				continue
 			}
 			errs = append(errs, missingKeys(child, t.Field(i).Type, key)...)

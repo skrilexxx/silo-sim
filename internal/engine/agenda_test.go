@@ -193,3 +193,101 @@ func TestAgendaErrorStopsTick(t *testing.T) {
 		t.Errorf("got %v, want %q", err, want)
 	}
 }
+
+// shocks is a test module that defines event types and logs them as they
+// fire, next to its own steps.
+type shocks struct {
+	fake
+	types []EventType
+}
+
+func (s shocks) EventTypes() []EventType { return s.types }
+
+// logShock returns a type that logs its name when it fires.
+func logShock(name string, phase Phase, log *[]string) EventType {
+	return EventType{Name: name, Phase: phase, Fire: func(w *world.World, _ *rng.Stream) error {
+		*log = append(*log, fmt.Sprintf("day %d %s", w.Day, name))
+		return nil
+	}}
+}
+
+func TestScriptedEventsFireOnTheirDayInFileOrder(t *testing.T) {
+	var log []string
+	cfg := scenario(0, 1)
+	cfg.Events = []config.Event{{Day: 2, Type: "b"}, {Day: 2, Type: "a"}, {Day: 1, Type: "b"}, {Day: 2, Type: "b"}}
+	w := &world.World{}
+	e := mustNew(t, cfg, w, shocks{
+		fake:  fake{name: "health", phases: []Phase{PhaseHealth}, log: &log},
+		types: []EventType{logShock("a", PhaseHealth, &log), logShock("b", PhaseHealth, &log)},
+	})
+	for range 3 {
+		if err := e.Tick(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := []string{
+		"day 1 b", "day 1 phase 600",
+		"day 2 b", "day 2 a", "day 2 b", "day 2 phase 600",
+		"day 3 phase 600",
+	}
+	if !slices.Equal(log, want) {
+		t.Errorf("got %v, want %v", log, want)
+	}
+	if len(w.Events) != 4 {
+		t.Fatalf("logged %d events, want 4", len(w.Events))
+	}
+	if got, want := w.Events[1], (world.ScriptedEvent{EventHeader: world.EventHeader{Day: 2, Type: "scripted"}, Event: "b"}); got != want {
+		t.Errorf("second event %+v, want %+v", got, want)
+	}
+}
+
+// Scripted events draw from their own stream, never the module's.
+func TestScriptedEventsUseTheEventsStream(t *testing.T) {
+	var got float64
+	cfg := scenario(0, 1)
+	cfg.Events = []config.Event{{Day: 1, Type: "draw"}}
+	e := mustNew(t, cfg, &world.World{}, shocks{
+		fake: fake{name: "health"},
+		types: []EventType{{Name: "draw", Phase: PhaseHealth, Fire: func(_ *world.World, r *rng.Stream) error {
+			got = r.Float64()
+			return nil
+		}}},
+	})
+	if err := e.Tick(); err != nil {
+		t.Fatal(err)
+	}
+	events, _ := rng.New(cfg.Seed, "events")
+	health, _ := rng.New(cfg.Seed, "health")
+	if want := events.Float64(); got != want || got == health.Float64() {
+		t.Errorf("drew %v, want %v from the events stream", got, want)
+	}
+}
+
+func TestScriptedEventSetupErrors(t *testing.T) {
+	var log []string
+	shock := logShock("shock", PhaseHealth, &log)
+	cases := []struct {
+		want   string
+		events []config.Event
+		mods   []Module
+	}{
+		{`events[1]: no module that is on defines event type "shok"`,
+			[]config.Event{{Day: 1, Type: "shock"}, {Day: 1, Type: "shok"}},
+			[]Module{shocks{fake: fake{name: "health"}, types: []EventType{shock}}}},
+		{`no module that is on defines event type "shock"`, // its module is off
+			[]config.Event{{Day: 1, Type: "shock"}}, nil},
+		{`modules "health" and "work" both define event type "shock"`, nil, []Module{
+			shocks{fake: fake{name: "health"}, types: []EventType{shock}},
+			shocks{fake: fake{name: "work"}, types: []EventType{shock}}}},
+		{`module "health" defines event type "bad" at unknown phase 750`, nil, []Module{
+			shocks{fake: fake{name: "health"}, types: []EventType{{Name: "bad", Phase: 750}}}}},
+	}
+	for _, c := range cases {
+		cfg := scenario(0, 1)
+		cfg.Events = c.events
+		_, err := New(cfg, &world.World{}, c.mods)
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("got %v, want an error containing %q", err, c.want)
+		}
+	}
+}

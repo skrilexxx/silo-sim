@@ -209,3 +209,26 @@ func TestExtendsLoopFails(t *testing.T) {
 		t.Errorf("got %v, want an extends loop error", err)
 	}
 }
+
+// ODD §5: scripted events fall in the measured years (days 18251–91250
+// with 50 + 200 years) and name a type.
+func TestScriptedEvents(t *testing.T) {
+	base := readBaseline(t)
+	for _, c := range []struct{ events, want string }{
+		{"- { day: 18251, type: shock }\n- { day: 91250, type: shock }", ""},
+		{"- { day: 18250, type: shock }", "events[0].day = 18250, must be in the measured years, 18251 to 91250"},
+		{"- { day: 91251, type: shock }", "events[0].day = 91251, must be in the measured years"},
+		{"- { day: 20000, type: shock }\n- { day: 20000, type: \"\" }", "events[1].type is empty"},
+		{"- { day: 20000 }", "missing key events[0].type"},
+		{"- { day: 20000, type: shock, days: 365 }", "field days not found"},
+	} {
+		got := loadErr(t, base+"events:\n"+c.events+"\n")
+		if c.want == "" && got != "" || !strings.Contains(got, c.want) {
+			t.Errorf("%s: got %q, want %q", c.events, got, c.want)
+		}
+	}
+	s, err := Load(baselinePath)
+	if err != nil || s.Events != nil {
+		t.Errorf("baseline has events %v (err %v), want none", s.Events, err)
+	}
+}

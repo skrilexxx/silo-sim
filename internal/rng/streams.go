@@ -24,6 +24,8 @@ func streamID(name string) (uint64, bool) {
 		return 7, true // draws nothing today; every module gets a stream
 	case "initpop":
 		return 8, true
+	case "events":
+		return 9, true // scripted events (ODD §5), so their draws shift no module's
 	}
 	return 0, false
 }

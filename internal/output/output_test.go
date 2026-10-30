@@ -8,6 +8,7 @@ import (
 
 	"github.com/skrilexxx/silo-sim/internal/config"
 	"github.com/skrilexxx/silo-sim/internal/engine"
+	"github.com/skrilexxx/silo-sim/internal/rng"
 	"github.com/skrilexxx/silo-sim/internal/world"
 )
 
@@ -64,5 +65,52 @@ func TestUnderstaffedCarriesOverWarmup(t *testing.T) {
 	data, _ := os.ReadFile(filepath.Join(filepath.Dir(o.files[2].Name()), "events.jsonl"))
 	if got := strings.TrimSpace(string(data)); got != `{"day":366,"type":"understaffed","department":"it","workers":2,"target":10}` {
 		t.Errorf("events.jsonl = %q, want one understaffed event on day 366", got)
+	}
+}
+
+// shocker is a test module that defines one scripted event type and
+// records the days it fired on.
+type shocker struct{ fired *[]world.Tick }
+
+func (s shocker) Name() string                                           { return "health" }
+func (s shocker) Requires() []string                                     { return nil }
+func (s shocker) Init(*world.World, *config.Scenario, *rng.Stream) error { return nil }
+func (s shocker) Steps() []engine.Step                                   { return nil }
+func (s shocker) EventTypes() []engine.EventType {
+	return []engine.EventType{{Name: "testShock", Phase: engine.PhaseHealth,
+		Fire: func(w *world.World, _ *rng.Stream) error {
+			*s.fired = append(*s.fired, w.Day)
+			return nil
+		}}}
+}
+
+// T7.4: a scripted event fires on its day and is logged to events.jsonl.
+func TestScriptedEventLogged(t *testing.T) {
+	dir := t.TempDir()
+	o, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Scenario{Seed: 1, Years: 1, Events: []config.Event{{Day: 3, Type: "testShock"}}}
+	cfg.Output.InvariantEvery = 1
+	var fired []world.Tick
+	e, err := engine.New(cfg, &world.World{}, []engine.Module{shocker{&fired}, o})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 5 {
+		if err := e.Tick(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := o.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fired) != 1 || fired[0] != 3 {
+		t.Errorf("fired on days %v, want [3]", fired)
+	}
+	data, _ := os.ReadFile(filepath.Join(dir, "events.jsonl"))
+	if got := strings.TrimSpace(string(data)); got != `{"day":3,"type":"scripted","event":"testShock"}` {
+		t.Errorf("events.jsonl = %q", got)
 	}
 }

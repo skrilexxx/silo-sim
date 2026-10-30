@@ -196,6 +196,7 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 - People are processed one at a time in an order shuffled each tick by the seeded random generator, so no one always goes first.
 - Changes take effect immediately (asynchronous updating). A person who dies in step 7 does not reproduce in step 8.
 - One goroutine runs one simulation. Parallelism comes from running many seeds at once, never from splitting one tick across threads.
+- *Part 2 (draft):* actions due on a later day, such as a trip's arrival, the end of a sentence or a scripted event (§5), run on their day just before the step they belong to, whether or not that step itself runs that day. Several due at the same step run in the order they were scheduled; scripted events in the order of the scenario file. An action can only be scheduled for a later step or a later day, never for a step that has already run. Part-2 steps get in-between numbers, such as 7.5 for a step between deaths and reproduction.
 
 ## 4. Design concepts
 
@@ -250,6 +251,8 @@ rationWeights: { upTop: 1.0, mids: 1.0, downDeep: 1.0 }   # 1.0 everywhere = equ
 modules: [demography, health, work, resources, governance]
 params: {}                        # overrides for any value in section 7
 ```
+
+**Scripted events (part 2, draft).** A scenario may list shocks under `events:`, each a day and a type, for example `{ day: 20000, type: cleaningFailure }`. They are how experiments separate cause from effect: the same seeds with and without the shock. The day counts from the run's first day, warm-up included, the same as the `day` column of the output files, and it must fall in the measured years, since warm-up is thrown away. Each type is defined by the module that uses it, in that module's section of 6, which also names the step of §3 it runs at. A type that no running module defines stops the run before it starts, so a misspelt or switched-off shock can't pass unnoticed. Every scripted event is logged to events.jsonl as type `scripted`. What it causes is logged separately, by its module. Scripted events draw random numbers from their own stream, so their draws never take numbers from any module's stream. The baseline has none.
 
 ## 6. Submodels
 
@@ -506,7 +509,7 @@ A run is only trusted if its invariants hold and its outputs hit the calibration
 | --- | --- |
 | daily.csv | Day; population total and by zone; births, deaths, permits, open windows, winners waiting for Medical (queued), pregnancies; food stock in days; rationing flag; powerFactor; generator condition and outage flag; water; air; average health and hardship by zone; Medical and Mechanical coverage |
 | yearly.csv | Median age; age pyramid in 5-year bands; headcount vs target per department; share of Mechanical workers living in Mechanical's zone; people who changed zone; current Mayor and their zone (the snapshot runs before governance, so a row shows the Mayor before that day's change) |
-| events.jsonl | Generator failures and repairs, rationing on/off, Mayor changes, any department below 50% of target (and back above) |
+| events.jsonl | Generator failures and repairs, rationing on/off, Mayor changes, any department below 50% of target (and back above); part 2: scripted events (§5) |
 | run.json | Scenario file, seed, code version, runtime |
 
 Counts in a row (births, deaths, permits, people who changed zone) are what happened since the previous row of that file. Steps that run after daily logging (§3 steps 12–16) therefore appear in the next day's row: a lottery's permits on day 30 show on day 31. The pyramid is women and men in 5-year bands, the last one 100+. A department counts as below 50% when its workers fall under 0.5 × its current target (headcounts are recounted daily, targets monthly). Warm-up is not written unless the scenario asks for it.

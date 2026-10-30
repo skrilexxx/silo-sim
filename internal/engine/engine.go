@@ -107,6 +107,9 @@ func New(cfg *config.Scenario, w *world.World, modules []Module) (*Engine, error
 			e.steps[i] = boundStep{Step: s, module: m.Name(), stream: stream}
 		}
 	}
+	if err := e.scheduleEvents(modules); err != nil {
+		return nil, err
+	}
 	return e, nil
 }
 
