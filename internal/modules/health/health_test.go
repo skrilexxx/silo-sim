@@ -230,3 +230,24 @@ func TestHunger(t *testing.T) {
 		}
 	}
 }
+
+// ODD §6.10: a worker off work because of where they are has no work
+// injuries. With a certain injury and no illness, everyone at work is hit
+// and nobody off work is.
+func TestNoInjuryOffWork(t *testing.T) {
+	w, m := crowd(t, 100, world.Worker, mechanical, 0)
+	m.c.InjuryChance, m.c.IllnessChance = 0.5, 0 // × Mechanical's 2 = certain
+	w.Space = &world.Space{OffWork: make([]bool, 100)}
+	for i := range 50 {
+		w.Space.OffWork[i] = true
+	}
+	r, _ := rng.New(1, "health")
+	if err := m.health(w, r); err != nil {
+		t.Fatal(err)
+	}
+	for id, p := range w.People {
+		if hurt := p.Health < 1; hurt == w.Space.OffWork[id] {
+			t.Fatalf("person %d: off work %v, injured %v", id, w.Space.OffWork[id], hurt)
+		}
+	}
+}

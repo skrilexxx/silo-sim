@@ -36,12 +36,14 @@ func (m *Module) Steps() []engine.Step {
 //
 //	health −= hungerDamage × max(0, 1 − intake/need of their zone)
 //	health −= airDamage × (1 − airQuality)
-//	health −= injuryCost   with chance injuryChance × department factor (workers and shadows)
+//	health −= injuryCost   with chance injuryChance × department factor (workers and shadows at work)
 //	health −= illnessCost  with chance illnessChance
 //	health += recoveryRate × medicalCoverage
 //
 // then clamped to 0–1. Food above need (possible under unequal ration
-// weights, §6.7) does not raise health.
+// weights, §6.7) does not raise health. Someone off work because of where
+// they are (stranded, on the stairs or away, ODD §6.10) has no work
+// injuries.
 func (m *Module) health(w *world.World, r *rng.Stream) error {
 	medical, mechanical, farms := world.None, world.None, world.None
 	for d, dep := range w.Depts {
@@ -71,7 +73,7 @@ func (m *Module) health(w *world.World, r *rng.Stream) error {
 		if hungry {
 			h -= hunger[w.Floors[w.Households[p.Household].Floor-1].Zone]
 		}
-		if p.Stage == world.Worker || p.Stage == world.Shadow {
+		if (p.Stage == world.Worker || p.Stage == world.Shadow) && !w.Space.Off(id) {
 			factor := m.c.InjuryFactor.Other
 			switch p.Department {
 			case mechanical:
