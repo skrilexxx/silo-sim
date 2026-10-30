@@ -76,7 +76,7 @@ func TestStepsRunInScheduleOrder(t *testing.T) {
 	if err := e.Tick(); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"day 1 phase 2", "day 1 phase 7"}
+	want := []string{"day 1 phase 200", "day 1 phase 700"}
 	if !slices.Equal(log, want) {
 		t.Errorf("got %v, want %v", log, want)
 	}
@@ -91,7 +91,7 @@ func TestStepsFromSeveralModulesInterleave(t *testing.T) {
 	if err := e.Tick(); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"day 1 phase 1", "day 1 phase 3", "day 1 phase 6", "day 1 phase 7"}
+	want := []string{"day 1 phase 100", "day 1 phase 300", "day 1 phase 600", "day 1 phase 700"}
 	if !slices.Equal(log, want) {
 		t.Errorf("got %v, want %v", log, want)
 	}
@@ -150,15 +150,15 @@ func TestSetupErrors(t *testing.T) {
 		want string
 		mods []Module
 	}{
-		{`modules "demography" and "health" both registered phase 7 (deaths)`, []Module{
+		{`modules "demography" and "health" both registered phase 700 (deaths)`, []Module{
 			fake{name: "demography", phases: []Phase{PhaseDeaths}, log: &log},
 			fake{name: "health", phases: []Phase{PhaseDeaths}, log: &log}}},
 		{`module "health" requires module "work", which is off`, []Module{
 			fake{name: "health", requires: []string{"work"}, log: &log}}},
 		{`module "health" listed twice`, []Module{
 			fake{name: "health", log: &log}, fake{name: "health", log: &log}}},
-		{`module "health" registered unknown phase 17`, []Module{
-			fake{name: "health", phases: []Phase{17}, log: &log}}},
+		{`module "health" registered unknown phase 750`, []Module{
+			fake{name: "health", phases: []Phase{750}, log: &log}}},
 		{`module "health" registered unknown phase 0`, []Module{
 			fake{name: "health", phases: []Phase{0}, log: &log}}},
 		{`no stream for "dissent"`, []Module{fake{name: "dissent", log: &log}}},
@@ -176,7 +176,7 @@ func TestStepErrorStopsRun(t *testing.T) {
 	e := mustNew(t, scenario(0, 1), &world.World{},
 		fake{name: "health", phases: []Phase{PhaseHealth, PhaseLottery}, fail: PhaseLottery, log: &log})
 	err := e.Run()
-	want := "day 30, phase 12 (lottery), module health: boom"
+	want := "day 30, phase 1200 (lottery), module health: boom"
 	if err == nil || err.Error() != want {
 		t.Errorf("got %v, want %q", err, want)
 	}

@@ -36,7 +36,8 @@ type boundStep struct {
 type Engine struct {
 	cfg        *config.Scenario
 	w          *world.World
-	steps      []boundStep // sorted by phase
+	steps      []boundStep // steps[i] runs at schedule[i]; a nil Run means no module registered it
+	agenda     Agenda
 	shuffle    *rng.Stream // the engine's own stream, for the order of Alive
 	days       world.Tick
 	warmupDays world.Tick
@@ -60,6 +61,7 @@ func New(cfg *config.Scenario, w *world.World, modules []Module) (*Engine, error
 		warmupDays: world.Tick(cfg.WarmupYears * DaysPerYear),
 		logWarmup:  cfg.Output.LogWarmup,
 		checkEvery: cfg.Output.InvariantEvery,
+		steps:      make([]boundStep, len(schedule)),
 	}
 	if e.checkEvery < 1 {
 		return nil, fmt.Errorf("output.invariantEvery = %d, must be at least 1", e.checkEvery)
@@ -80,30 +82,31 @@ func New(cfg *config.Scenario, w *world.World, modules []Module) (*Engine, error
 		}
 	}
 
-	// owner[p] is the module that registered phase p. One step per phase
-	// keeps the order inside a tick fully defined by schedule.go.
-	var owner [len(schedule)]string
+	// One step per phase keeps the order inside a tick fully defined by
+	// schedule.go.
 	for _, m := range modules {
 		stream, err := rng.New(cfg.Seed, m.Name())
 		if err != nil {
 			return nil, err
 		}
+		if u, ok := m.(AgendaUser); ok {
+			u.UseAgenda(&e.agenda)
+		}
 		if err := m.Init(w, cfg, stream); err != nil {
 			return nil, fmt.Errorf("init %s: %w", m.Name(), err)
 		}
 		for _, s := range m.Steps() {
-			if !s.Phase.valid() {
+			i := s.Phase.slot()
+			if i < 0 {
 				return nil, fmt.Errorf("module %q registered unknown phase %d", m.Name(), s.Phase)
 			}
-			if owner[s.Phase] != "" {
+			if owner := e.steps[i].module; owner != "" {
 				return nil, fmt.Errorf("modules %q and %q both registered phase %d (%s)",
-					owner[s.Phase], m.Name(), s.Phase, s.Phase)
+					owner, m.Name(), s.Phase, s.Phase)
 			}
-			owner[s.Phase] = m.Name()
-			e.steps = append(e.steps, boundStep{Step: s, module: m.Name(), stream: stream})
+			e.steps[i] = boundStep{Step: s, module: m.Name(), stream: stream}
 		}
 	}
-	slices.SortFunc(e.steps, func(a, b boundStep) int { return int(a.Phase - b.Phase) })
 	return e, nil
 }
 
@@ -125,9 +128,14 @@ func (e *Engine) Tick() error {
 	e.shuffle.Shuffle(len(w.Alive), func(i, j int) { w.Alive[i], w.Alive[j] = w.Alive[j], w.Alive[i] })
 
 	warmup := w.Day <= e.warmupDays
-	for _, s := range e.steps {
-		sched := schedule[s.Phase]
-		if int(w.Day)%sched.every != 0 {
+	for i, sched := range schedule {
+		// Agenda entries fire on their own day, whether or not the
+		// phase's step is due today.
+		if err := e.agenda.fire(w, w.Day, sched.phase); err != nil {
+			return fmt.Errorf("day %d, phase %d (%s), agenda: %w", w.Day, sched.phase, sched.name, err)
+		}
+		s := e.steps[i]
+		if s.Run == nil || int(w.Day)%sched.every != 0 {
 			continue
 		}
 		if sched.output && warmup && !e.logWarmup {

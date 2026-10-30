@@ -171,20 +171,19 @@ Part 2 has actions that take days: a trip down the stairs (M8), a prison sentenc
 
 ```go
 // engine/agenda.go
-type Entry struct {
-    Day    world.Tick
-    Phase  Phase                    // fires just before this phase's step
-    Module string                   // owner; its handler and stream are used
-    Kind   string                   // e.g. "arrive", "release"
-    Data   int64                    // payload, usually a PersonID
-}
+type AgendaUser interface { UseAgenda(a *Agenda) }   // a module that schedules; given the agenda before Init
+
+func (a *Agenda) Schedule(day world.Tick, phase Phase, run func(w *world.World) error) (Handle, error)
+func (a *Agenda) Cancel(h Handle)
 ```
 
+An entry is a day, a phase and a closure. The closure carries what the action needs (the person, the module's own random stream), so the engine needs no table of action kinds and no payload format.
+
 - **Order:** a min-heap (`container/heap`) keyed by day, then phase, then insertion number. Two entries due at the same day and phase fire in the order they were scheduled, so ties are deterministic.
-- **Firing:** before a phase's step runs, the engine fires every entry due today at that phase, in key order, through the owning module's handler for that kind, with the owning module's random stream. A phase with due entries but no step still fires them. An entry must be due later than the phase that schedules it (a later day, or later the same day); scheduling into the past is an error, so nothing is silently moved to another day.
+- **Firing:** before a phase's step runs, the engine fires every entry due today at that phase, in key order. Entries fire on their own day whether or not the phase's step is due that day, and a phase with no step still fires them. An entry must be due later than the phase that schedules it (a later day, or later the same day); scheduling into the past is an error, so nothing is silently moved to another day.
 - **Cancellation:** `Schedule` returns a handle; cancelling marks the entry, and a marked entry is dropped when it reaches the top (lazy deletion), so cancelling is O(1). An arrested traveller's arrival is cancelled this way.
 - **Scripted events** (`events:` in the scenario, T7.4) are agenda entries added at load time. Each event type names its fixed phase in the module that registers it, draws from its own `events` stream, and is logged to `events.jsonl` when it fires.
-- The agenda is engine state, not world state: modules schedule and cancel through it, never read it.
+- The agenda is engine state, not world state: modules schedule and cancel through it, never read it. A module that does not implement `AgendaUser` never sees it, which is every baseline module.
 
 ## Randomness
 
