@@ -1,3 +1,14 @@
+```text
+  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╔═╗░░░░░░  the outside
+  ███████╗██╗██╗      ██████╗      ║▒║  Up Top      floors 1–48
+  ██╔════╝██║██║     ██╔═══██╗     ║▒║
+  ███████╗██║██║     ██║   ██║     ║▒║  Mids        floors 49–96
+  ╚════██║██║██║     ██║   ██║     ║▒║
+  ███████║██║███████╗╚██████╔╝     ║▒║  Down Deep   floors 97–144
+  ╚══════╝╚═╝╚══════╝ ╚═════╝      ╚═╝
+           18  ·  10,000 people  ·  200 years  ·  one Pact
+```
+
 # silosim
 
 An agent-based simulation of Silo 18 from the TV series *Silo*, written in Go.
