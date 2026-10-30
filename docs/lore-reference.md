@@ -1,14 +1,14 @@
-# Silo Mechanics Reference (Show Canon, through S3E9)
+# Silo Mechanics Reference (Show Canon, through S3E10)
 
-Oct 28, 2026 · @Adam Kopriva
+Oct 30, 2026 · Adam Kopřiva · exported from the living doc on claude.ai
 
 ## Purpose and spoiler policy
 
 This is the lore input for the baseline silo model: the mechanics the show establishes, and what each means for the simulation. It is not a plot summary.
 
 - **Canon:** the Apple TV+ series only. When the show is silent, the gap is marked as a parameter to invent, not filled from the books.
-- **Spoiler line:** Seasons 1–2 and Season 3 up to episode 9. Nothing from S3E10 or the books.
-- **Scope:** Silo 18 as a self-contained society. Silo 1 and the outside world stay out of the baseline.
+- **Spoiler line:** All three seasons, through the Season 3 finale (S3E10). Nothing from the books.
+- **Scope:** Silo 18 as a self-contained society. Silo 1 and the outside world stay out of the baseline; part 2 adds Silo 1 as an outside controller.
 - **Confidence tags:** \[Certain\] = shown or stated on screen and confirmed by a source; \[Likely\] = strongly implied or sourced from the fan wiki without an episode reference; \[Guessing\] = my inference, to be checked.
 
 ## Physical structure
@@ -90,7 +90,7 @@ Power sits Up Top in three hands: the Mayor's office, Judicial with its raiders,
 | --- | --- | --- |
 | The Pact | The silo's constitution and rulebook; presented as "the only history we have" | \[Certain\] |
 | What the Pact contains | Ordinary protections (against illegal search and seizure) plus rules on how the silo is divided; its subtext favors Judicial | \[Certain\] |
-| The Pact can change | In Season 3, parts of it are rewritten on the orders of the Head of IT | \[Certain\] (through S3E9) |
+| The Pact can change | In Season 3, parts of it are rewritten on the orders of the Head of IT | \[Certain\] |
 | Judicial | Enforces the Pact, investigates, holds the relic records; commands armed raiders | \[Certain\] |
 | Security / enforcer | Robert Sims acts as the regime's enforcer and runs surveillance | \[Certain\] |
 | IT surveillance | IT watches residents; Mechanical uses hand signals to avoid being overheard | \[Certain\] |
@@ -148,21 +148,51 @@ The show gives three rebellion cases: Silo 18's old Rebellion, Silo 17's fatal o
 
 | When | Event | What it tells the model | Confidence |
 | --- | --- | --- | --- |
-| Season 3 (to E9) | The Pact itself is rewritten by IT | The regime adapts its rules under pressure | \[Certain\] |
+| End of Season 3 (E10) | Silo 18 caps its Safeguard pipe before Silo 1 can gas it. The voice of the Algorithm offers a deal: no contact with other silos, no Safeguard. Juliette accepts but plans to attack Silo 1 | An outside controller can kill a silo; Mechanical know-how can disarm it; peace with Silo 1 depends on isolation | \[Certain\] |
+| Season 3 (E9) | Flashbacks: the Pact was written by AI for Victor Crnkovich, creator of the memory drug, and edited with Anna Thurman | The rules were designed, not inherited; changing them is a legitimate model lever | \[Certain\] |
+| Season 3 | Vitamin D+, a memory suppressant, is given to Juliette and later put into Silo 18's water on the Algorithm's orders | Memory is a regime lever: the regime can erase what people know | \[Certain\] for Juliette; \[Likely\] for the water |
+| Season 3 | The Pact itself is rewritten by IT | The regime adapts its rules under pressure | \[Certain\] |
 | Season 2 | Mechanical uprising in Silo 18: riots at the stairwell barricades, Mechanical cuts the power, raiders sent down; at the end rebels take the upper levels and the stairs are blown around levels 90–92, splitting the silo in two | A rebellion can start in one zone, use a critical system as leverage, and physically fragment the silo | \[Certain\] |
 | Season 2 | Mechanical learns it has always been made the scapegoat when rebellions rise | Blame falls on the lowest class, which feeds grievance | \[Certain\] |
 | End of Season 1 | Juliette refuses to clean and walks out of sight; unrest follows | One visible failure of the system can spark dissent | \[Certain\] |
-| Over 25 years before S2 | Silo 17: a cleaner refused to clean and walked off; the fight for control plus exposure to the outside killed nearly everyone; a raider wrecked the groundwater pump to flood Mechanical | Rebellion can kill a silo, mostly through damage to life-support, not combat | \[Certain\] |
-| About 140 years before S1 | "The Rebellion" in Silo 18, crushed by the authorities; celebrated as Freedom Day; records from before it are lost; many current rules trace back to it | Long stable stretches between revolts; the regime tightened rules after winning | \[Certain\] for the date and holiday; \[Likely\] for lost records |
+| Over 25 years before S2 | Silo 17: a cleaner refused to clean and walked off; the fight for control plus exposure to the outside killed nearly everyone; a raider wrecked the groundwater pump to flood Mechanical. Season 3 adds that thousands of escapees reached the surface and were killed by Silo 1's drones and gas, about 9,800 dead | Rebellion can kill a silo through damage to life-support, and through Silo 1 destroying a silo that breaks isolation | \[Certain\] |
+| About 140 years before S1 | "The Rebellion" in Silo 18, crushed by the authorities, with Head of IT Salvador Quinn at its centre; celebrated as Freedom Day; records from before it are lost; many current rules trace back to it | Long stable stretches between revolts; the regime tightened rules after winning | \[Certain\] for the date and holiday; \[Likely\] for lost records, Quinn's role and memory drugs used afterwards |
 | About 300 years before S1 | Rough age of the silo, as suggested by the production team | Total run length to simulate | \[Likely\] |
 
 The Flamekeepers, a secret group that keeps the true history alive, and Gloria's account of past rebellions and forced birth control (S1E7) show that knowledge of the past survives underground despite the ban. \[Certain\]
 
 Sources: [Serienjunkies on Freedom Day](https://www.serienjunkies.de/news/redaktion/silo-freedom-day-review-der-pilotfolge-92588547.html), [TV Tropes](https://tvtropes.org/pmwiki/pmwiki.php/Series/Silo), [TV Obsessive S2E3](https://tvobsessive.com/2024/11/29/silo-s2e3-recap-solo-begins-bringing-everyone-together/), [TV Obsessive podcast on S2E4](https://tvobsessive.com/2024/12/06/the-tv-obsessive-podcast-episode-78-news-notes-silo-s2e4/), [A.V. Club S2 finale](https://avclub.com/silo-season-2-finale-recap), [/Film S2 ending](https://www.slashfilm.com/1761055/silo-season-2-ending-explained), [Looper on S1E7](https://www.looper.com/1309452/silo-forced-birth-control-prevent-rebellions), [IndieTalk on the props](https://indietalk.com/threads/that-duct-tape-in-the-silo-finale-took-30-designs-to-get-right.68801).
 
+## Season 3: the system behind the silos
+
+Season 3 shows that Silo 18 is not self-governing: Silo 1 watches it through the Head of IT, can gas it, and kills anyone who leaves. It also shows that memory itself is a tool of control, through a drug disguised as vitamins.
+
+| Mechanic | What the show establishes | Confidence |
+| --- | --- | --- |
+| Silo 1 | The control silo. Its people sleep in cryosleep and wake for shifts; a director (Thurman) and specialists run the other silos from there | \[Certain\] |
+| The Algorithm | Not a machine: people in Silo 1 speak through it to each silo's Head of IT, watch the silo, and give orders | \[Certain\] |
+| Head of IT | The only link to the Algorithm; in Season 3 Camille Sims holds the post and carries out its orders | \[Certain\] |
+| The Directive | Silos must stay isolated. Contact between silos is treated as a threat, and Silo 1 destroys a silo that threatens the system | \[Certain\] |
+| Safeguard | Poison gas sent through a pipe into a silo, triggered from Silo 1. Capping the pipe defeats it: Silo 17's survivors did, and Silo 18 does in E10 | \[Certain\] |
+| Outside the silo | Armed drones and gas kill anyone who leaves; a drone now watches Silo 18 | \[Certain\] |
+| How cleaners die | Poison in the suit and Silo 1's drones; the outside air did not kill Silo 17's escapees at once | \[Likely\] |
+| Vitamin D+ | A memory suppressant disguised as vitamins. Juliette's amnesia came from it, and the Algorithm ordered her dose doubled | \[Certain\] |
+| Memory comes back | After her pills were swapped for sugar pills, objects from her past (a Pez dispenser, George's watch) brought her memories back | \[Certain\] |
+| Mass memory wipe | The Algorithm ordered Vitamin D+ into Silo 18's water; similar drugs are suggested after the Rebellion 140 years ago | \[Likely\] |
+| The Pact's origin | Written by AI for Victor Crnkovich and edited with Anna Thurman; rewritten in Silo 18 during Season 3 (Billings, under Camille) | \[Certain\] |
+| Contact routes | Radio (Walker, taught by Bernard); tunnels from the mines and the Digger Void toward other silos; a door below Silo 18 where the Algorithm answers | \[Certain\] |
+| Number and place | About 50 silos near Atlanta, built against a nanotechnology ("gray goo") catastrophe | \[Likely\] |
+| Power in Silo 18 | Juliette is made Mayor while amnesiac, as a figurehead; real power sits with the Head of IT and the Algorithm | \[Likely\] |
+
+**Model note:** Season 3 turns three things into levers. *Memory:* the regime can erase knowledge, and objects can restore it, so relics and memory belong in one module. *Silo 1:* an outside actor whose trigger is contact between silos or escape, not unrest as such. *Contact:* radio and digging are the rebel actions Silo 1 punishes. "Vitamin D" in this model means the drug, not nutrition.
+
+Sources: [/Film on Vitamin D+](https://slashfilm.com/2215921/silo-season-3-vitamis-d-plus-explaned/), [Inverse on Vitamin D+](https://www.inverse.com/entertainment/vitamin-d-silos-memory-erasing-drug-explained), [/Film on the Algorithm](https://slashfilm.com/2249477/silo-season-3-true-face-daniel-memory-algorithm/), [/Film on S3E9 and the Pact](https://slashfilm.com/2243825/silo-season-3-episode-9-the-pact-ai/), [Seat42F S3E10 recap](https://seat42f.com/silo-season-3-episode-10-recap/), [The Astromech: Season 3 explained](https://www.theastromech.com/2026/09/silo-events-of-season-3-explained.html), [Ready Steady Cut: Season 3 ending](https://readysteadycut.com/2026/09/04/silo-season-3-ending-explained/), [Ready Steady Cut: the Algorithm and Camille](https://readysteadycut.com/2026/07/03/silo-season-3-algorithm-camille/), [/Film: questions after the finale](https://www.slashfilm.com/2248232/silo-season-3-finale-unanswered-questions/), [Soapcentral on Salvador Quinn](https://www.soapcentral.com/shows/who-salvador-quinn-silo-details-140-year-old-rebellion-explored), [Memoria: Season 3 recap](https://memoria.film/silo-season-3-ending-explained-plot-recap/), [/Film on the Safeguard](https://slashfilm.com/1804875/silo-season-2-safeguard-explained).
+
 ## Model implications
 
 The show supplies the rules and structure; almost every rate has to be invented. The baseline needs five modules, and the parameters below are starting guesses to calibrate until the silo stays stable for 200 years.
+
+**Status (Oct 30, 2026):** the baseline is built and calibrated (tag `baseline-v1`). Part 2 adds the modules marked below; the plan is in `docs/tasks-part2.md`.
 
 ### What goes into the baseline
 
@@ -173,8 +203,10 @@ The show supplies the rules and structure; almost every rate has to be invented.
 | Work | Departments by zone, shadowing, inherited trades | Yes |
 | Resources | Generator, air, food, water, parts, Supply | Yes |
 | Institutions | Mayor, Judicial, Sheriff, IT as roles; Pact as a rule set | Yes, as passive roles |
-| Beliefs and dissent | Relics, Flamekeepers, surveillance, covert lottery denial | Later |
-| Cleaning and rebellion | Cleaning as punishment and shock, uprisings, sabotage | Later |
+| Beliefs and dissent | Relics, Flamekeepers, surveillance, covert lottery denial | Part 2 |
+| Cleaning and rebellion | Cleaning as punishment and shock, uprisings, sabotage | Part 2 |
+| Memory | Vitamin D+ wipes knowledge; relics bring it back; history erased after rebellions | Part 2 |
+| Silo 1 | Algorithm surveillance, the Directive, Safeguard gas, drones, contact by radio and tunnels | Part 2 |
 
 ### Parameters to invent
 
@@ -185,7 +217,7 @@ All starting values are \[Guessing\] unless the show column gives the number.
 | Population | About 10,000 | 10,000 | Show |
 | Time step | — | 1 day | Rebellions unfold over days |
 | Full stair descent | About a day top to bottom (reviewer's estimate) | 12 hours of walking | Show, roughly |
-| Population split by zone | Most people Up Top and in the Mids | Superseded: the ODD spec uses 32% / 46% / 22% | Follows from departments |
+| Population split by zone | Most people Up Top and in the Mids | 35% / 40% / 25% | Guess |
 | Lottery trigger | Not explained | One permit per death, capped at the target size | Keeps population flat |
 | Conception window | 365 days | 365 days | Show |
 | Chance of birth within the window | — | About 80% | Real-world fertility for couples trying for a year |
@@ -202,12 +234,6 @@ All starting values are \[Guessing\] unless the show column gives the number.
 - [x] Rations and money: model rations as each zone's share of the food supply, a policy lever the regime controls. Skip money in the baseline.
 - [x] Departments: Medical gets a small module (deaths, injuries, implant removals for the lottery). Education stays job slots for now and becomes the source of loyalty in the beliefs phase. Maintenance folds into Resources as wear and repair.
 
-&#32;
-
-&#32;
-
-&#32;
-
 ## Sources
 
 Each section lists its own sources. The pages used most:
@@ -221,4 +247,4 @@ Each section lists its own sources. The pages used most:
 - [TV Obsessive: S2E3 recap](https://tvobsessive.com/2024/11/29/silo-s2e3-recap-solo-begins-bringing-everyone-together/)
 - [/Film: S3E9 and the Pact](https://slashfilm.com/2243825/silo-season-3-episode-9-the-pact-ai/)
 
-Fan explainers sometimes mix in book details. Anything that looked book-derived is tagged \[Likely\] at most, and nothing from S3E10 or the books was used.
+Fan explainers sometimes mix in book details. Anything that looked book-derived is tagged \[Likely\] at most, and nothing from the books was used.
