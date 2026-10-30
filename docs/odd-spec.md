@@ -507,7 +507,7 @@ The first four, the *strong* ties, follow from the household, partner, family an
 **Drawing and losing weak ties.** At the network step (§3 step 10.5), in the tick's shuffled order, anyone with fewer than k ties of a weak kind draws new ones, one at a time and uniformly at random, from the people eligible for that kind who also have fewer than k of it, until they have k or nobody is left. Both sides count the new tie. On day 1 everyone draws, in random order. A weak tie ends when either person dies, and also:
 
 - a neighbour tie, when the two no longer share a home floor;
-- a coworker tie, when the two no longer share a department and work floor: one retired, changed department or got another work floor (moving home, or a change in the stairs, can do that). Sick leave and being away or on the stairs (§6.10) keep the work floor, so they don't end it; a stranded worker has no work floor, so being stranded does;
+- a coworker tie, when the two no longer share a department and work floor: one retired, changed department or got another work floor (moving home, or a change in the stairs, can do that). Sick leave, being away or on the stairs, and being stranded (§6.10) don't end it: a worker cut off from every floor of their department keeps the work floor they had, for coworker ties, until they change department or can reach one again;
 - a porter tie, when neither of the two is a porter any more (the porter retired or left Porters). Moving zone doesn't end it.
 
 Each rule looks only at the two people's state today, not at what changed.

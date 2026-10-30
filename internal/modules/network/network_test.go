@@ -254,3 +254,23 @@ func TestTiesPrecedence(t *testing.T) {
 		t.Errorf("ties %v, want %v", got, want)
 	}
 }
+
+// ODD §6.11: a worker cut off from her department's floors by the stairs
+// keeps her coworkers.
+func TestStrandedKeepCoworkers(t *testing.T) {
+	s := newSilo(t)
+	e := s.add(30, world.Worker, mechanical, 6)
+	f := s.add(30, world.Worker, mechanical, 6)
+	g := s.add(30, world.Worker, mechanical, 3) // lives Up Top, works on 7
+	s.start()
+	s.want(g, world.TieCoworker, e, f)
+
+	s.w.Space.Broken[4] = true // floors 5–6: G is cut off from floor 7
+	s.day()
+	s.day()
+	if !s.w.Space.Stranded[g] {
+		t.Fatal("G is not stranded")
+	}
+	s.want(g, world.TieCoworker, e, f)
+	s.want(e, world.TieCoworker, f, g)
+}

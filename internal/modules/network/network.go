@@ -115,7 +115,8 @@ func (m *Module) run(w *world.World, r *rng.Stream) {
 func (m *Module) scan(w *world.World) {
 	m.changed, m.keep = m.changed[:0], m.keep[:0]
 	visit := func(id world.PersonID) {
-		old, now := m.keys[id], m.keyOf(w, id)
+		old := m.keys[id]
+		now := m.keyOf(w, id, old)
 		if now.alive {
 			m.keep = append(m.keep, id)
 		}
@@ -152,7 +153,7 @@ func (m *Module) scan(w *world.World) {
 	m.members, m.keep = m.keep, m.members
 }
 
-func (m *Module) keyOf(w *world.World, id world.PersonID) key {
+func (m *Module) keyOf(w *world.World, id world.PersonID, old key) key {
 	p := &w.People[id]
 	k := key{floor: -1, work: -1, master: world.None, partner: world.None}
 	if !p.Alive {
@@ -163,10 +164,15 @@ func (m *Module) keyOf(w *world.World, id world.PersonID) key {
 	if w.Day-p.BirthDay >= m.neighbourAge {
 		k.floor = int32(home - 1)
 	}
+	working := p.Stage == world.Worker || p.Stage == world.Shadow || p.Stage == world.SickLeave
 	if f := w.Space.WorkFloor; int(id) < len(f) && f[id] != 0 {
 		k.work = int32(p.Department*m.floors + f[id] - 1)
+	} else if working && old.work >= 0 && int(old.work)/m.floors == p.Department {
+		// ODD §6.11: cut off from every floor of their department by the
+		// stairs, they keep the work floor they had, and its coworkers.
+		k.work = old.work
 	}
-	k.porter = p.Department == m.porters && (p.Stage == world.Worker || p.Stage == world.Shadow || p.Stage == world.SickLeave)
+	k.porter = p.Department == m.porters && working
 	if p.Stage == world.Shadow {
 		k.master = p.Master
 	}
