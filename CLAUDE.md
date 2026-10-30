@@ -70,5 +70,3 @@ bin/silosim run --scenario scenarios/baseline.yaml --seed 42
 bin/silosim batch --scenario scenarios/baseline.yaml --seeds 1-100 --out runs/batch-001
 bin/silosim report --batch runs/batch-001
 ```
-
-(Until T0.1 is done, the Makefile and binary don't exist yet.)
