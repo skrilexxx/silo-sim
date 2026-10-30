@@ -475,7 +475,7 @@ With a full descent of H\_descent = 12 hours of walking and H\_walk = 8 walking 
 
 - A trip can start only between connected floors, and only for a person who is not already on one. Otherwise it is refused, and the module that asked decides what that means.
 - The traveller is on the stairs from the departure day until the arrival day, departure + days, and is on the destination floor from the arrival day on (placed there by the location step the evening before). While on the stairs they don't work, as if stranded.
-- If a segment on the route breaks during the trip, the traveller stops on the floor next to the break on their side and arrives there on the planned day.
+- If a segment on the route breaks during the trip, the traveller stops on the floor next to the break, on the side they left from, and arrives there on the planned day. Where on the route they were when it broke is not tracked.
 - After arriving, the person is *away*: their day location is the floor they reached, and they don't work, until a module sends them on another trip. A trip back to the home floor ends being away.
 - A death ends the trip.
 
@@ -483,15 +483,7 @@ With a full descent of H\_descent = 12 hours of walking and H\_walk = 8 walking 
 
 **Off and null.** With the module off, none of this exists and the baseline runs as before. With the module on, all stairs intact and no module starting trips (the null setting), nobody is stranded, travels or is away. The only new random draws are the porters' floors, on this module's own stream, so the baseline's output files are byte-identical to a run with the module off.
 
-**Parameters** (move to §7 when M8 is done):
-
-| Parameter | Default | Basis |
-| --- | --- | --- |
-| Full descent H\_descent | 12 hours of walking, floor 1 → 144 | Guess. Not stated on screen; a reviewer's estimate is about a day top to bottom, fan discussion calls a full climb multi-day (lore reference). With 8 walking hours a day it takes 2 days, which fits both |
-| Walking per day H\_walk | 8 hours | Guess |
-| Office floors | Administration 1, Sheriff 1, Judicial 2–3, Medical 12, Education 20, IT 33–34, Supply 72 | Guess; Up Top for the first six, Mids for Supply (§6.5 zones). Sheriff and the Mayor's office near the cafeteria at the top \[Likely\] |
-
-Ranges checked at load: both hours strictly greater than 0. Every department with office floors lists at least one floor inside the silo; Farms, Mechanical, General services and Porters list none. That each office floor is a residential floor (not a farm or Mechanical floor) in the department's zone is checked when the module starts, once the floors exist.
+**Parameters:** full descent, walking per day and office floors, in §7 (M8 done, 2026-10-30).
 
 ## 7. Parameters
 
@@ -499,7 +491,7 @@ Every number the model uses, in one place. Each one becomes a field in the scena
 
 The table below is the frozen baseline set. Part-2 parameters are listed in their draft sections (6.9 onward) and move into this table when their milestone is done.
 
-**Ranges checked at load.** No parameter may be negative. These must lie in [0, 1]: every daily chance and percentage; α, ρ, f₀ and the air recovery share (so the updates in 6.5 and 6.6 cannot overshoot); every amount subtracted from, or compared with, a 0–1 variable (injury and illness cost, condition drop, wear, start skill, master skill, sick-leave health); hunger and air damage; recovery; the open-window weight; the shadow output factor; the retraining threshold. Also maternalDeathBase ≤ 0.5 and injuryChance × the largest injury factor ≤ 1, so every derived daily probability stays ≤ 1. These must be strictly greater than 0, because they are divisors or define quantities that must exist: Gompertz A and B (so the day-1 age table ends), floors per zone, the coverage need factor, every department share, adult kcal, the age-gap scale, power demand per person, the capacity margin, kcal per farm unit, target and starting population, window, pregnancy and minimum outage length, and the invariant and frame intervals. invariantEvery and frameEvery are integers ≥ 1. Ages are ordered (shadow < worker < retire, mother min < max, partnering min age ≤ day-1 pairing age), outage min ≤ max, farm and Mechanical floors each fewer than the floors per zone (every zone keeps a residential floor), the home capacity margin is at least 1, and zone splits and department shares each sum to 1.
+**Ranges checked at load.** No parameter may be negative. These must lie in [0, 1]: every daily chance and percentage; α, ρ, f₀ and the air recovery share (so the updates in 6.5 and 6.6 cannot overshoot); every amount subtracted from, or compared with, a 0–1 variable (injury and illness cost, condition drop, wear, start skill, master skill, sick-leave health); hunger and air damage; recovery; the open-window weight; the shadow output factor; the retraining threshold. Also maternalDeathBase ≤ 0.5 and injuryChance × the largest injury factor ≤ 1, so every derived daily probability stays ≤ 1. These must be strictly greater than 0, because they are divisors or define quantities that must exist: Gompertz A and B (so the day-1 age table ends), floors per zone, the coverage need factor, every department share, adult kcal, the age-gap scale, power demand per person, the capacity margin, kcal per farm unit, target and starting population, window, pregnancy and minimum outage length, and the invariant and frame intervals. invariantEvery and frameEvery are integers ≥ 1. Ages are ordered (shadow < worker < retire, mother min < max, partnering min age ≤ day-1 pairing age), outage min ≤ max, farm and Mechanical floors each fewer than the floors per zone (every zone keeps a residential floor), the home capacity margin is at least 1, and zone splits and department shares each sum to 1. Part 2: both walking hours are strictly greater than 0; every department with office floors lists at least one floor inside the silo, and Farms, Mechanical, General services and Porters list none. That each office floor is a residential floor (not a farm or Mechanical floor) in the department's zone is checked when the space module starts, once the floors exist.
 
 | Parameter | Default | Basis | Used in |
 | --- | --- | --- | --- |
@@ -555,6 +547,10 @@ The table below is the frozen baseline set. Part-2 parameters are listed in thei
 | Mayor term | 5 years, or life (toggle) | Guess | 6.8 |
 | Vote for own zone | 80% | Guess | 6.8 |
 | Understaffed department (output) | Below 50% of target | Calibration target | 8 |
+| *Part 2* | | | |
+| Full descent H\_descent | 12 hours of walking, floor 1 → 144 | Guess. Not stated on screen; a reviewer's estimate is about a day top to bottom, fan discussion calls a full climb multi-day (lore reference). With 8 walking hours a day it takes 2 days, which fits both | 6.10 |
+| Walking per day H\_walk | 8 hours | Guess | 6.10 |
+| Office floors | Administration 1, Sheriff 1, Judicial 2–3, Medical 12, Education 20, IT 33–34, Supply 72 | Guess; Up Top for the first six, Mids for Supply (§6.5 zones). Sheriff and the Mayor's office near the cafeteria at the top \[Likely\] | 6.10 |
 
 ## 8. Outputs, tests and validation
 

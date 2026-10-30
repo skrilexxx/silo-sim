@@ -158,6 +158,11 @@ func spaced() *world.World {
 		DeptFloors: [][]int{{2}, nil},
 		Location:   []int{1, 0, 2},
 		Stranded:   []bool{false, false, false},
+		OffWork:    []bool{false, false, false},
+		From:       []int{0, 0, 0},
+		Dest:       []int{0, 0, 0},
+		Arrive:     []world.Tick{0, 0, 0},
+		Away:       []int{0, 0, 0},
 	}
 	return w
 }
@@ -178,10 +183,13 @@ func TestSpace(t *testing.T) {
 			w.Households[1].Floor, w.Households[0].Floor = 1, 2 // she lives and stands on 1, not on her department's floor 2
 			w.Space.Location[0], w.Space.Location[2] = 2, 1
 		}},
-		{"mechanical worker 2 is on floor 2 (stranded true)", func(w *world.World) { w.Space.Stranded[2] = true }},
+		{"mechanical worker 2 is on floor 2 (stranded true)", func(w *world.World) { w.Space.Stranded[2], w.Space.OffWork[2] = true, true }},
+		{"person 2: off work true, but stranded false, travelling false, away false", func(w *world.World) { w.Space.OffWork[2] = true }},
+		{"person 0 is travelling but on floor 1", func(w *world.World) { w.Space.Dest[0], w.Space.OffWork[0] = 2, true }},
+		{"person 0 is away on floor 2 but on floor 1", func(w *world.World) { w.Space.Away[0], w.Space.OffWork[0] = 2, true }},
 		{"mechanical worker 2 is on floor 1 (stranded true)", func(w *world.World) { // stranded, but floor 2 is reachable
 			w.Households[1].Floor, w.Households[0].Floor = 1, 2
-			w.Space.Location[0], w.Space.Location[2], w.Space.Stranded[2] = 2, 1, true
+			w.Space.Location[0], w.Space.Location[2], w.Space.Stranded[2], w.Space.OffWork[2] = 2, 1, true, true
 		}},
 		{"porter 2 is on floor 1, not connected to home floor 2", func(w *world.World) {
 			w.People[2].Department, w.Space.Broken[0], w.Space.Location[2] = 1, true, 1
@@ -197,9 +205,16 @@ func TestSpace(t *testing.T) {
 	// Stranded at home when the stairs cut her off is valid.
 	w := spaced()
 	w.Households[1].Floor, w.Households[0].Floor = 1, 2
-	w.Space.Location[0], w.Space.Location[2], w.Space.Stranded[2] = 2, 1, true
+	w.Space.Location[0], w.Space.Location[2], w.Space.Stranded[2], w.Space.OffWork[2] = 2, 1, true, true
 	w.Space.Broken[0] = true
 	if err := space(w); err != nil {
 		t.Errorf("stranded worker rejected: %v", err)
+	}
+	// A traveller on the stairs and a worker away elsewhere are valid.
+	w = spaced()
+	w.Space.Location[0], w.Space.Dest[0], w.Space.OffWork[0] = 0, 2, true
+	w.Space.Location[2], w.Space.Away[2], w.Space.OffWork[2] = 1, 1, true
+	if err := space(w); err != nil {
+		t.Errorf("traveller or away worker rejected: %v", err)
 	}
 }

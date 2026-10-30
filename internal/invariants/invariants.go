@@ -46,10 +46,12 @@ func Check(w *world.World, cfg *config.Scenario) error {
 }
 
 // ODD §6.10 (draft), checked after the location step, the last of the
-// tick: every living person is on a real floor. Workers and shadows are on
-// a floor of their department connected to home (General services at
-// home, Porters anywhere connected to home), or stranded at home when no
-// department floor is connected. Everyone else is at home.
+// tick: every living person is on a real floor, except travellers, who are
+// on the stairs (location 0). A person away is on the floor they reached.
+// Otherwise workers and shadows are on a floor of their department
+// connected to home (General services at home, Porters anywhere connected
+// to home), or stranded at home when no department floor is connected,
+// and everyone else is at home. Off work = stranded, travelling or away.
 func space(w *world.World) error {
 	s := w.Space
 	if s == nil {
@@ -70,8 +72,22 @@ func space(w *world.World) error {
 		}
 		p, loc := &w.People[id], s.Location[id]
 		home := w.Households[p.Household].Floor
-		if loc < 1 || loc > len(w.Floors) {
+		travelling, away := s.Dest[id] != 0, s.Away[id] != 0
+		if s.OffWork[id] != (s.Stranded[id] || travelling || away) {
+			return fmt.Errorf("person %d: off work %v, but stranded %v, travelling %v, away %v",
+				id, s.OffWork[id], s.Stranded[id], travelling, away)
+		}
+		switch {
+		case travelling && (loc != 0 || away || s.Stranded[id]):
+			return fmt.Errorf("person %d is travelling but on floor %d (away %v, stranded %v)", id, loc, away, s.Stranded[id])
+		case travelling:
+			continue
+		case loc < 1 || loc > len(w.Floors):
 			return fmt.Errorf("person %d is on floor %d, not a real floor", id, loc)
+		case away && (loc != s.Away[id] || s.Stranded[id]):
+			return fmt.Errorf("person %d is away on floor %d but on floor %d", id, s.Away[id], loc)
+		case away:
+			continue
 		}
 		working := p.Stage == world.Worker || p.Stage == world.Shadow
 		switch {

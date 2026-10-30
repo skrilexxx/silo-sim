@@ -167,7 +167,9 @@ A step that is disabled because its module is off simply does not run. Modules m
 
 ## Agenda: scheduled actions
 
-Part 2 has actions that take days: a trip down the stairs (M8), a prison sentence (M11), a dosing period (M10), the Safeguard's delay (M14). They go on the **agenda**, a queue of actions due on a later day. (It is not called "events": `World.Events` already means lines for `events.jsonl`.)
+Part 2 has actions that take days: a prison sentence (M11), a dosing period (M10), the Safeguard's delay (M14). They go on the **agenda**, a queue of actions due on a later day. (It is not called "events": `World.Events` already means lines for `events.jsonl`.)
+
+Trips (M8) do not use it. They are state on `World.Space` (destination and arrival day per person), because other modules start them through `Space.StartTrip` and cannot reach the engine, and because the location step already visits everyone every evening and can move each trip on. Cancelling a trip needs nothing either: a dead traveller leaves `World.Alive`.
 
 ```go
 // engine/agenda.go
@@ -181,7 +183,7 @@ An entry is a day, a phase and a closure. The closure carries what the action ne
 
 - **Order:** a min-heap (`container/heap`) keyed by day, then phase, then insertion number. Two entries due at the same day and phase fire in the order they were scheduled, so ties are deterministic.
 - **Firing:** before a phase's step runs, the engine fires every entry due today at that phase, in key order. Entries fire on their own day whether or not the phase's step is due that day, and a phase with no step still fires them. An entry must be due later than the phase that schedules it (a later day, or later the same day); scheduling into the past is an error, so nothing is silently moved to another day.
-- **Cancellation:** `Schedule` returns a handle; cancelling marks the entry, and a marked entry is dropped when it reaches the top (lazy deletion), so cancelling is O(1). An arrested traveller's arrival is cancelled this way.
+- **Cancellation:** `Schedule` returns a handle; cancelling marks the entry, and a marked entry is dropped when it reaches the top (lazy deletion), so cancelling is O(1).
 - **Scripted events** (`events:` in the scenario, ODD §5) are agenda entries added when the engine starts, in file order. A module defines its types by implementing `EventSource` (`EventTypes() []EventType`: a name, a phase, a `Fire` function). The engine refuses a type that no running module defines, draws for every event from its own `events` stream, and logs each one to `events.jsonl` as `{"day":…,"type":"scripted","event":…}` before it fires.
 - The agenda is engine state, not world state: modules schedule and cancel through it, never read it. A module that does not implement `AgendaUser` never sees it, which is every baseline module.
 

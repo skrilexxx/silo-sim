@@ -37,7 +37,8 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	if len(w.Depts) == 0 {
 		return fmt.Errorf("space: no departments; list work before space in modules")
 	}
-	s := &world.Space{Broken: make([]bool, len(w.Floors)-1), DeptFloors: make([][]int, len(w.Depts))}
+	s := &world.Space{Broken: make([]bool, len(w.Floors)-1), DeptFloors: make([][]int, len(w.Depts)),
+		DescentHours: cfg.Space.FullDescentHours, WalkHours: cfg.Space.WalkingHoursPerDay}
 	for i, d := range w.Depts {
 		switch d.Name {
 		case "general":
@@ -86,14 +87,15 @@ func floorsWith(w *world.World, fn world.FloorFunction) []int {
 }
 
 // ODD §6.10 / §3 step 16.5: at the end of each day, where everyone is the
-// next day. Workers and shadows go to their work floor; everyone else
-// stays home. Porters draw a floor connected to home, in the tick's
-// shuffled order.
+// next day. Travellers stay on the stairs until the day they arrive; a
+// person away stays on the floor they reached. Otherwise workers and
+// shadows go to their work floor and everyone else stays home. Porters
+// draw a floor connected to home, in the tick's shuffled order.
 func (m *Module) locate(w *world.World, r *rng.Stream) error {
 	s := w.Space
 	for len(s.Location) < len(w.People) {
-		s.Location = append(s.Location, 0)
-		s.Stranded = append(s.Stranded, false)
+		s.Location, s.Stranded, s.OffWork = append(s.Location, 0), append(s.Stranded, false), append(s.OffWork, false)
+		s.From, s.Dest, s.Arrive, s.Away = append(s.From, 0), append(s.Dest, 0), append(s.Arrive, 0), append(s.Away, 0)
 	}
 	if m.seen == nil || !slices.Equal(m.seen, s.Broken) {
 		m.connect(s)
@@ -102,6 +104,13 @@ func (m *Module) locate(w *world.World, r *rng.Stream) error {
 	for _, id := range w.Alive {
 		p := &w.People[id]
 		home := w.Households[p.Household].Floor
+		if s.Dest[id] != 0 && !m.travel(w, id, home) {
+			continue // still on the stairs tomorrow
+		}
+		if s.Away[id] != 0 {
+			s.Location[id], s.Stranded[id], s.OffWork[id] = s.Away[id], false, true
+			continue
+		}
 		floor, stranded := home, false
 		if p.Stage == world.Worker || p.Stage == world.Shadow {
 			switch p.Department {
@@ -116,9 +125,34 @@ func (m *Module) locate(w *world.World, r *rng.Stream) error {
 				}
 			}
 		}
-		s.Location[id], s.Stranded[id] = floor, stranded
+		s.Location[id], s.Stranded[id], s.OffWork[id] = floor, stranded, stranded
 	}
 	return nil
+}
+
+// ODD §6.10: trips. travel moves a trip on by a day and reports whether
+// it ends tomorrow.
+// A segment that broke on the route stops the traveller on the floor next
+// to the break, on the side they left from; they still arrive on the
+// planned day. Arriving at home ends being away; anywhere else starts it.
+func (m *Module) travel(w *world.World, id world.PersonID, home int) bool {
+	s := w.Space
+	from, dest := s.From[id], s.Dest[id]
+	if dest > from {
+		dest = min(dest, m.hi[from-1])
+	} else {
+		dest = max(dest, m.lo[from-1])
+	}
+	s.Dest[id] = dest
+	if s.Arrive[id] > w.Day+1 {
+		s.Location[id], s.Stranded[id], s.OffWork[id] = 0, false, true
+		return false
+	}
+	s.Dest[id], s.Away[id] = 0, dest
+	if dest == home {
+		s.Away[id] = 0
+	}
+	return true
 }
 
 // connect sets lo and hi (a broken segment ends one run of connected

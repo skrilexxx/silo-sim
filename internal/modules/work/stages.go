@@ -28,7 +28,7 @@ func (m *Module) lifeStages(w *world.World, r *rng.Stream) error {
 				m.unlink(w, id)
 				p.Stage = world.Worker
 				w.Depts[p.Department].Shadows--
-				w.Depts[p.Department].Headcount++
+				m.countIn(w, id)
 			}
 		case world.Worker:
 			if p.Health < m.c.SickLeaveHealth {
@@ -39,10 +39,10 @@ func (m *Module) lifeStages(w *world.World, r *rng.Stream) error {
 			switch {
 			case a >= m.days(m.c.RetireAge):
 				p.Stage = world.Retired
-				w.Depts[p.Department].Headcount--
+				m.countOut(w, id)
 			case p.LowHealth >= m.c.SickLeaveDays:
 				p.Stage, p.LowHealth = world.SickLeave, 0
-				w.Depts[p.Department].Headcount--
+				m.countOut(w, id)
 			}
 		case world.SickLeave:
 			switch {
@@ -50,12 +50,27 @@ func (m *Module) lifeStages(w *world.World, r *rng.Stream) error {
 				p.Stage = world.Retired
 			case p.Health >= m.c.SickLeaveHealth:
 				p.Stage = world.Worker
-				w.Depts[p.Department].Headcount++
+				m.countIn(w, id)
 			}
 		}
 	}
 	m.remaster(w, r)
 	return nil
+}
+
+// countIn and countOut keep a department's headcount in step with recount
+// when a person starts or stops being a worker: someone off work because
+// of where they are (ODD §6.10) is not counted.
+func (m *Module) countIn(w *world.World, id world.PersonID) {
+	if !w.Space.Off(id) {
+		w.Depts[w.People[id].Department].Headcount++
+	}
+}
+
+func (m *Module) countOut(w *world.World, id world.PersonID) {
+	if !w.Space.Off(id) {
+		w.Depts[w.People[id].Department].Headcount--
+	}
 }
 
 func (m *Module) unlink(w *world.World, id world.PersonID) {

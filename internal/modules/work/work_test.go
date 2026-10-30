@@ -398,3 +398,42 @@ func TestRemaster(t *testing.T) {
 		t.Errorf("master %d with no worker left, want none", tw.w.People[sh].Master)
 	}
 }
+
+// ODD §6.10: someone off work because of where they are (stranded, on
+// the stairs or away) gives no output, gains no skill, is not counted as
+// a worker, and is not retrained.
+func TestOffWorkDoesNotWork(t *testing.T) {
+	tw := newTiny(t)
+	w, m := tw.w, tw.m
+	off := tw.add(world.Worker, 30*year, world.DownDeep, mechanical, 0.5)
+	on := tw.add(world.Worker, 30*year, world.DownDeep, mechanical, 0.5)
+	shadow := tw.add(world.Shadow, 15*year, world.DownDeep, mechanical, 0.5)
+	w.Space = &world.Space{OffWork: []bool{true, false, true}}
+
+	m.output(w, true)
+	if got := w.Depts[mechanical].Output; got != 0.5 {
+		t.Errorf("Mechanical output %v, want 0.5 (only the worker at work)", got)
+	}
+	if w.People[off].Skill != 0.5 || w.People[shadow].Skill != 0.5 || w.People[on].Skill <= 0.5 {
+		t.Errorf("skills %v, %v, %v: only the worker at work should grow",
+			w.People[off].Skill, w.People[on].Skill, w.People[shadow].Skill)
+	}
+	m.recount(w)
+	if got := w.Depts[mechanical].Headcount; got != 1 {
+		t.Errorf("Mechanical headcount %d, want 1", got)
+	}
+
+	// The only General worker living Down Deep is off work, so Mechanical
+	// (short of workers) cannot retrain her; ten in the Mids set targets.
+	g := tw.add(world.Worker, 30*year, world.DownDeep, general, 0.5)
+	for range 10 {
+		tw.add(world.Worker, 30*year, world.Mids, general, 0.5)
+	}
+	w.Space.OffWork = append(w.Space.OffWork, true)
+	if err := m.staffing(w, stream(t)); err != nil {
+		t.Fatal(err)
+	}
+	if w.People[g].Department != general {
+		t.Errorf("an off-work General worker was retrained into %s", w.Depts[w.People[g].Department].Name)
+	}
+}

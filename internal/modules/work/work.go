@@ -203,12 +203,18 @@ func (m *Module) work(w *world.World, _ *rng.Stream) error {
 // With grow, each worker's and shadow's skill then grows by α × (1 −
 // skill) (ODD §6.5), in the same pass: a person's output already used
 // their skill from before today's growth, so this equals two passes.
+//
+// Part 2 (ODD §6.10): someone stranded, on the stairs or away does not
+// work: no output and no skill growth.
 func (m *Module) output(w *world.World, grow bool) {
 	for d := range w.Depts {
 		w.Depts[d].Output = 0
 	}
 	for _, id := range w.Alive {
 		p := &w.People[id]
+		if w.Space.Off(id) {
+			continue
+		}
 		switch p.Stage {
 		case world.Worker:
 			w.Depts[p.Department].Output += p.Skill * p.Health
@@ -270,7 +276,7 @@ func (m *Module) retrain(w *world.World, r *rng.Stream) {
 		m.people = m.people[:0]
 		for _, id := range w.Alive {
 			p := &w.People[id]
-			if p.Stage == world.Worker && p.Department == m.general && (dep.Zone == world.AllZones || homeZone(w, id) == dep.Zone) {
+			if p.Stage == world.Worker && p.Department == m.general && !w.Space.Off(id) && (dep.Zone == world.AllZones || homeZone(w, id) == dep.Zone) {
 				m.people = append(m.people, id)
 			}
 		}
@@ -296,7 +302,8 @@ func (m *Module) shortfall(w *world.World, d int) float64 {
 
 // recount refreshes department headcounts and shadows per master from the
 // living. Deaths are handled by demography, so a dead worker's job is
-// vacated here, at the next count (ODD §6.1).
+// vacated here, at the next count (ODD §6.1). A worker off work because
+// of where they are (ODD §6.10) is not counted, as on sick leave.
 func (m *Module) recount(w *world.World) {
 	for d := range w.Depts {
 		w.Depts[d].Headcount, w.Depts[d].Shadows = 0, 0
@@ -306,7 +313,9 @@ func (m *Module) recount(w *world.World) {
 		p := &w.People[id]
 		switch p.Stage {
 		case world.Worker:
-			w.Depts[p.Department].Headcount++
+			if !w.Space.Off(id) {
+				w.Depts[p.Department].Headcount++
+			}
 		case world.Shadow:
 			w.Depts[p.Department].Shadows++
 			if p.Master != world.None {
