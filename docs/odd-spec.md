@@ -159,7 +159,7 @@ Five kinds of entity: people, households, floors, departments and the silo itsel
 ### Scales
 
 - **Time:** 1 tick = 1 day. A year is 365 ticks; monthly steps run every 30 ticks. A run is 50 years of warm-up plus 200 years of measurement.
-- **Space:** 144 floors in three zones. Location is an attribute only: nobody walks the stairs in the baseline. Travel time arrives with the rebellion modules, where it starts to matter.
+- **Space:** 144 floors in three zones. Location is an attribute only: nobody walks the stairs in the baseline. Travel time arrives with the rebellion modules, where it starts to matter (§6.10).
 - **Population:** about 10,000 people alive at once, about 40,000–50,000 over a full run.
 
 ## 3. Process overview and scheduling
@@ -168,6 +168,7 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 
 ### Every day
 
+0.5. **Location** *(part 2, draft)* — trips that end today arrive; every person's day location; stranded workers (6.10)
 1. **Generator** — Supply's new parts added, then wear, repair, failure check, outage countdown → power supply (6.6)
 2. **Life support** — water and air from power and Mechanical output (6.6)
 3. **Food production** — farm output, scaled by power, added to the stock (6.6)
@@ -435,6 +436,59 @@ pact:
       enforcer: judicial
       visibility: 0.5
 ```
+
+### 6.10 Location and travel (draft)
+
+*Answers Q1 and Q2.* Distance decides who meets whom (§6.11), how fast rebels can gather and how fast Judicial reaches the Down Deep (§6.13–6.14), and a broken stairwell can cut the silo in two. The baseline has no walking (§2 Scales); this module adds it as an attribute plus multi-day trips, not as step-by-step movement (decision D3).
+
+**Stairs.** The one spiral stairwell is a line of 143 segments; segment s joins floors s and s + 1. Each segment is intact or broken. All are intact on day 1, and only other modules (sabotage, M12) or scripted events break or repair them; this module never does. Two floors are *connected* when every segment between them is intact.
+
+**Floors a person uses.** Their *home floor* is their household's floor (§2). Workers and shadows also have a *work floor*:
+
+| Department | Work floor |
+| --- | --- |
+| Farms, Mechanical | The department's pure work floors (§5) |
+| Supply, Judicial, Education, Medical, IT, Administration, Sheriff | The department's office floors, listed in the scenario (`space.officeFloors`). Office floors are residential floors in the department's zone; floor 1 holds the cafeteria and the screen |
+| General services | The home floor: cafeterias, crafts and cleaning are on every floor |
+| Porters | A floor drawn each day, uniformly from all floors connected to the home floor: porters carry goods through the whole silo |
+
+Where a department has several floors, a person works on the one nearest their home floor, the lower-numbered one on a tie, among those connected to it. The work floor follows from today's home floor, so it changes when a person moves (§6.3) or changes department (§6.5). Shadows use the same rule as their department's workers, whatever floor their master is on.
+
+**Where people are.** Each day, at the location step (§3 step 0.5), every living person gets one *day location*:
+
+- a worker or shadow is on their work floor (the baseline has no rest days: output is computed every day);
+- everyone else (children, retired, sick leave) is on their home floor;
+- a person *away* (below) is on the floor they travelled to, or *on the stairs* while travelling.
+
+**Stranded.** A worker or shadow whose department has floors but none connected to their home floor is *stranded* for the day. They stay on their home floor and don't work: no output, no skill growth, and they don't count as workers for coverage, targets or retraining, as on sick leave (§6.5). They keep their department, skill and master, and work again on the first day a department floor is connected. With every segment intact nobody is ever stranded. When the stairs break, this is how a split silo loses the workers who live on the wrong side, and through the §6.6 loop its power: a break around levels 90–92, as in S2, would leave Mechanical (floors 133–144) only the workers who live below it.
+
+**Trips.** A trip moves one person from their day location to a destination floor. It is started by another module (arrests, M11; rebels gathering, M12), never by this one, so with no such module nobody travels.
+
+```latex
+hours = |from - to| \times \frac{H_{descent}}{143}, \qquad days = \max\left(1, \left\lceil \frac{hours}{H_{walk}} \right\rceil\right)
+```
+
+With a full descent of H\_descent = 12 hours of walking and H\_walk = 8 walking hours a day, floor 1 → 144 takes 2 days, and any trip within one zone (at most 47 floors, 3.9 hours) takes 1 day. One day is the model's tick, so even a short trip takes a day.
+
+- A trip can start only between connected floors, and only for a person who is not already on one. Otherwise it is refused, and the module that asked decides what that means.
+- The traveller is on the stairs from the departure day until the arrival day, departure + days, and arrives at that day's location step. While on the stairs they don't work, as if stranded.
+- If a segment on the route breaks during the trip, the traveller stops on the floor next to the break on their side and arrives there on the planned day.
+- After arriving, the person is *away*: their day location is the floor they reached, and they don't work, until a module sends them on another trip. A trip back to the home floor ends being away.
+- A death ends the trip.
+
+**State** (owned by this module; §2 is unchanged): the 143 segment states; for each person, their day location, whether they are stranded, and their trip or away floor. Home and work floors are not stored, because they follow from the household and the department.
+
+**Off and null.** With the module off, none of this exists and the baseline runs as before. With the module on, all stairs intact and no module starting trips (the null setting), nobody is stranded, travels or is away. The only new random draws are the porters' floors, on this module's own stream, so the baseline's output files are byte-identical to a run with the module off.
+
+**Parameters** (move to §7 when M8 is done):
+
+| Parameter | Default | Basis |
+| --- | --- | --- |
+| Full descent H\_descent | 12 hours of walking, floor 1 → 144 | Guess. Not stated on screen; a reviewer's estimate is about a day top to bottom, fan discussion calls a full climb multi-day (lore reference). With 8 walking hours a day it takes 2 days, which fits both |
+| Walking per day H\_walk | 8 hours | Guess |
+| Office floors | Administration 1, Sheriff 1, Judicial 2–3, Medical 12, Education 20, IT 33–34, Supply 72 | Guess; Up Top for the first six, Mids for Supply (§6.5 zones). Sheriff and the Mayor's office near the cafeteria at the top \[Likely\] |
+
+Ranges checked at load: both hours strictly greater than 0. Every department with office floors lists at least one, each a residential floor (not a farm or Mechanical floor) in the department's zone. Farms, Mechanical, General services and Porters list none.
 
 ## 7. Parameters
 

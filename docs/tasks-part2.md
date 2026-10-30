@@ -33,7 +33,7 @@ Each one is settled in the spec task named. Decided ones point to the spec; for 
 | --- | --- | --- | --- |
 | D1 | What counts as a rebellion | T7.1 | **Decided 2026-10-30:** ≥ 5% of adults active for 7 days **and** a collective action; endings suppressed, regime change, split, collapse (ODD §1.2) |
 | D2 | What counts as silo death | T7.1 | **Decided 2026-10-30:** collapse = air or water below 0.2 for 30 days, a Safeguard, or population below a *measured* point of no return P_min (T12.6); extinction logged separately (ODD §1.2) |
-| D3 | Location: continuous walking or home and work floors | T8.0 | [home floor + work floor; trips as multi-day events, no step-by-step walking] |
+| D3 | Location: continuous walking or home and work floors | T8.0 | **Decided 2026-10-30:** home floor + work floor, one day location per person per day; trips as multi-day events, no step-by-step walking; a broken segment strands workers cut off from their department (ODD §6.10) |
 | D4 | Beliefs: one number or several | T10.0 | [legitimacy (0–1) plus five knowledge flags; no free-text beliefs] |
 | D5 | Vitamin D+ in the water: can memories come back? | T10.0 | [yes, when the dosing stops and a relic or a trusted contact cues them, as with Juliette] |
 | D6 | How rebels and Judicial fight | T12.0 | [force ratio decides casualties (simple Lanchester rule); no individual combat] |
@@ -77,7 +77,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
 
 *Answers Q1 and Q2.* Distance decides who meets whom, how fast rebels can gather, and how fast Judicial can reach the Down Deep.
 
-- [ ] **T8.0 Spec: location and travel (ODD §6.10).** Decision D3. Each department gets work floors (farms and Mechanical already have them; the others get floors in their zone). Travel time = floors crossed × hours per floor (≈ 12 h top to bottom), turned into days at ~8 walking hours a day, so a full descent is about 2 days. Stair segments are intact or broken; a broken segment blocks travel, as at levels 90–92 in S2. Porters cross zones as part of their job.
+- [x] **T8.0 Spec: location and travel (ODD §6.10).** (2026-10-30, approved) Decision D3. Each department gets work floors (farms and Mechanical already have them; the others get floors in their zone). Travel time = floors crossed × hours per floor (≈ 12 h top to bottom), turned into days at ~8 walking hours a day, so a full descent is about 2 days. Stair segments are intact or broken; a broken segment blocks travel, as at levels 90–92 in S2. Porters cross zones as part of their job.
 - [ ] **T8.1 Floors and daily location.** Work floors per department, each person's home and work floor, daily location (work floor on working days, otherwise home).
   - *Done when:* invariant: every living person has a location on a real floor; workers are on their department's floors.
 - [ ] **T8.2 Trips and stair segments.** Trips as scheduled events with arrival day; 143 stair segments with an intact/broken state; a trip through a broken segment is impossible.
