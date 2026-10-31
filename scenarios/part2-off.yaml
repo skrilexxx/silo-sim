@@ -60,3 +60,5 @@ rebellion:                # M12, off
   lossHardship: 1
   lossHalfLifeYears: 10
   scapegoatHardship: 1
+  activeThreshold: 0
+  arrestConstant: 0.1

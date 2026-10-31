@@ -157,7 +157,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
   - **actions:** strikes in a department (a Mechanical strike cuts power), occupying floors, barricading or breaking stair segments, sabotaging the generator or water pump, clashes with Judicial (force ratio decides casualties)
   - **endings:** suppressed, regime change, split silo, silo death (D2)
 - [x] **T12.1 Module, hardship and grievance.** (2026-10-31; H measured near 0 Up Top, 0.2 Down Deep; a cleaning failure more than doubles mean G) The `rebellion:` section; H from food, health, losses and the Down Deep; G = H × (1 − L); losses reported by control (cleanings, denied wins). Mean H and G by zone in `yearly.csv`.
-- [ ] **T12.2 Arrest estimate and activation.** Patrols per zone, P, net risk with fear, the active stage and its `organise` acts.
+- [x] **T12.2 Arrest estimate and activation.** (2026-10-31; a steep tip, not a jump: a quarter of the rise within 10 of 200 days as officers fall; daily `active` column) Patrols per zone, P, net risk with fear, the active stage and its `organise` acts.
   - *Done when:* reproduces the qualitative result of Epstein's model in a test world: with low legitimacy, outbursts come in bursts when the officer ratio drops.
 - [ ] **T12.3 Joining and escalation.** The joined stage (share R of ties), the violent stage (T\_v) and its `violence` acts; unrest and the rebellion test of §1.2.
 - [ ] **T12.4 Strikes and leverage.** Joined workers and shadows stop working (still counted for targets and retraining); a Mechanical strike lowers power through the existing loop (§6.6).

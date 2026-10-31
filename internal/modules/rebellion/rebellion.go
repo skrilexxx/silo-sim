@@ -4,6 +4,7 @@ package rebellion
 import (
 	"fmt"
 	"math"
+	"slices"
 
 	"github.com/skrilexxx/silo-sim/internal/config"
 	"github.com/skrilexxx/silo-sim/internal/engine"
@@ -17,6 +18,11 @@ type Module struct {
 	scapegoat float64    // s_DD
 	adultAge  world.Tick // worker age in days (ODD §6.5)
 	buf       []world.Tie
+
+	threshold, k float64 // T and k (Epstein 2002)
+	officers     []int   // Judicial's and the Sheriff's department indexes
+	courts       []int   // Judicial's office floors
+	reach        []bool  // per floor: connected to a court today
 }
 
 func New() *Module { return &Module{} }
@@ -34,8 +40,19 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	m.loss, m.scapegoat = cfg.Rebellion.LossHardship, cfg.Rebellion.ScapegoatHardship
 	m.lossDays = cfg.Rebellion.LossHalfLifeYears * engine.DaysPerYear
 	m.adultAge = world.Tick(cfg.Work.WorkerAge * engine.DaysPerYear)
+	m.threshold, m.k = cfg.Rebellion.ActiveThreshold, cfg.Rebellion.ArrestConstant
+	for d, dep := range w.Depts {
+		if dep.Name == "judicial" || dep.Name == "sheriff" {
+			m.officers = append(m.officers, d)
+		}
+		if dep.Name == "judicial" {
+			m.courts = w.Space.DeptFloors[d] // control checked that there are some
+		}
+	}
+	m.reach = make([]bool, len(w.Floors))
 	w.Rebellion = &world.Rebellion{}
 	m.newcomers(w)
+	m.count(w)
 	return nil
 }
 
@@ -48,6 +65,8 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 	m.newcomers(w)
 	m.losses(w)
 	m.hardship(w)
+	m.stages(w)
+	m.count(w)
 	return nil
 }
 
@@ -55,6 +74,7 @@ func (m *Module) newcomers(w *world.World) {
 	b := w.Rebellion
 	for len(b.LossDay) < len(w.People) {
 		b.LossDay, b.H, b.G = append(b.LossDay, world.None), append(b.H, 0), append(b.G, 0)
+		b.Stage = append(b.Stage, world.Calm)
 	}
 }
 
@@ -105,5 +125,109 @@ func (m *Module) hardship(w *world.World) {
 		}
 		b.H[id] = 1 - calm
 		b.G[id] = b.H[id] * (1 - w.Beliefs.L(id))
+	}
+}
+
+// ODD §6.14, Arrest estimate and Stages. An eligible adult is active
+// when G − R × (1 − (1 − P)(1 − F)) > T, with P = 1 − exp(−k × O_z /
+// (A_z + 1)) from yesterday's counts in the zone of their day location
+// and today's officers. Nothing is drawn and nobody's stage depends on
+// another's today, so the visiting order doesn't matter. Each active
+// person commits the offence organise.
+func (m *Module) stages(w *world.World) {
+	b, c := w.Rebellion, w.Control
+	m.reachable(w)
+	officers := m.onDuty(w)
+	reach := 0
+	for _, n := range b.Reach {
+		reach += n
+	}
+	var p [world.NumZones]float64 // P on floors connected to a court; 0 elsewhere
+	for z := range p {
+		if reach > 0 {
+			patrol := float64(officers) * float64(b.Reach[z]) / float64(reach)
+			p[z] = 1 - math.Exp(-m.k*patrol/float64(b.Actives[z]+1))
+		}
+	}
+	for _, id := range w.Alive {
+		b.Stage[id] = world.Calm
+		floor := w.Space.Where(w, id)
+		if b.G[id] <= m.threshold || floor == 0 || !m.eligible(w, id) {
+			continue // G − N > T needs G > T, as N ≥ 0; children have G = 0
+		}
+		pz := 0.0
+		if m.reach[floor-1] {
+			pz = p[w.Floors[floor-1].Zone]
+		}
+		risk := w.Beliefs.Risk[id] * (1 - (1-pz)*(1-c.Fear))
+		if b.G[id]-risk > m.threshold {
+			b.Stage[id] = world.Active
+			c.Report(world.Act{Person: id, Other: world.None, Offence: world.Organise})
+		}
+	}
+}
+
+// eligible: not an officer on duty, the Head of IT or held by Judicial
+// (ODD §6.14, Stages).
+func (m *Module) eligible(w *world.World, id world.PersonID) bool {
+	if w.Control.IsHead(id) || w.Control.Held(id) {
+		return false
+	}
+	return !m.officer(w, id)
+}
+
+// officer: a Judicial or Sheriff worker not off work (ODD §6.13).
+func (m *Module) officer(w *world.World, id world.PersonID) bool {
+	p := &w.People[id]
+	return p.Stage == world.Worker && slices.Contains(m.officers, p.Department) && !w.Space.Off(id)
+}
+
+// onDuty counts the officers: the workers of Judicial and the Sheriff not
+// off work (ODD §6.13, Arrests).
+func (m *Module) onDuty(w *world.World) int {
+	n := 0
+	for _, d := range m.officers {
+		n += w.Depts[d].Headcount
+	}
+	return n
+}
+
+// reachable marks the floors connected to a court today, walking out
+// from each court until a broken segment (segment s joins floors s and
+// s + 1). Asking Space.Connected for every floor and court costs a
+// floor-length walk each.
+func (m *Module) reachable(w *world.World) {
+	clear(m.reach)
+	broken := w.Space.Broken
+	for _, c := range m.courts {
+		m.reach[c-1] = true
+		for f := c; f > 1 && !broken[f-2]; f-- {
+			m.reach[f-2] = true
+		}
+		for f := c; f < len(m.reach) && !broken[f-1]; f++ {
+			m.reach[f] = true
+		}
+	}
+}
+
+// count keeps tomorrow's zone counts (ODD §6.14, Step 9): adults active
+// or beyond, and adults on floors connected to a court, by the zone of
+// their day location.
+func (m *Module) count(w *world.World) {
+	b := w.Rebellion
+	m.reachable(w)
+	b.Actives, b.Reach = [world.NumZones]int{}, [world.NumZones]int{}
+	for _, id := range w.Alive {
+		floor := w.Space.Where(w, id)
+		if floor == 0 || w.Day-w.People[id].BirthDay < m.adultAge {
+			continue
+		}
+		z := w.Floors[floor-1].Zone
+		if b.Stage[id] != world.Calm {
+			b.Actives[z]++
+		}
+		if m.reach[floor-1] {
+			b.Reach[z]++
+		}
 	}
 }

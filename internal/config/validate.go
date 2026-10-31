@@ -80,6 +80,7 @@ func (s *Scenario) Validate() error {
 		{"control.fearPerTrial", s.Control.FearPerTrial},
 		{"rebellion.lossHardship", s.Rebellion.LossHardship},
 		{"rebellion.scapegoatHardship", s.Rebellion.ScapegoatHardship},
+		{"rebellion.activeThreshold", s.Rebellion.ActiveThreshold},
 	}
 	for _, u := range unit {
 		if u.v < 0 || u.v > 1 {
@@ -131,6 +132,7 @@ func (s *Scenario) Validate() error {
 		{"control.fearHalfLifeYears", s.Control.FearHalfLifeYears},
 		{"control.deniedTries", float64(s.Control.DeniedTries)},
 		{"rebellion.lossHalfLifeYears", s.Rebellion.LossHalfLifeYears},
+		{"rebellion.arrestConstant", s.Rebellion.ArrestConstant},
 	}
 	for i, d := range s.Work.Departments {
 		positive = append(positive, struct {

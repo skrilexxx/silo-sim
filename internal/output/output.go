@@ -114,7 +114,15 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 	if _, err := o.daily.WriteString("day,population,popUpTop,popMids,popDownDeep,births,deaths,permits," +
 		"openWindows,queued,pregnancies,foodStockDays,rationing,powerFactor,generatorCondition,outage,water,air," +
 		"healthUpTop,healthMids,healthDownDeep,hardshipUpTop,hardshipMids,hardshipDownDeep," +
-		"medicalCoverage,mechanicalCoverage\n"); err != nil {
+		"medicalCoverage,mechanicalCoverage"); err != nil {
+		return err
+	}
+	if w.Rebellion != nil {
+		if _, err := o.daily.WriteString(",active"); err != nil {
+			return err
+		}
+	}
+	if err := o.daily.WriteByte('\n'); err != nil {
 		return err
 	}
 	h := []byte("day,medianAge")
@@ -273,6 +281,16 @@ func (o *Writer) writeDaily(w *world.World, births, deaths, permits int) error {
 	}
 	b = appendF(b, coverage(w, "medical"), 4)
 	b = appendF(b, coverage(w, "mechanical"), 4)
+	if r := w.Rebellion; r != nil { // ODD §6.14, Outputs: adults active or beyond
+		active := 0
+		for _, id := range w.Alive {
+			if r.Stage[id] != world.Calm {
+				active++
+			}
+		}
+		b = append(b, ',')
+		b = strconv.AppendInt(b, int64(active), 10)
+	}
 	o.row = append(b, '\n')
 	_, err := o.daily.Write(o.row)
 	return err

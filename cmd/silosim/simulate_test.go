@@ -535,10 +535,11 @@ func TestCleaningFailureShock(t *testing.T) {
 	}
 }
 
-// T12.1: hardship and grievance in a 1,000-person silo over 30 years,
-// with invariants (H and G in 0–1) every 30 days. Down Deep hardship stays
-// above Up Top's (the scapegoat term), and a cleaning failure in year 20,
-// which takes about 2δ = 0.3 off everyone's L, more than doubles mean G.
+// T12.1–T12.2: hardship, grievance and activation in a 1,000-person silo
+// over 30 years, with invariants (H and G in 0–1) every 30 days. Down Deep
+// hardship stays above Up Top's (the scapegoat term), and a cleaning
+// failure in year 20, which takes about 2δ = 0.3 off everyone's L, more
+// than doubles mean G and brings more adults out than before it.
 func TestGrievanceRuns(t *testing.T) {
 	golden := loadInto(t, goldenScenario)
 	cfg := loadInto(t, "../../scenarios/baseline.yaml")
@@ -557,6 +558,19 @@ func TestGrievanceRuns(t *testing.T) {
 	}
 	if g[20] < 2*g[19] {
 		t.Errorf("mean G %.4f → %.4f after the shock, want it more than doubled", g[19], g[20])
+	}
+	before, after := 0, 0
+	for _, line := range strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(dir, "daily.csv")))), "\n")[1:] {
+		cols := strings.Split(line, ",")
+		if day, n := atoi(t, cols[0]), atoi(t, cols[len(cols)-1]); day < cfg.Events[0].Day {
+			before = max(before, n)
+		} else {
+			after = max(after, n)
+		}
+	}
+	t.Logf("most adults active on a day: %d before the shock, %d after", before, after)
+	if after <= before {
+		t.Errorf("at most %d active after the shock, %d before; want more after", after, before)
 	}
 }
 

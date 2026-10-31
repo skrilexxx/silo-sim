@@ -246,6 +246,8 @@ type Rebellion struct {
 	LossHardship      float64 `yaml:"lossHardship"`
 	LossHalfLifeYears float64 `yaml:"lossHalfLifeYears"`
 	ScapegoatHardship float64 `yaml:"scapegoatHardship"`
+	ActiveThreshold   float64 `yaml:"activeThreshold"`
+	ArrestConstant    float64 `yaml:"arrestConstant"`
 }
 
 // Rule is one row of the Pact (ODD §6.9).
