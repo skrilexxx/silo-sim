@@ -406,21 +406,21 @@ Each row says what is forbidden, which offences break it, how hard it is to see,
 | enforcer | Who carries out the penalty: Sheriff, Judicial, or Silo 1 |
 | visibility | 0–1: how widely an enforcement is seen. It scales the effect on fear and legitimacy (§6.12, §6.14) |
 
-**Penalties:** `warning`, `confiscate` (relics), `prison(days)` and `mines(days)` (no work, no conversations), `cleaning` (death, public), `flagFamily` (covert lottery denial for the household, §6.13). A `contactAttempt` can also bring Silo 1's response (§6.16), which the table doesn't control.
+**Penalties:** `warning`, `confiscate` (relics), `prison(days)` and `mines(days)` (no work, no conversations), `cleaning` (death, public), `flagFamily` (covert lottery denial for the offender and their partner, §6.13). A `contactAttempt` can also bring Silo 1's response (§6.16), which the table doesn't control.
 
 **The canon Pact** (default for `scenarios/canon.yaml`):
 
 | id | Forbids | Offences | Detection | Penalty: first / repeat | Enforcer | Visibility | Source |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | noRelics | Owning or trading objects from before the silo | holdRelic, tradeRelic | 1.0 | confiscate + prison(90) / confiscate + prison(365) | Judicial | 0.5 | Show: relics banned down to a Pez dispenser (S1) |
-| noForbiddenTalk | Speaking about the outside, the time before, or other silos | speakForbidden | 0.5 | warning + flagFamily / prison(180) + flagFamily | Judicial | 0.3 | Show: questioning the rules can lead to cleaning (S1); people who ask questions are quietly denied children (lore reference) |
+| noForbiddenTalk | Speaking about the outside, the time before, or other silos | speakForbidden | 0.5 | warning / prison(180) + flagFamily | Judicial | 0.3 | Show: questioning the rules can lead to cleaning (S1); people who ask questions are quietly denied children (lore reference) |
 | goingOut | Saying "I want to go out" | askToGoOut | 1.0 | cleaning / — | Sheriff | 1.0 | Show: the request is binding (S1E1) |
 | lottery | Conceiving without a permit or removing one's own implant | unpermittedConception | 0.8 | prison(180) + flagFamily / cleaning | Judicial | 0.6 | Show: implants and lottery (S1E1) |
 | noContact | Radio contact, digging toward other silos, opening the doors below | contactAttempt | 0.7 | cleaning / — | Judicial | 0.2 | Show: Safeguard and the Directive (S2–S3) |
 | noViolence | Attacking officers or damaging the silo's systems | violence, sabotage | 1.0 | mines(730) / cleaning | Judicial | 0.8 | Show: S2 uprising |
 | noOrganising | Unauthorised gatherings and strikes | organise | 0.6 | prison(90) / mines(365) | Judicial | 0.7 | Show: Mechanical treated as rebels (S2) [Likely] |
 
-Detection weights, penalties and visibilities are guesses, to be checked by the sensitivity analysis (T15.3). Calibration (C1–C5) may tune them as a group, never row by row toward a wanted outcome.
+Detection weights, penalties and visibilities are guesses, to be checked by the sensitivity analysis (T15.3). Forbidden talk flags the family only on a repeat offence: flagging it on the first warning flagged 51% of a full silo within 56 years (T11.3), which would leave most couples childless once covert denial runs (Adam, 2026-10-31). Calibration (C1–C5) may tune them as a group, never row by row toward a wanted outcome.
 
 **Rewriting the Pact** is a change to rows: a rule switched on or off, a penalty raised or lowered, or a new rule added. It happens through a scripted event (`events:` in the scenario, T7.4) or a regime response (§6.15). Season 3's rewrite under Camille is the canon example. Rules the regime may add, off in the canon Pact:
 
@@ -445,8 +445,8 @@ pact:                             # ODD §6.9, §6.13; used only when `control` 
     active: true
     offences: [speakForbidden]
     detection: 0.5
-    first:  { flagFamily: true }  # a warning, and the household quietly flagged
-    repeat: { prison: 180, flagFamily: true }
+    first:  {}                    # a warning
+    repeat: { prison: 180, flagFamily: true }  # and the couple quietly flagged
     enforcer: judicial
     visibility: 0.3
 ```
@@ -703,7 +703,7 @@ where σ is the surveillance level (a policy lever, §6.15), c\_IT is IT's cover
 - *Mines(days):* a trip to the mines floor, detained there until the trial day + days (the walk counts). If the stairs to the mines are broken, the sentence is served in the court's prison.
 - *Cleaning:* carried out the next day (below).
 - *Confiscate:* every relic the offender holds leaves the silo for good.
-- *FlagFamily:* everyone living in the offender's household, children included, is flagged for life (covert lottery denial, below).
+- *FlagFamily:* the offender and their partner, if any, are flagged for life (covert lottery denial, below); their children are not. Flagging the whole household for life, children included, spread the flag down family lines: with σ = 0.1 three quarters of a small silo were flagged within 60 years and births nearly stopped (T11.4).
 
 People in custody or detained have no conversations (§6.11) and can't use their relics; detained people are away (§6.10), so they don't work. They keep their household, department, skill and partner. On the release day they are free and start a trip home; if the stairs are broken they stay where they are, free, and try again each day. Arrests don't take officers away from work: capacity is abstract.
 
@@ -716,7 +716,7 @@ People in custody or detained have no conversations (§6.11) and can't use their
 
 **Fear.** F, 0–1, is how afraid the silo is of being punished. Every trial adds φ × v, with v the visibility of the most visible rule in the case: a warning for talk (v = 0.3) is barely noticed, a public cleaning (v = 1) is seen by everyone. F stays at most 1 and halves every T\_F years, so a crackdown makes people go quiet and a long peace lets them talk again. Fear acts on talk with acquaintances (§6.12, Telling and believing), not on talk in the family, so it slows the spread of knowledge across the silo while doubt still runs in families. It counts trials, not trials per head: a smaller silo has fewer of them and so less fear. Activation (§6.14) may read F too. F starts at 0; the warm-up years let it settle.
 
-**Covert lottery denial** (§6.4). A couple is flagged if either partner is. A flagged couple can win the lottery as usual and believes it has, but the permit is used up with no implant removed: the year passes with no child. For 365 days from the draw she is not eligible, as with an open window, but the lottery does not count her in E (the regime knows the window is empty). After that she can enter and win again, and is denied again. Medical puts it down to infertility, so the couple learns nothing. Only the *implant doctors* know: N\_doc Medical workers who do every implant removal, so the regime keeps the secret to as few people as it can. Each denied win teaches the lottery flag, as lived, to every implant doctor not dosed that day, and they can tell others like any knower (§6.12). On day 1 the posts go to the N\_doc most skilled Medical workers; a doctor who dies, retires or is arrested leaves a post, filled at the next control step by the most skilled Medical worker not holding one. The Head of IT knows it too, and never tells. After N\_try denied wins she believes it and stops entering, never eligible again, whoever her partner is later. Draws are unchanged, so with nobody flagged the lottery runs as in the baseline.
+**Covert lottery denial** (§6.4). A couple is flagged if either partner is. A flagged couple can be drawn in the lottery as usual and believes it has won, but no implant is removed: the year passes with no child. The draw goes on to the next couple, so a denied win uses up no permit and the silo's births are not cut, only the flagged couple's (Adam, 2026-10-31: when each denied win used up a permit, a small silo with σ = 0.3 died out within 70 years). For 365 days from the draw she is not eligible, as with an open window, but the lottery does not count her in E (the regime knows the window is empty). After that she can enter and win again, and is denied again. Medical puts it down to infertility, so the couple learns nothing. Only the *implant doctors* know: N\_doc Medical workers who do every implant removal, so the regime keeps the secret to as few people as it can. Each denied win teaches the lottery flag, as lived, to every implant doctor not dosed that day, and they can tell others like any knower (§6.12). On day 1 the posts go to the N\_doc most skilled Medical workers; a doctor who dies, retires or is arrested leaves a post, filled at the next control step by the most skilled Medical worker not holding one. The Head of IT knows it too, and never tells. After N\_try denied wins she believes it and stops entering, never eligible again, whoever her partner is later. With nobody flagged the draw stops after N winners, as in the baseline.
 
 **Step.** The control step (§3 step 10.8) runs after the beliefs step, in this order:
 
@@ -734,7 +734,7 @@ People in custody or detained have no conversations (§6.11) and can't use their
 
 **Outputs** (only when the module is on):
 
-- *yearly.csv:* over the year, acts seen, arrests, trials by penalty served (warning, prison, mines, cleaning), failed cleanings, relics confiscated, raids and denied wins; at the snapshot, people in custody or detained, flagged people alive, open cases, S and F.
+- *yearly.csv:* over the year, acts seen, arrests, trials by penalty served (warning, prison, mines, cleaning), failed cleanings, relics confiscated, raids, denied wins and children born to flagged parents (an outcome, T11.4); at the snapshot, people in custody or detained, flagged people alive, open cases, S and F.
 - *events.jsonl:* `cleaning` (person, rule, failed or not) and `headOfIT` (person, whether they were the successor).
 
 **Invariants** (§8): the Head of IT, if any, is a living IT worker who knows all five flags and holds no Flamekeeper seat; every implant doctor is a living Medical worker; everyone in custody or detained is alive and holds no seat; every open case is against a living person; relics hidden, held and taken add up to N\_relic; S ≥ 0.

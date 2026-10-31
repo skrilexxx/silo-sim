@@ -108,6 +108,9 @@ func (s *tiny) step() {
 func (s *tiny) walk() {
 	sp, c := s.w.Space, s.w.Control
 	for _, id := range s.w.Alive {
+		if int(id) >= len(sp.Dest) { // born after the start: never travels here
+			continue
+		}
 		home := s.w.Households[s.w.People[id].Household].Floor
 		switch {
 		case sp.Dest[id] != 0 && sp.Arrive[id] > s.w.Day+1:
@@ -399,23 +402,27 @@ func TestArrestTrialPrisonRelease(t *testing.T) {
 	}
 }
 
-// ODD §6.13, Penalties: a warning frees the person at once and flags the
-// household; mines(730) is served on the mines floor; with several rules
+// ODD §6.13, Penalties: a warning frees the person at once (and, with
+// flagFamily, flags them and their partner, not their child); mines(730) is served on the mines floor; with several rules
 // in one case the most severe detention is served, with every
 // confiscation and flag.
 func TestPenalties(t *testing.T) {
 	s := newTiny(t)
-	a, kid := s.on(3), s.add(10, world.Child, world.None, 0)
-	s.w.People[kid].Household = s.w.People[a].Household
-	s.w.Households[s.w.People[a].Household].Members = append(s.w.Households[s.w.People[a].Household].Members, kid)
+	a, partner, kid := s.on(3), s.on(3), s.add(10, world.Child, world.None, 0)
+	for _, o := range []world.PersonID{partner, kid} {
+		s.w.People[o].Household = s.w.People[a].Household
+		s.w.Households[s.w.People[a].Household].Members = append(s.w.Households[s.w.People[a].Household].Members, o)
+	}
+	s.w.People[a].Partner, s.w.People[partner].Partner = partner, a
 	v := s.on(1)
 	s.start()
 	c, sp := s.w.Control, s.w.Space
 	s.offend(a, world.SpeakForbidden)
 	s.offend(v, world.Violence)
 	s.days(2)
-	if c.Held(a) || !c.Flagged[a] || !c.Flagged[kid] || c.Flagged[v] || c.Tally.Warnings != 1 {
-		t.Errorf("warning: held %v, flagged %v %v %v, %d warnings", c.Held(a), c.Flagged[a], c.Flagged[kid], c.Flagged[v], c.Tally.Warnings)
+	if c.Held(a) || !c.Flagged[a] || !c.Flagged[partner] || c.Flagged[kid] || c.Flagged[v] || c.Tally.Warnings != 1 {
+		t.Errorf("warning: held %v; flagged: offender %v, partner %v, child %v, other %v; %d warnings",
+			c.Held(a), c.Flagged[a], c.Flagged[partner], c.Flagged[kid], c.Flagged[v], c.Tally.Warnings)
 	}
 	s.step()
 	if c.Hold[v] != world.Mines || sp.Location[v] != 4 || c.Until[v] != s.w.Day-1+730 {
@@ -634,5 +641,43 @@ func TestCleaningFailure(t *testing.T) {
 	s.m.EventTypes()[0].Fire(s.w, s.r)
 	if b := s.w.Beliefs; b.Known[a] != both || b.Known[kid] != 0 {
 		t.Errorf("scripted: adult knows %05b, child %05b", b.Known[a], b.Known[kid])
+	}
+}
+
+// ODD §6.13, Covert lottery denial: the N_doc most skilled Medical
+// workers are the implant doctors; a post left empty goes to the next
+// most skilled. Each denied win teaches every doctor not dosed the
+// lottery flag, as lived. A child born to a flagged parent is counted.
+func TestImplantDoctors(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Control.ImplantDoctors = 2
+	const medical = 2
+	a, b, d := s.add(50, world.Worker, medical, 0.9), s.add(50, world.Worker, medical, 0.8), s.add(50, world.Worker, medical, 0.7)
+	s.add(70, world.Retired, medical, 0.99)
+	mother := s.on(1)
+	s.start()
+	c, bl := s.w.Control, s.w.Beliefs
+	if !slices.Equal(c.Doctors, []world.PersonID{a, b}) {
+		t.Fatalf("doctors %v, want %v", c.Doctors, []world.PersonID{a, b})
+	}
+	s.kill(a)
+	bl.DosedUntil[d] = s.w.Day + 10
+	c.Denied = []world.PersonID{mother}
+	s.step()
+	if !slices.Equal(c.Doctors, []world.PersonID{b, d}) {
+		t.Fatalf("doctors %v, want %v", c.Doctors, []world.PersonID{b, d})
+	}
+	if bl.Known[b] != 1<<world.FlagLottery || bl.Lived[b] != 1<<world.FlagLottery || bl.Known[d] != 0 || c.Tally.Denied != 1 || len(c.Denied) != 0 {
+		t.Errorf("doctor knows %05b (lived %05b), dosed doctor %05b, %d denied", bl.Known[b], bl.Lived[b], bl.Known[d], c.Tally.Denied)
+	}
+
+	c.Flagged[mother] = true
+	for _, mum := range []world.PersonID{mother, b} {
+		kid := s.add(0, world.Child, world.None, 0)
+		s.w.People[kid].Mother = mum
+	}
+	s.step()
+	if c.Tally.FlaggedBirths != 1 {
+		t.Errorf("%d births to flagged parents, want 1", c.Tally.FlaggedBirths)
 	}
 }

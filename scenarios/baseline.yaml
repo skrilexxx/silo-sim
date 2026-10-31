@@ -195,8 +195,8 @@ pact:
     active: true
     offences: [speakForbidden]
     detection: 0.5
-    first:  { flagFamily: true }  # a warning, and the household quietly flagged
-    repeat: { prison: 180, flagFamily: true }
+    first:  {}                    # a warning
+    repeat: { prison: 180, flagFamily: true }  # and the couple quietly flagged; on the first offence it flagged 51% of the silo in 56 years (T11.3)
     enforcer: judicial
     visibility: 0.3
   - id: goingOut                  # saying "I want to go out"

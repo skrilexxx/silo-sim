@@ -410,3 +410,30 @@ Every other pattern passes in 10/10.
 | 40.5 | 0.796 0.793 0.805 | 15 15 15 |
 
 **What it means:** with the history known by 92% when the dosing starts, some member always has a doubting insider among their strong ties, so the group is warned in every seed and comes through whole. Where the history is rare, as C4 wants after a crushed rebellion, such insiders are rare too, and a wipe can end the group; that case is the one T12.8 and M13 will see.
+
+## 2026-10-31 — Regime control at the canon settings, and what broke on the way (M11)
+
+**Code:** T11.1–T11.4, with the four rule changes they led to (all Adam's choices, ODD §6.9, §6.13): an arrested Flamekeeper names one member at most; the Head of IT holds the post until death; fear F silences talk over weak ties; forbidden talk flags only on a repeat offence, the flag covers the offender and their partner, and a denied win uses up no permit.
+**Setup:** `scenarios/baseline.yaml` with `space, network, beliefs, control` at their defaults (σ = 0.05), 60 years, no warm-up, seed 1, 10,000 people; then 1,000-person silos (target 1,000) at other σ, seed 42.
+
+What each rule change fixed, measured before it:
+
+| Rule as first written | What happened |
+| --- | --- |
+| A caught Flamekeeper named each other member with p\_name = 0.3 | About 4 of 14 named per arrest: all 15 gone in year 1 of every run |
+| A retiring Head of IT became an ordinary teller | All five flags at about 90% of adults within 50 years; mean L 0.06 |
+| Telling unaffected by punishment | History at 94% of adults, hundreds of offences a year |
+| A first warning for talk flagged the whole household for life | 51% of the silo flagged in 56 years (full size) |
+| A denied win used up a permit | σ = 0.3: no births after year 50, the 1,000-person silo extinct in years 61–70 |
+
+With all the changes, full size, σ = 0.05 (population 9,770–9,790 throughout):
+
+| Year | Arrests a year | Held | Fear F | Know history | Know lottery | Mean L | Flagged |
+| ---: | ---: | ---: | --- | --- | --- | --- | --- |
+| 20 | 36 | 3 | 0.15 | 0.13 | 0.005 | 0.78 | 0.6% |
+| 40 | 152 | 21 | 0.66 | 0.63 | 0.45 | 0.62 | 6.3% |
+| 60 | 137 | 23 | 0.59 | 0.81 | 0.81 | 0.48 | 14.6% |
+
+1,000-person silo, 100 years: at σ = 0.1 a third of the people are flagged, births to flagged parents are 1.9% of births, and the population never falls below 964. At σ = 0.3 two thirds are flagged, too few couples can have children, the population falls to about 735, Mechanical coverage drifts below 0.75 (staffing needs stay sized for 1,000), and power, water and air fail together in year 87. At σ = 1 so many workers are in prison that Farms fail: food runs out, and the silo starves in year 42.
+
+**What it means:** fear slows the spread of knowledge but does not stop it: the history still reaches 80% in 60 years, and the lottery secret, starting from the two implant doctors, spreads as fast. Holding knowledge down (C4) is π's and forgetting's job, to calibrate in T12.8, and the regime's responses' (M13). A crackdown can kill the silo two ways the baseline already allowed for: imprisoned workers starve it, and denied births shrink it below what its departments need. Both are results for Q3, not bugs. A collapse still ends a run with demography's "no household with an adult" error, once the last adults die; the collapse rule of §1.2 (T12.6) should stop the run first. Nothing was tuned.

@@ -80,6 +80,11 @@ func control(w *world.World, rules int) error {
 	if c.Fear < 0 || c.Fear > 1 || w.Beliefs.Lift < 0 {
 		return fmt.Errorf("day %d: fear %v, lift %v", w.Day, c.Fear, w.Beliefs.Lift)
 	}
+	for _, d := range c.Doctors {
+		if p := &w.People[d]; !p.Alive || w.Depts[p.Department].Name != "medical" || p.Stage != world.Worker && p.Stage != world.SickLeave {
+			return fmt.Errorf("day %d: implant doctor %d is not a living Medical worker", w.Day, d)
+		}
+	}
 	if s := c.Successor; s != world.None && !w.People[s].Alive {
 		return fmt.Errorf("day %d: successor %d is dead", w.Day, s)
 	}

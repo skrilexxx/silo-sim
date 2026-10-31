@@ -32,6 +32,8 @@ func Permits(deaths30, alive, pregnant, openWindows int, lot config.Lottery) int
 // uniformly from the eligible ones (all of them if fewer). Winners join
 // Medical's removal queue (removals). Women still waiting count as open
 // windows in E, so a queue does not make the lottery issue more permits.
+// A flagged couple drawn gets no window and uses up no permit (ODD
+// §6.13), and their year doesn't count in E.
 func (m *Module) lottery(w *world.World, r *rng.Stream) error {
 	pregnant, open := 0, 0
 	m.pool = m.pool[:0]
@@ -48,16 +50,24 @@ func (m *Module) lottery(w *world.World, r *rng.Stream) error {
 	}
 	n := min(Permits(m.deaths30, len(w.Alive), pregnant, open, m.cfg.Lottery), len(m.pool))
 	m.deaths30 = 0
-	w.Counts.Permits += n
 
-	// Partial Fisher–Yates: the first n of the pool become a uniform
-	// random sample without replacement.
-	for i := range n {
+	// Partial Fisher–Yates: the pool is drawn in a uniform random order,
+	// without replacement, until n winners have permits. A flagged couple
+	// drawn is denied in secret and doesn't use one up (ODD §6.13), so
+	// the draw goes on; with nobody flagged it stops after n draws.
+	granted := 0
+	for i := 0; granted < n && i < len(m.pool); i++ {
 		j := r.IntRange(i, len(m.pool)-1)
 		m.pool[i], m.pool[j] = m.pool[j], m.pool[i]
 		p := &w.People[m.pool[i]]
+		if c := w.Control; c.Flags(m.pool[i], p.Partner) { // the implant stays in
+			c.Deny(m.pool[i], w.Day+world.Tick(m.cfg.Lottery.WindowDays))
+			continue
+		}
 		p.Implant, p.PermitDay = world.Queued, w.Day
+		granted++
 	}
+	w.Counts.Permits += granted
 	m.removals(w)
 	return nil
 }
@@ -101,11 +111,12 @@ func medicalCoverage(w *world.World) float64 {
 // motherAgeMin–motherAgeMax in whole years, has fewer than maxChildren
 // children, her last birth was at least minYoungestAgeYears ago, and she
 // has no open window or pregnancy. Whether the couple has a home yet does
-// not matter. The invariants re-check this independently for every open
-// window.
+// not matter. With covert denial (ODD §6.13) she also has no denied win in
+// the last year and hasn't given up. The invariants re-check this
+// independently for every open window.
 func Eligible(w *world.World, id world.PersonID, day world.Tick, lot config.Lottery) bool {
 	p := &w.People[id]
-	if p.Sex != world.Female || p.Implant != world.ImplantIn || p.Partner == world.None {
+	if p.Sex != world.Female || p.Implant != world.ImplantIn || p.Partner == world.None || !w.Control.MayEnter(id, day) {
 		return false
 	}
 	if w.People[p.Partner].Sex != world.Male {

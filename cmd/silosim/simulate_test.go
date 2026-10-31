@@ -534,3 +534,44 @@ func TestCleaningFailureShock(t *testing.T) {
 		t.Errorf("mean L fell by %.3f, want about 0.3", drop)
 	}
 }
+
+// T11.4 done-when: flagged couples never conceive, so their share of the
+// births falls far below their share of the silo; logged as an outcome,
+// not tuned. 100 years of a 1,000-person silo with σ = 0.1, so couples
+// are flagged early. Over the last 50 years births to flagged parents
+// (only from pregnancies under way when flagged) are under a quarter of
+// the flagged share of the people, and the silo keeps its size: a denied
+// win uses up no permit. (At σ = 0.3 two thirds are flagged, too few
+// couples are left, and the silo shrinks until it collapses, T11.4.)
+func TestFlaggedFamiliesShrink(t *testing.T) {
+	golden := loadInto(t, goldenScenario)
+	cfg := loadInto(t, "../../scenarios/baseline.yaml")
+	cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, 0, 100, golden.Population
+	cfg.Lottery.TargetPopulation = cfg.Population
+	cfg.Control.Surveillance = 0.1
+	cfg.Output.InvariantEvery = 30
+	cfg.Modules = append(cfg.Modules, "space", "network", "beliefs", "control")
+	dir := mustSimulate(t, cfg)
+	flagged, fb, denied := column(t, dir, "flagged"), column(t, dir, "flaggedBirths"), column(t, dir, "deniedWins")
+	births, pop, least := 0, 0, cfg.Population
+	for _, line := range strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(dir, "daily.csv")))), "\n")[1:] {
+		cols := strings.Split(line, ",")
+		if day := atoi(t, cols[0]); day > 50*365 {
+			births += atoi(t, cols[5])
+			least = min(least, atoi(t, cols[1]))
+			if day%365 == 0 {
+				pop += atoi(t, cols[1])
+			}
+		}
+	}
+	if births == 0 || pop == 0 {
+		t.Fatalf("%d births, %d person-years: the silo died", births, pop)
+	}
+	popShare := float64(sum(flagged[50:])) / float64(pop)
+	birthShare := float64(sum(fb[50:])) / float64(births)
+	t.Logf("years 51–100: flagged %.3f of the people, %.3f of the births (%d of %d); %d denied wins; population never below %d",
+		popShare, birthShare, sum(fb[50:]), births, sum(denied[50:]), least)
+	if popShare < 0.1 || birthShare > popShare/4 || least < cfg.Population*9/10 {
+		t.Errorf("flagged %.3f of people, %.3f of births, population down to %d", popShare, birthShare, least)
+	}
+}

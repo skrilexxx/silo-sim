@@ -381,3 +381,37 @@ func TestMaternalDeath(t *testing.T) {
 		t.Errorf("%d maternal deaths in 1,000 births at risk 0.002", dead)
 	}
 }
+
+// ODD §6.13, Covert lottery denial: a couple with either partner flagged
+// is drawn like anyone but gets no window, uses up no permit (the draw goes
+// on) and doesn't count in E; she may enter again after 365 days, and
+// gives up after N_try denied wins. Unflagged couples are untouched.
+func TestCovertDenial(t *testing.T) {
+	w, m := couples(t, 2, 25)
+	m.cfg.Lottery.TargetPopulation = len(w.Alive) + 24 // (T − P) / 12 = 2 permits: both couples are drawn
+	n := len(w.People)
+	w.Control = &world.Control{Flagged: make([]bool, n), DeniedWins: make([]int, n), DeniedUntil: make([]world.Tick, n), Tries: 2}
+	w.Control.Flagged[1] = true // the first couple's man
+	r := stream(t)
+	w.Day = 30
+	if err := m.lottery(w, r); err != nil {
+		t.Fatal(err)
+	}
+	c := w.Control
+	if w.People[0].Implant != world.ImplantIn || c.DeniedWins[0] != 1 || c.DeniedUntil[0] != 30+365 || len(c.Denied) != 1 {
+		t.Fatalf("flagged: implant %d, denied wins %d until %d, denied %v", w.People[0].Implant, c.DeniedWins[0], c.DeniedUntil[0], c.Denied)
+	}
+	if w.People[2].Implant != world.WindowOpen || w.Counts.Permits != 1 {
+		t.Fatalf("unflagged: implant %d; %d permits, want 1: the denied win used none", w.People[2].Implant, w.Counts.Permits)
+	}
+	for _, c := range []struct {
+		day  world.Tick
+		wins int
+		want bool
+	}{{30 + 364, 1, false}, {30 + 365, 1, true}, {30 + 365, 2, false}} {
+		w.Control.DeniedWins[0] = c.wins
+		if got := Eligible(w, 0, c.day, m.cfg.Lottery); got != c.want {
+			t.Errorf("day %d after %d denied wins: eligible %v, want %v", c.day, c.wins, got, c.want)
+		}
+	}
+}

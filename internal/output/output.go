@@ -150,7 +150,7 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 		h = append(h, ",hiddenAny,dosed,relicsHidden,relicsHeld,flamekeepers"...)
 	}
 	if w.Control != nil {
-		h = append(h, ",actsSeen,arrests,warnings,prison,mines,cleanings,failedCleanings,relicsTaken,raids,held,flagged,openCases,lift,fear"...)
+		h = append(h, ",actsSeen,arrests,warnings,prison,mines,cleanings,failedCleanings,relicsTaken,raids,deniedWins,flaggedBirths,held,flagged,openCases,lift,fear"...)
 	}
 	h = append(h, '\n')
 	if _, err := o.yearly.Write(h); err != nil {
@@ -505,14 +505,15 @@ func (o *Writer) appendBeliefs(w *world.World, b []byte) []byte {
 
 // appendControl writes the control columns (ODD §6.13, Outputs): over
 // the year, acts seen, arrests, trials by the penalty served (warning,
-// prison, mines, cleaning), failed cleanings, relics confiscated and
-// raids; now, people held by Judicial, flagged people alive, open cases
+// prison, mines, cleaning), failed cleanings, relics confiscated, raids,
+// denied lottery wins and children born to flagged parents; now, people held by Judicial, flagged people alive, open cases
 // not yet arrested, the lift S and the fear F.
 func (o *Writer) appendControl(w *world.World, b []byte) []byte {
 	c := w.Control
 	t, p := c.Tally, o.tally
 	for _, n := range []int{t.Seen - p.Seen, t.Arrests - p.Arrests, t.Warnings - p.Warnings, t.Prisons - p.Prisons,
-		t.Mines - p.Mines, t.Cleanings - p.Cleanings, t.Failed - p.Failed, t.Taken - p.Taken, t.Raids - p.Raids} {
+		t.Mines - p.Mines, t.Cleanings - p.Cleanings, t.Failed - p.Failed, t.Taken - p.Taken, t.Raids - p.Raids,
+		t.Denied - p.Denied, t.FlaggedBirths - p.FlaggedBirths} {
 		b = append(b, ',')
 		b = strconv.AppendInt(b, int64(n), 10)
 	}

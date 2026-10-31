@@ -17,7 +17,8 @@ type Module struct {
 	surveillance float64       // σ
 	rules        []config.Rule // the Pact (ODD §6.9)
 	ruleOf       [world.NumOffences]int
-	it           int        // IT's department index
+	it, medical  int        // IT's and Medical's department indexes
+	doctors      int        // N_doc: implant doctor posts
 	minSkill     float64    // a master's skill must be above this (ODD §6.5)
 	shadowAge    world.Tick // in days: acts by younger children are not offences
 
@@ -58,6 +59,8 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	m.minSkill = cfg.Work.MasterMinSkill
 	m.shadowAge = world.Tick(cfg.Work.ShadowAge * engine.DaysPerYear)
 	m.it = slices.IndexFunc(w.Depts, func(d world.Department) bool { return d.Name == "it" })
+	m.medical = slices.IndexFunc(w.Depts, func(d world.Department) bool { return d.Name == "medical" })
+	m.doctors = cfg.Control.ImplantDoctors
 	m.rules = slices.Clone(cfg.Pact)
 	for o := range m.ruleOf {
 		m.ruleOf[o] = world.None
@@ -94,9 +97,10 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 			m.residential = append(m.residential, f.Number)
 		}
 	}
-	w.Control = &world.Control{Head: world.None, Successor: world.None}
+	w.Control = &world.Control{Head: world.None, Successor: world.None, Tries: cfg.Control.DeniedTries}
 	m.newcomers(w)
 	m.headOfIT(w)
+	m.implantDoctors(w)
 	return nil
 }
 
@@ -109,6 +113,7 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 	m.newcomers(w)
 	m.drop(w)
 	m.headOfIT(w)
+	m.implantDoctors(w)
 	m.detect(w, r)
 	m.releases(w)
 	m.cleanings(w, r)
@@ -117,6 +122,7 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 		m.raidFloor(w, r)
 	}
 	m.arrests(w, r)
+	m.teachDoctors(w)
 	w.Control.Fear *= m.fearKeep
 	w.Beliefs.Lift *= m.liftKeep
 	return nil
@@ -170,12 +176,23 @@ func (m *Module) shock(w *world.World, r *rng.Stream, v float64) {
 	}
 }
 
-// newcomers: people born since the last step have no charges.
+// newcomers: people born since the last step have no charges and are not
+// flagged; a birth to a flagged mother or father is counted.
 func (m *Module) newcomers(w *world.World) {
 	c := w.Control
+	start := len(c.Charges)
 	for len(c.Charges) < len(w.People) {
 		c.Charges, c.Convicted = append(c.Charges, 0), append(c.Convicted, 0)
 		c.Hold, c.Until, c.Flagged = append(c.Hold, world.Free), append(c.Until, 0), append(c.Flagged, false)
+		c.DeniedWins, c.DeniedUntil = append(c.DeniedWins, 0), append(c.DeniedUntil, 0)
+	}
+	if start == 0 {
+		return // day 1: the starting population was not born today
+	}
+	for id := start; id < len(w.People); id++ {
+		if p := &w.People[id]; c.Flags(p.Mother, p.Father) { // T11.4: an outcome, logged
+			c.Tally.FlaggedBirths++
+		}
 	}
 }
 
@@ -405,9 +422,10 @@ func (m *Module) try(w *world.World, id world.PersonID) {
 	if confiscate {
 		m.confiscate(w, id)
 	}
-	if flag {
-		for _, o := range w.Households[w.People[id].Household].Members {
-			c.Flagged[o] = true
+	if flag { // the offender and their partner, for life (ODD §6.13)
+		c.Flagged[id] = true
+		if p := w.People[id].Partner; p != world.None {
+			c.Flagged[p] = true
 		}
 	}
 	switch {
@@ -551,3 +569,44 @@ func (m *Module) court(w *world.World, f int) int {
 }
 
 func dist(a, b int) int { return max(a-b, b-a) }
+
+// implantDoctors: ODD §6.13, Covert lottery denial. A doctor who died,
+// retired or was arrested leaves a post; each empty post goes to the most
+// skilled Medical worker not holding one (ties to the lower ID).
+func (m *Module) implantDoctors(w *world.World) {
+	c := w.Control
+	c.Doctors = slices.DeleteFunc(c.Doctors, func(id world.PersonID) bool {
+		return !w.People[id].Alive || w.People[id].Stage == world.Retired || c.Held(id)
+	})
+	for len(c.Doctors) < m.doctors {
+		best := world.PersonID(world.None)
+		for _, id := range w.Alive {
+			p := &w.People[id]
+			if p.Stage != world.Worker || p.Department != m.medical || c.Held(id) || slices.Contains(c.Doctors, id) {
+				continue
+			}
+			if best == world.None || p.Skill > w.People[best].Skill || p.Skill == w.People[best].Skill && id < best {
+				best = id
+			}
+		}
+		if best == world.None {
+			return
+		}
+		c.Doctors = append(c.Doctors, best)
+	}
+}
+
+// teachDoctors: each lottery win denied since the last step teaches the
+// lottery flag, as lived, to every implant doctor not dosed today.
+func (m *Module) teachDoctors(w *world.World) {
+	c, b := w.Control, w.Beliefs
+	for range c.Denied {
+		c.Tally.Denied++
+		for _, d := range c.Doctors {
+			if !b.Dosed(w, d) {
+				b.Learn(d, world.FlagLottery, true)
+			}
+		}
+	}
+	c.Denied = c.Denied[:0]
+}

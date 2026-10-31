@@ -141,7 +141,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
   - *Done when:* with arrests on, the Flamekeepers can die out (T10.5); with σ = 0 and no raids nobody is arrested.
 - [x] **T11.3 Cleaning and fear.** (2026-10-31; fear F from trials silences talk over weak ties, Adam's choice; cleaners die at the next deaths step) Sentenced cleanings ("I want to go out" is said under M12's rules). A cleaning slightly raises everyone's L for a while (the lift S); the fear it causes is read by activation in M12. A cleaner who refuses and walks out of sight is the **cleaning-failure shock**: everyone watching learns that the outside may be survivable and the screen lies, and L drops as they tell others. It is also a scripted event type for experiments (pattern C2).
   - *Done when:* the shock's effect on L and knowledge matches the spec; a normal cleaning raises L, and so lowers dissent, for a while (test).
-- [ ] **T11.4 Covert lottery denial.** Flagged couples never conceive; their family lines shrink.
+- [x] **T11.4 Covert lottery denial.** (2026-10-31; flags the couple only, a denied win uses up no permit, Adam's choice; calibration log, M11) Flagged couples never conceive; their family lines shrink.
   - *Done when:* the share of births to flagged families falls as the spec predicts; logged as an outcome, not tuned.
 
 ## Milestone 12: Grievance and rebellion

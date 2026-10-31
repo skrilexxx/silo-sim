@@ -43,15 +43,17 @@ const (
 
 // Tally counts what the regime did since day 0, for the output files.
 type Tally struct {
-	Seen      int // acts seen
-	Arrests   int
-	Warnings  int // trials by the penalty served
-	Prisons   int
-	Mines     int
-	Cleanings int
-	Failed    int // cleanings that failed
-	Taken     int // relics confiscated
-	Raids     int
+	Seen          int // acts seen
+	Arrests       int
+	Warnings      int // trials by the penalty served
+	Prisons       int
+	Mines         int
+	Cleanings     int
+	Failed        int // cleanings that failed
+	Denied        int // lottery wins denied
+	FlaggedBirths int // children born to a flagged mother or father
+	Taken         int // relics confiscated
+	Raids         int
 }
 
 // Control is the control module's state (ODD §6.13, draft); nil when the
@@ -76,6 +78,36 @@ type Control struct {
 	Until     []Tick   // the last day of a detention
 	Convicted []uint32 // one bit per Pact rule the person was ever convicted under
 	Flagged   []bool   // covert lottery denial, for life
+
+	// Covert lottery denial (ODD §6.13): per woman, her denied wins and the
+	// first day she may enter again; the wins denied since the last control
+	// step; the implant doctors; N_try.
+	DeniedWins  []int
+	DeniedUntil []Tick
+	Denied      []PersonID
+	Doctors     []PersonID
+	Tries       int
+}
+
+// Deny records a flagged couple's win (ODD §6.13): no window opens, and
+// she may not enter again before the day until.
+func (c *Control) Deny(id PersonID, until Tick) {
+	c.DeniedWins[id]++
+	c.DeniedUntil[id] = until
+	c.Denied = append(c.Denied, id)
+}
+
+// MayEnter reports whether covert denial lets a woman enter the lottery:
+// not within a denied win's year, and not after N_try of them, when she
+// believes she is infertile. True when the module is off.
+func (c *Control) MayEnter(id PersonID, day Tick) bool {
+	return c == nil || int(id) >= len(c.DeniedUntil) || day >= c.DeniedUntil[id] && c.DeniedWins[id] < c.Tries
+}
+
+// Flags reports whether a couple is flagged: either partner is (either
+// may be None). False when the module is off.
+func (c *Control) Flags(a, b PersonID) bool {
+	return c != nil && (a != None && c.Flagged[a] || b != None && c.Flagged[b])
 }
 
 // Report adds an act for the next control step.
