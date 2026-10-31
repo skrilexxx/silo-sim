@@ -15,7 +15,7 @@ import (
 
 // still is a day-1 silo of the baseline scenario that doesn't age: only
 // the network, beliefs and location steps run, so spread is all that
-// changes.
+// changes. It has no relics or Flamekeepers.
 type still struct {
 	t    testing.TB
 	w    *world.World
@@ -34,6 +34,7 @@ func newStill(t testing.TB, seed uint64, pass float64, noPorters bool) *still {
 		t.Fatal(err)
 	}
 	cfg.Seed, cfg.Beliefs.PassChance = seed, pass
+	cfg.Beliefs.Relics, cfg.Beliefs.FlamekeeperSeats = 0, 0 // only the knowers a test seeds
 	r, _ := rng.New(seed, "initpop")
 	w, err := initpop.Build(cfg, r)
 	if err != nil {

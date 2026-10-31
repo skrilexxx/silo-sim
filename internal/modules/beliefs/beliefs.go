@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
+	"slices"
 
 	"github.com/skrilexxx/silo-sim/internal/config"
 	"github.com/skrilexxx/silo-sim/internal/engine"
@@ -25,6 +26,7 @@ type Module struct {
 	cue            float64      // ρ: chance a cue works
 	used           []world.Tick // the last day a person's relics worked on them
 	candidates     []world.PersonID
+	seats          int              // N_F: Flamekeeper seats
 	adultAge       world.Tick       // worker age in days: the base is fixed from then on
 	young          []world.PersonID // alive and under worker age at the last step, in ID order
 
@@ -55,11 +57,15 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	m.findChance = 1 / (cfg.Beliefs.RelicHiddenYears * engine.DaysPerYear)
 	m.handChance = 1 / (cfg.Beliefs.RelicKeptYears * engine.DaysPerYear)
 	m.cue = cfg.Beliefs.CueChance
+	m.seats = cfg.Beliefs.FlamekeeperSeats
 	w.Beliefs = &world.Beliefs{Cost: cfg.Beliefs.LegitimacyCostPerFlag}
 	m.newcomers(w, r)
 	// ODD §6.12, Relics: on day 1, each hidden on a floor drawn uniformly.
 	for range cfg.Beliefs.Relics {
 		w.Beliefs.Relics = append(w.Beliefs.Relics, world.Relic{Floor: r.IntRange(1, len(w.Floors)), Holder: world.None})
+	}
+	if err := m.founders(w, r); err != nil {
+		return err
 	}
 	return m.step(w, r)
 }
@@ -99,6 +105,7 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 	m.forget(w, r)
 	m.relics(w, r)
 	m.converse(w, r)
+	m.seat(w, r)
 	return nil
 }
 
@@ -114,6 +121,7 @@ func (m *Module) newcomers(w *world.World, r *rng.Stream) {
 		m.young = append(m.young, world.PersonID(id))
 		m.fresh = append(m.fresh, 0)
 		m.used = append(m.used, -1)
+		b.IsMember = append(b.IsMember, false)
 	}
 }
 
@@ -216,6 +224,75 @@ func (m *Module) relics(w *world.World, r *rng.Stream) {
 	}
 }
 
+// ODD §6.12, Flamekeepers: on day 1, N_F adults drawn uniformly take the
+// seats and know the history as lived.
+func (m *Module) founders(w *world.World, r *rng.Stream) error {
+	m.candidates = m.candidates[:0]
+	for _, id := range w.Alive {
+		if w.Day-w.People[id].BirthDay >= m.adultAge {
+			m.candidates = append(m.candidates, id)
+		}
+	}
+	if m.seats > len(m.candidates) {
+		return fmt.Errorf("beliefs: %d Flamekeeper seats, but only %d adults on day 1", m.seats, len(m.candidates))
+	}
+	for range m.seats {
+		id := m.take(r)
+		m.join(w, id)
+		m.teach(w.Beliefs, id, world.FlagHistory, true)
+	}
+	return nil
+}
+
+// ODD §6.12, Flamekeepers: members who died or no longer know the history
+// leave their seats; each empty seat goes to an adult who knows the
+// history, isn't a member, and talks today with a member over a strong
+// tie, drawn uniformly from all of them. With nobody like that, the seat
+// stays empty; with no members left, the group is gone for good.
+func (m *Module) seat(w *world.World, r *rng.Stream) {
+	b, n := w.Beliefs, w.Network
+	kept := b.Members[:0]
+	for _, id := range b.Members {
+		if w.People[id].Alive && b.Known[id].Has(world.FlagHistory) {
+			kept = append(kept, id)
+		} else {
+			b.IsMember[id] = false
+		}
+	}
+	b.Members = kept
+	if len(b.Members) == m.seats {
+		return
+	}
+	m.candidates = m.candidates[:0]
+	for _, mem := range b.Members {
+		for _, t := range n.TiesOf(w, mem) {
+			c := t.Other
+			if t.Kind.Weak() || b.IsMember[c] || !b.Known[c].Has(world.FlagHistory) ||
+				w.Day-w.People[c].BirthDay < m.adultAge || slices.Contains(m.candidates, c) || !n.Talk(w, mem, c, t.Kind) {
+				continue
+			}
+			m.candidates = append(m.candidates, c)
+		}
+	}
+	for len(b.Members) < m.seats && len(m.candidates) > 0 {
+		m.join(w, m.take(r))
+	}
+}
+
+// take removes one candidate, drawn uniformly, and returns them.
+func (m *Module) take(r *rng.Stream) world.PersonID {
+	i := r.IntRange(0, len(m.candidates)-1)
+	id := m.candidates[i]
+	m.candidates[i] = m.candidates[len(m.candidates)-1]
+	m.candidates = m.candidates[:len(m.candidates)-1]
+	return id
+}
+
+func (m *Module) join(w *world.World, id world.PersonID) {
+	w.Beliefs.Members = append(w.Beliefs.Members, id)
+	w.Beliefs.IsMember[id] = true
+}
+
 // old reports whether a person is of shadowing age (14) or more.
 func (m *Module) old(w *world.World, id world.PersonID) bool {
 	return w.Day-w.People[id].BirthDay >= m.shadowAge
@@ -245,7 +322,7 @@ func (m *Module) forget(w *world.World, r *rng.Stream) {
 		}
 		for known := b.Known[id]; known != 0; known &= known - 1 {
 			f := world.Flag(bits.TrailingZeros8(uint8(known)))
-			if !sk.land(r) {
+			if f == world.FlagHistory && b.IsMember[id] || !sk.land(r) { // Flamekeepers never forget it
 				continue
 			}
 			p := m.forgetHeard

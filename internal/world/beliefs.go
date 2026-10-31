@@ -34,6 +34,11 @@ type Beliefs struct {
 
 	Relics []Relic
 
+	// The Flamekeepers (ODD §6.12): the members, in the order they took
+	// their seats, and whether each person is one.
+	Members  []PersonID
+	IsMember []bool
+
 	// Everyone who knows a flag, and possibly some who have died or
 	// forgotten since; the beliefs step drops those. Learn keeps it.
 	Knowers []PersonID

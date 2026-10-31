@@ -575,3 +575,129 @@ func TestRelicsWorkOncePerDay(t *testing.T) {
 		t.Errorf("learned in a day: %.4f, want 0.05 ± %.4f", got, 5*sd)
 	}
 }
+
+// ODD §6.12, Flamekeepers: on day 1, N_F different adults take the seats
+// and know the history as lived; they never forget it, though they forget
+// other flags.
+func TestFlamekeepersFoundedAndNeverForget(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Beliefs.FlamekeeperSeats = 15
+	s.cfg.Beliefs.HalfLifeHeardYears, s.cfg.Beliefs.HalfLifeLivedYears = everyDay/10, everyDay/10 // forgotten at once
+	for range 20 {
+		s.add(30, world.Worker)
+		s.add(10, world.Child)
+	}
+	s.start()
+	b := s.w.Beliefs
+	if len(b.Members) != 15 {
+		t.Fatalf("%d members, want 15", len(b.Members))
+	}
+	seen := map[world.PersonID]bool{}
+	for _, id := range b.Members {
+		if seen[id] || !b.IsMember[id] || s.w.People[id].Stage != world.Worker || !b.Lived[id].Has(world.FlagHistory) {
+			t.Errorf("member %d: twice %v, listed %v, stage %v, lived %b", id, seen[id], b.IsMember[id], s.w.People[id].Stage, b.Lived[id])
+		}
+		seen[id] = true
+		b.Learn(id, world.FlagLottery, false)
+	}
+	for range 30 {
+		s.step()
+	}
+	for _, id := range b.Members {
+		if b.Known[id] != 1<<world.FlagHistory {
+			t.Errorf("member %d knows %b after a month, want only the history", id, b.Known[id])
+		}
+	}
+
+	s = newTiny(t)
+	s.cfg.Beliefs.FlamekeeperSeats = 3
+	s.add(30, world.Worker)
+	s.add(30, world.Worker)
+	if err := s.m.Init(s.w, s.cfg, s.r); err == nil {
+		t.Error("3 seats for 2 adults: no error")
+	}
+}
+
+// ODD §6.12, Flamekeepers: a seat left by a dead member goes to an adult
+// who knows the history, isn't a member, and talks today with a member
+// over a strong tie: not over a weak tie, not a child, not someone who
+// doesn't know, not someone the member didn't talk with today.
+func TestFlamekeeperSeatRefilled(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Beliefs.FlamekeeperSeats = 2
+	founder, other := s.add(60, world.Worker), s.add(30, world.Worker)
+	s.join(other, s.w.People[founder].Household)
+	s.start()
+	b := s.w.Beliefs
+	member := b.Members[0]
+	if member == founder {
+		member = b.Members[1]
+	}
+	// Leave one member, with a household of would-be recruits.
+	quit := b.Members[0] ^ b.Members[1] ^ member
+	s.w.People[quit].Alive = false
+	s.w.Alive = slices.DeleteFunc(s.w.Alive, func(id world.PersonID) bool { return id == quit })
+	hh := s.w.People[member].Household
+	s.w.Households[hh].Members = slices.DeleteFunc(s.w.Households[hh].Members, func(id world.PersonID) bool { return id == quit })
+	child, deaf := s.add(10, world.Child), s.add(30, world.Worker)
+	weak := s.add(30, world.Worker)
+	for _, id := range []world.PersonID{child, deaf} {
+		s.join(id, hh)
+	}
+	n := s.w.Network
+	n.Weak, n.Children = append(n.Weak, nil, nil, nil), append(n.Children, nil, nil, nil)
+	n.Weak[member] = append(n.Weak[member], world.Tie{Other: weak, Kind: world.TieNeighbour})
+	n.Weak[weak] = []world.Tie{{Other: member, Kind: world.TieNeighbour}}
+	n.Forget(s.w, []world.PersonID{member, weak}, nil)
+	s.m.newcomers(s.w, s.r) // beliefs for the people added since the start
+	b.Learn(child, world.FlagHistory, false)
+	b.Learn(weak, world.FlagHistory, false)
+	s.cfg.Beliefs.PassChance = 0
+	s.m.pass = 0 // nobody learns in conversations
+	s.step()
+	if len(b.Members) != 1 {
+		t.Fatalf("members %v; want the seat empty: nobody qualifies", b.Members)
+	}
+	recruit := s.add(30, world.Worker)
+	s.join(recruit, hh)
+	n.Weak, n.Children = append(n.Weak, nil), append(n.Children, nil)
+	n.Forget(s.w, []world.PersonID{member, recruit}, nil)
+	s.m.newcomers(s.w, s.r)
+	b.Learn(recruit, world.FlagHistory, false)
+	n.Chance[world.TieHousehold] = 0 // no talk today
+	s.step()
+	if len(b.Members) != 1 {
+		t.Fatalf("members %v; want nobody recruited without a conversation", b.Members)
+	}
+	n.Chance[world.TieHousehold] = 1
+	s.step()
+	if !slices.Equal(b.Members, []world.PersonID{member, recruit}) || !b.IsMember[recruit] {
+		t.Errorf("members %v, want %d and the recruit %d", b.Members, member, recruit)
+	}
+}
+
+// T10.5: the group can die out. Its last member dies with nobody who
+// qualifies; the seats stay empty for good, even once others know the
+// history.
+func TestFlamekeepersDieOut(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Beliefs.FlamekeeperSeats = 1
+	last, later := s.add(80, world.Retired), s.add(30, world.Worker)
+	s.start()
+	b := s.w.Beliefs
+	if !slices.Equal(b.Members, []world.PersonID{last}) && !slices.Equal(b.Members, []world.PersonID{later}) {
+		t.Fatalf("members %v", b.Members)
+	}
+	gone := b.Members[0]
+	s.w.People[gone].Alive = false
+	s.w.Alive = slices.DeleteFunc(s.w.Alive, func(id world.PersonID) bool { return id == gone })
+	for _, id := range s.w.Alive {
+		b.Learn(id, world.FlagHistory, true)
+	}
+	for range 10 {
+		s.step()
+	}
+	if len(b.Members) != 0 || b.IsMember[gone] {
+		t.Errorf("members %v after the last one died, want none for good", b.Members)
+	}
+}

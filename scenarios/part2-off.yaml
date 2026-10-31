@@ -28,3 +28,4 @@ beliefs:                  # M10, off
   relicHiddenYears: 1
   relicKeptYears: 1
   cueChance: 0.5
+  flamekeeperSeats: 40

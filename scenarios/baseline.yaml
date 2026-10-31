@@ -159,6 +159,7 @@ beliefs:                          # ODD §6.12 (part 2, draft); used only when `
   relicHiddenYears: 50            # T_find: years a hidden relic stays hidden on average; guess
   relicKeptYears: 10              # T_keep: years a holder keeps a relic before handing it on, on average; guess
   cueChance: 0.05                 # ρ: chance a cue (a day holding a relic) works; guess
+  flamekeeperSeats: 15            # N_F: seats of the Flamekeepers, all filled on day 1; guess ("a small secret group")
 
 governance:                       # ODD §6.8
   mode: appointment               # or: election

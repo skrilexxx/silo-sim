@@ -216,6 +216,7 @@ type Beliefs struct {
 	RelicHiddenYears      float64 `yaml:"relicHiddenYears"`
 	RelicKeptYears        float64 `yaml:"relicKeptYears"`
 	CueChance             float64 `yaml:"cueChance"`
+	FlamekeeperSeats      int     `yaml:"flamekeeperSeats"`
 }
 
 // HasOffices reports whether a department works on office floors: every

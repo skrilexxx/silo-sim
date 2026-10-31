@@ -56,7 +56,7 @@ func Check(w *world.World, cfg *config.Scenario) error {
 // ODD §6.12 (draft): every living person's base, L and risk aversion lie
 // in 0–1, they know only the five flags, and what they lived they know;
 // all the relics are there, each on a real floor, held by nobody or by a
-// living person.
+// living person; every Flamekeeper is alive and knows the history.
 func beliefs(w *world.World, relics int) error {
 	b := w.Beliefs
 	if b == nil {
@@ -64,6 +64,12 @@ func beliefs(w *world.World, relics int) error {
 	}
 	if len(b.Relics) != relics {
 		return fmt.Errorf("%d relics, want %d", len(b.Relics), relics)
+	}
+	for _, id := range b.Members {
+		if !w.People[id].Alive || !b.IsMember[id] || !b.Known[id].Has(world.FlagHistory) {
+			return fmt.Errorf("Flamekeeper %d: alive %v, listed %v, knows %b; want alive and knowing the history",
+				id, w.People[id].Alive, b.IsMember[id], b.Known[id])
+		}
 	}
 	for i, r := range b.Relics {
 		if r.Floor < 1 || r.Floor > len(w.Floors) {

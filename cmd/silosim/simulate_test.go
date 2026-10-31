@@ -346,34 +346,59 @@ func TestNetworkNullSetting(t *testing.T) {
 	t.Logf("year 20: %s", netRows[len(netRows)-1][len(baseRows[len(baseRows)-1])+1:])
 }
 
+// runSmallCentury runs 200 years of a 1,000-person silo, with extra
+// modules on; null switches the beliefs module's sources of knowledge off.
+func runSmallCentury(t *testing.T, null bool, extra ...string) string {
+	t.Helper()
+	golden := loadInto(t, goldenScenario)
+	cfg := loadInto(t, "../../scenarios/baseline.yaml")
+	// A small silo that stays small: the lottery aims at its own size.
+	cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, 0, 200, golden.Population
+	cfg.Lottery.TargetPopulation = cfg.Population
+	if null {
+		cfg.Beliefs.Relics, cfg.Beliefs.FlamekeeperSeats = 0, 0
+	}
+	cfg.Output.InvariantEvery = 30
+	cfg.Modules = append(cfg.Modules, extra...)
+	return mustSimulate(t, cfg)
+}
+
+// T10.5 done-when: with no regime, the Flamekeepers survive generations:
+// 200 years in a 1,000-person silo, with relics, and the group never
+// empties. Its size is logged.
+func TestFlamekeepersSurviveWithoutRegime(t *testing.T) {
+	rows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(runSmallCentury(t, false, "space", "network", "beliefs"), "yearly.csv")))), "\n")
+	var sizes []string
+	for i, row := range rows[1:] {
+		cols := strings.Split(row, ",")
+		n := atoi(t, cols[len(cols)-1])
+		if n == 0 {
+			t.Fatalf("year %d: no Flamekeepers left", i+1)
+		}
+		if i%25 == 24 {
+			sizes = append(sizes, cols[len(cols)-1])
+		}
+	}
+	t.Logf("Flamekeepers every 25 years: %s", strings.Join(sizes, " "))
+}
+
 // ODD §6.12 / T10.1: the beliefs module on changes nothing in daily.csv or
 // events.jsonl, and with nothing to learn (the null setting), legitimacy stays at the taught
 // level in every zone for 200 years: the rule itself never drifts.
 func TestBeliefsSteadyWithNothingToLearn(t *testing.T) {
-	golden := loadInto(t, goldenScenario)
-	run := func(extra ...string) string {
-		cfg := loadInto(t, "../../scenarios/baseline.yaml")
-		// A small silo that stays small: the lottery aims at its own size.
-		cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, 0, 200, golden.Population
-		cfg.Lottery.TargetPopulation = cfg.Population
-		cfg.Beliefs.Relics = 0 // the null setting: no source of knowledge
-		cfg.Output.InvariantEvery = 30
-		cfg.Modules = append(cfg.Modules, extra...)
-		return mustSimulate(t, cfg)
-	}
-	base, on := run(), run("space", "network", "beliefs")
+	base, on := runSmallCentury(t, true), runSmallCentury(t, true, "space", "network", "beliefs")
 	for _, f := range []string{"daily.csv", "events.jsonl"} {
 		if !bytes.Equal(readFile(t, filepath.Join(base, f)), readFile(t, filepath.Join(on, f))) {
 			t.Errorf("the beliefs module changed %s", f)
 		}
 	}
 	rows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(on, "yearly.csv")))), "\n")
-	const tail = ",meanL,meanLUpTop,meanLMids,meanLDownDeep,knowOutside,knowScreen,knowHistory,knowSilos,knowLottery,relicsHidden,relicsHeld"
+	const tail = ",meanL,meanLUpTop,meanLMids,meanLDownDeep,knowOutside,knowScreen,knowHistory,knowSilos,knowLottery,relicsHidden,relicsHeld,flamekeepers"
 	if !strings.HasSuffix(rows[0], tail) || len(rows) != 201 {
 		t.Fatalf("%d rows, header %q", len(rows), rows[0])
 	}
 	l := strconv.FormatFloat(loadInto(t, "../../scenarios/baseline.yaml").Beliefs.TaughtLegitimacy, 'f', 4, 64)
-	want := strings.Join([]string{l, l, l, l, "0.0000", "0.0000", "0.0000", "0.0000", "0.0000", "0", "0"}, ",")
+	want := strings.Join([]string{l, l, l, l, "0.0000", "0.0000", "0.0000", "0.0000", "0.0000", "0", "0", "0"}, ",")
 	for i, row := range rows[1:] {
 		if !strings.HasSuffix(row, ","+want) {
 			t.Fatalf("year %d: %q, want it to end with mean L %s everywhere and nobody knowing anything", i+1, row, l)
