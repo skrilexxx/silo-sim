@@ -33,6 +33,19 @@ type Rebellion struct {
 	HeldDays [NumZones]int
 	Tally    FightTally
 
+	// Sabotage (ODD §6.14): the generator or the water pump wrecked today,
+	// for the resources module's next step to act on; the last day the pump
+	// is down; acts by target and stair repairs since day 0.
+	GeneratorHit, PumpHit bool
+	PumpUntil             Tick
+	Sabotage              [NumTargets]int
+	Repairs               int
+
+	// Collapse (ODD §1.2): days in a row with air and with water below the
+	// collapse level, and the day of the collapse, or None.
+	AirLow, WaterLow int
+	Collapsed        Tick
+
 	// Unrest and rebellion (ODD §1.2): days in a row with at least the
 	// unrest share of adults active, with at least the rebellion share,
 	// and with less than the unrest share; the last day a collective
@@ -43,6 +56,38 @@ type Rebellion struct {
 	LastAction                  Tick
 	UnrestStart, RebellionStart Tick
 	UnrestSpells, Rebellions    int
+}
+
+// Target is what a sabotage hits (ODD §6.14, Sabotage).
+type Target uint8
+
+const (
+	TargetGenerator Target = iota
+	TargetPump
+	TargetStairs
+	NumTargets
+)
+
+func (t Target) String() string { return [...]string{"generator", "pump", "stairs"}[t] }
+
+// SabotageEvent: type "sabotage" (ODD §6.14).
+type SabotageEvent struct {
+	EventHeader
+	Person  PersonID `json:"person"`
+	Target  string   `json:"target"`
+	Segment int      `json:"segment,omitempty"` // stairs only
+}
+
+// SegmentEvent: type "stairRepaired" (ODD §6.14, Stair repairs).
+type SegmentEvent struct {
+	EventHeader
+	Segment int `json:"segment"`
+}
+
+// CollapseEvent: type "collapse" (ODD §1.2).
+type CollapseEvent struct {
+	EventHeader
+	Cause string `json:"cause"` // air, water or population
 }
 
 // FightTally counts the losses in fights since day 0 (ODD §6.14).

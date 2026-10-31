@@ -625,6 +625,38 @@ func TestMechanicalStrikeCutsPower(t *testing.T) {
 	}
 }
 
+// ODD §1.2, T12.6: a collapse ends the run that day unless
+// output.runAfterCollapse; extinction always ends it. A 1,000-person silo
+// with P_min = 2,000 collapses on day 1; a cull of everyone in year 1 of
+// the baseline modules alone ends in extinction that day.
+func TestCollapseAndExtinctionEndTheRun(t *testing.T) {
+	golden := loadInto(t, goldenScenario)
+	for _, after := range []bool{false, true} {
+		cfg := loadInto(t, "../../scenarios/baseline.yaml")
+		cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, 0, 1, golden.Population
+		cfg.Lottery.TargetPopulation = cfg.Population
+		cfg.Rebellion.PointOfNoReturn = 2000
+		cfg.Output.RunAfterCollapse = after
+		cfg.Modules = append(cfg.Modules, "space", "network", "beliefs", "control", "rebellion")
+		dir := mustSimulate(t, cfg)
+		days := strings.Count(string(readFile(t, filepath.Join(dir, "daily.csv"))), "\n") - 1
+		events := string(readFile(t, filepath.Join(dir, "events.jsonl")))
+		if want := map[bool]int{false: 1, true: 365}[after]; days != want || !strings.Contains(events, `"type":"collapse","cause":"population"`) {
+			t.Errorf("runAfterCollapse %v: %d days, collapse logged %v; want %d days",
+				after, days, strings.Contains(events, `"cause":"population"`), want)
+		}
+	}
+	cfg := loadInto(t, "../../scenarios/baseline.yaml")
+	cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, 0, 1, golden.Population
+	cfg.Lottery.TargetPopulation = cfg.Population
+	cfg.Events = []config.Event{{Day: 100, Type: "cull", Share: 1}}
+	dir := mustSimulate(t, cfg)
+	lines := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(dir, "daily.csv")))), "\n")
+	if last := lines[len(lines)-1]; !strings.HasPrefix(last, "100,0,") || !strings.Contains(string(readFile(t, filepath.Join(dir, "events.jsonl"))), `"type":"extinction"`) {
+		t.Errorf("after a cull of everyone on day 100: last row %q; want day 100 with nobody, and extinction logged", last)
+	}
+}
+
 // T11.4 done-when: flagged couples never conceive, so their share of the
 // births falls far below their share of the silo; logged as an outcome,
 // not tuned. 100 years of a 1,000-person silo with σ = 0.1, so couples

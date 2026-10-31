@@ -226,3 +226,41 @@ func TestCondemnedDieAtTheDeathsStep(t *testing.T) {
 		t.Errorf("alive %v, partner of 0: %d, deaths30 %d, doomed %v", w.People[1].Alive, w.People[0].Partner, m.deaths30, w.Control.Doomed)
 	}
 }
+
+// ODD §6.1 (part 2), cull: a share of a department's workers, or of
+// everyone, drawn uniformly, dies, each death handled as any. When the
+// last person dies, the deaths step logs extinction and ends the run.
+func TestCullAndExtinction(t *testing.T) {
+	var people []person
+	for i := range 20 {
+		people = append(people, person{world.Male, 30, world.DownDeep, 2 - 2*(i%2)}) // mechanical or farms
+	}
+	w, m := town(t, people...)
+	if err := m.cull(w, stream(t), config.Event{Share: 0.5, Department: "nowhere"}); err == nil {
+		t.Error("cull of a department that doesn't exist: no error")
+	}
+	if err := m.cull(w, stream(t), config.Event{Share: 0.5, Department: "mechanical"}); err != nil {
+		t.Fatal(err)
+	}
+	dead := 0
+	for _, p := range w.People {
+		if !p.Alive {
+			dead++
+			if p.Department != 2 {
+				t.Errorf("person %d of department %d culled", p.ID, p.Department)
+			}
+		}
+	}
+	if dead != 5 || len(w.Alive) != 15 {
+		t.Fatalf("%d dead, %d alive; want 5 of the 10 Mechanical workers", dead, len(w.Alive))
+	}
+	if err := m.cull(w, stream(t), config.Event{Share: 1}); err != nil || len(w.Alive) != 0 {
+		t.Fatalf("cull of everyone: %v, %d alive", err, len(w.Alive))
+	}
+	if err := m.deaths(w, stream(t)); err != nil {
+		t.Fatal(err)
+	}
+	if !w.Over || len(w.Events) != 1 || w.Events[0].(world.EventHeader).Type != "extinction" {
+		t.Errorf("over %v, events %v; want extinction", w.Over, w.Events)
+	}
+}

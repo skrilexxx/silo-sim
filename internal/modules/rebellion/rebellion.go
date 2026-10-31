@@ -26,7 +26,10 @@ type Module struct {
 	injury       float64 // a work injury's cost to health (ODD §6.2)
 	fought       bool    // a fight today
 	pool         []world.PersonID
-	critical     []int // Mechanical, Farms, Supply and Medical (ODD §1.2)
+	sab, repair  float64 // p_sab; 1 / D_stair
+	mechanical   int     // Mechanical's department index
+	runAfter     bool    // output.runAfterCollapse
+	critical     []int   // Mechanical, Farms, Supply and Medical (ODD §1.2)
 	prev         []world.RebelStage
 	def          config.Rebellion // the definitions of unrest and rebellion (ODD §1.2)
 	officers     []int            // Judicial's and the Sheriff's department indexes
@@ -52,6 +55,8 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	m.threshold, m.k, m.violent = cfg.Rebellion.ActiveThreshold, cfg.Rebellion.ArrestConstant, cfg.Rebellion.ViolentThreshold
 	m.def, m.strikeShare = cfg.Rebellion, cfg.Rebellion.StrikeShare
 	m.eJ, m.eR, m.kill, m.injury = cfg.Rebellion.OfficerEffect, cfg.Rebellion.RebelEffect, cfg.Rebellion.KilledShare, cfg.Health.InjuryCost
+	m.sab, m.repair, m.runAfter = cfg.Rebellion.SabotageChance, 1/cfg.Rebellion.StairRepairDays, cfg.Output.RunAfterCollapse
+	m.mechanical = slices.IndexFunc(w.Depts, func(d world.Department) bool { return d.Name == "mechanical" })
 	for d, dep := range w.Depts {
 		if dep.Name == "judicial" || dep.Name == "sheriff" {
 			m.officers = append(m.officers, d)
@@ -65,7 +70,7 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	}
 	m.reach = make([]bool, len(w.Floors))
 	w.Rebellion = &world.Rebellion{LastAction: world.None, UnrestStart: world.None, RebellionStart: world.None,
-		Striking: make([]int, len(w.Depts))}
+		Collapsed: world.None, Striking: make([]int, len(w.Depts))}
 	m.newcomers(w)
 	m.count(w)
 	return nil
@@ -83,9 +88,111 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 	m.strikes(w)
 	m.stages(w)
 	m.fights(w, r)
+	m.sabotage(w, r)
+	m.repairs(w, r)
 	m.track(w, m.activeShare(w), m.action(w))
+	m.collapse(w)
 	m.count(w)
 	return nil
+}
+
+// EventTypes: ODD §6.14, Scripted events. breakStairs breaks a segment,
+// just before the rebellion step; it is repaired like any other.
+func (m *Module) EventTypes() []engine.EventType {
+	return []engine.EventType{{Name: "breakStairs", Phase: engine.PhaseRebellion, Fire: func(w *world.World, _ *rng.Stream, ev config.Event) error {
+		if ev.Segment < 1 || ev.Segment > len(w.Space.Broken) {
+			return fmt.Errorf("breakStairs: segment %d, must be 1 to %d", ev.Segment, len(w.Space.Broken))
+		}
+		w.Space.Broken[ev.Segment-1] = true
+		return nil
+	}}}
+}
+
+// ODD §6.14, Sabotage. Each violent rebel, in the tick's shuffled order,
+// sabotages with chance p_sab. On a Mechanical floor they wreck the
+// generator if it is running, else the water pump if it is running (the
+// resources module acts on it at its next step); otherwise, on a floor
+// below every court, they break the stair segment between their floor and
+// the next one up, if it is intact. Each sabotage is the offence sabotage.
+func (m *Module) sabotage(w *world.World, r *rng.Stream) {
+	b, s := w.Rebellion, w.Space
+	lowest := slices.Max(m.courts)
+	for _, id := range w.Alive {
+		if b.Stage[id] != world.Violent || r.Float64() >= m.sab {
+			continue
+		}
+		f := s.Where(w, id)
+		ev := world.SabotageEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "sabotage"}, Person: id}
+		var t world.Target
+		switch mech := f != 0 && w.Floors[f-1].Function == world.Mechanical; {
+		case mech && w.Silo.GeneratorDown == 0 && !b.GeneratorHit:
+			t, b.GeneratorHit = world.TargetGenerator, true
+		case mech && w.Day > b.PumpUntil && !b.PumpHit:
+			t, b.PumpHit = world.TargetPump, true
+		case f > lowest && !s.Broken[f-2]:
+			t, s.Broken[f-2], ev.Segment = world.TargetStairs, true, f-1
+		default:
+			continue
+		}
+		ev.Target = t.String()
+		b.Sabotage[t]++
+		w.Events = append(w.Events, ev)
+		w.Control.Report(world.Act{Person: id, Other: world.None, Offence: world.Sabotage})
+	}
+}
+
+// ODD §6.14, Stair repairs: each broken segment, from 1 up, is repaired
+// with chance mechanicalCoverage / D_stair, unless a floor at either end
+// lies in a held zone.
+func (m *Module) repairs(w *world.World, r *rng.Stream) {
+	b, s := w.Rebellion, w.Space
+	p := w.Depts[m.mechanical].Coverage * m.repair
+	for seg := 1; seg <= len(s.Broken); seg++ {
+		if !s.Broken[seg-1] || b.Holds(w, seg) || b.Holds(w, seg+1) || r.Float64() >= p {
+			continue
+		}
+		s.Broken[seg-1] = false
+		b.Repairs++
+		w.Events = append(w.Events, world.SegmentEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "stairRepaired"}, Segment: seg})
+	}
+}
+
+// ODD §1.2, Collapse: air or water below the collapse level for
+// CollapseDays days in a row, or the population below P_min (off while
+// 0). The first collapse is recorded; it ends a running rebellion, and the
+// run after this tick unless output.runAfterCollapse is set. The
+// Safeguard comes with §6.16.
+func (m *Module) collapse(w *world.World) {
+	b, s, d := w.Rebellion, &w.Silo, m.def
+	b.AirLow, b.WaterLow = b.AirLow+1, b.WaterLow+1
+	if s.AirQuality >= d.CollapseLevel {
+		b.AirLow = 0
+	}
+	if s.WaterSupply >= d.CollapseLevel {
+		b.WaterLow = 0
+	}
+	if b.Collapsed != world.None {
+		return
+	}
+	cause := ""
+	switch {
+	case b.AirLow >= d.CollapseDays:
+		cause = "air"
+	case b.WaterLow >= d.CollapseDays:
+		cause = "water"
+	case d.PointOfNoReturn > 0 && len(w.Alive) < d.PointOfNoReturn:
+		cause = "population"
+	default:
+		return
+	}
+	b.Collapsed = w.Day
+	w.Events = append(w.Events, world.CollapseEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "collapse"}, Cause: cause})
+	if b.RebellionStart != world.None {
+		w.Events = append(w.Events, world.RebellionEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "rebellionEnd"},
+			Start: b.RebellionStart, End: w.Day, Ending: "collapse"})
+		b.RebellionStart = world.None
+	}
+	w.Over = w.Over || !m.runAfter
 }
 
 func (m *Module) newcomers(w *world.World) {

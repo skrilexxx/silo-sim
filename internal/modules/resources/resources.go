@@ -129,7 +129,11 @@ func (m *Module) generator(w *world.World, r *rng.Stream) error {
 			s.PartsStock -= m.c.PartsPerRepairDay
 		}
 		c = world.Clamp01(c)
-		if r.Bernoulli(m.failChance(c)) {
+		failed := r.Bernoulli(m.failChance(c))
+		if b := w.Rebellion; b != nil && b.GeneratorHit { // ODD §6.14: sabotage, as if the draw had come up
+			failed, b.GeneratorHit = true, false
+		}
+		if failed {
 			c = world.Clamp01(c - m.c.FailureConditionDrop)
 			s.GeneratorDown = m.outageDays(w, mechanical)
 			s.PartsStock -= min(s.PartsStock, m.c.PartsPerFailure)
@@ -181,6 +185,10 @@ func (m *Module) failChance(c float64) float64 {
 // ODD §6.6: life support, daily. Water = powerFactor × mechanicalCoverage;
 // air moves airRecoveryShare of the way toward powerFactor, so a short
 // outage is survivable and a long one is not.
+//
+// Part 2 (ODD §6.14): a water pump wrecked yesterday is down for as long as
+// a generator outage takes to repair, using the same parts; while it is
+// down, water is 0.
 func (m *Module) lifeSupport(w *world.World, _ *rng.Stream) error {
 	mechanical, err := dept(w, "mechanical")
 	if err != nil {
@@ -189,6 +197,15 @@ func (m *Module) lifeSupport(w *world.World, _ *rng.Stream) error {
 	s := &w.Silo
 	pf := s.PowerFactor()
 	s.WaterSupply = pf * w.Depts[mechanical].Coverage
+	if b := w.Rebellion; b != nil {
+		if b.PumpHit {
+			b.PumpHit, b.PumpUntil = false, w.Day+world.Tick(m.outageDays(w, mechanical))-1
+			s.PartsStock -= min(s.PartsStock, m.c.PartsPerFailure)
+		}
+		if w.Day <= b.PumpUntil {
+			s.WaterSupply = 0
+		}
+	}
 	s.AirQuality = world.Clamp01(s.AirQuality + m.c.AirRecoveryShare*(pf-s.AirQuality))
 	return nil
 }

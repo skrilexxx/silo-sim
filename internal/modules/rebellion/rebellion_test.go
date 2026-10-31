@@ -13,8 +13,9 @@ import (
 
 const year = engine.DaysPerYear
 
-// tiny is a two-floor world: floor 1 Up Top, floor 2 Down Deep, both with
-// homes; the court is on floor 1. Its departments are general, judicial,
+// tiny is a three-floor world: floor 1 Up Top and floor 2 Down Deep, both
+// with homes, and floor 3 a Down Deep Mechanical floor; the court is on
+// floor 1. Its departments are general, judicial,
 // sheriff and mechanical; Judicial's and the Sheriff's Headcount stands
 // for the officers on duty. Everyone
 // has L = 0.8 until given a flag, and R = 0.5. The network, beliefs,
@@ -30,16 +31,18 @@ type tiny struct {
 
 func newTiny(t *testing.T) *tiny {
 	w := &world.World{Day: 100 * year,
-		Floors: []world.Floor{{Number: 1, Homes: 99, Zone: world.UpTop}, {Number: 2, Homes: 99, Zone: world.DownDeep}},
-		Depts:  []world.Department{{Name: "general"}, {Name: "judicial"}, {Name: "sheriff"}, {Name: "mechanical"}},
-		Space:  &world.Space{Broken: make([]bool, 1), DeptFloors: [][]int{nil, {1}, nil, nil}},
-		Silo:   world.Silo{Intake: [3]float64{1, 1, 1}}}
+		Floors: []world.Floor{{Number: 1, Homes: 99, Zone: world.UpTop}, {Number: 2, Homes: 99, Zone: world.DownDeep},
+			{Number: 3, Zone: world.DownDeep, Function: world.Mechanical}},
+		Depts: []world.Department{{Name: "general"}, {Name: "judicial"}, {Name: "sheriff"}, {Name: "mechanical"}},
+		Space: &world.Space{Broken: make([]bool, 2), DeptFloors: [][]int{nil, {1}, nil, nil}},
+		Silo:  world.Silo{Intake: [3]float64{1, 1, 1}, AirQuality: 1, WaterSupply: 1}}
 	r, _ := rng.New(1, "rebellion")
 	cfg := &config.Scenario{}
 	cfg.Work.WorkerAge = 18
 	cfg.Rebellion.LossHardship, cfg.Rebellion.LossHalfLifeYears, cfg.Rebellion.ScapegoatHardship = 0.5, 2, 0.2
 	cfg.Rebellion.ActiveThreshold, cfg.Rebellion.ArrestConstant, cfg.Rebellion.ViolentThreshold = 0.1, 2.3, 0.3
-	cfg.Rebellion.StrikeShare = 0.1
+	cfg.Rebellion.StrikeShare, cfg.Rebellion.StairRepairDays = 0.1, 60
+	cfg.Rebellion.CollapseLevel, cfg.Rebellion.CollapseDays = 0.2, 30
 	cfg.Rebellion.UnrestShare, cfg.Rebellion.UnrestDays = 0.01, 3
 	cfg.Rebellion.RebellionShare, cfg.Rebellion.RebellionDays, cfg.Rebellion.QuietDays, cfg.Rebellion.RegimeDays = 0.05, 7, 30, 30
 	return &tiny{t: t, w: w, m: New(), r: r, cfg: cfg}
@@ -676,5 +679,126 @@ func TestCutOffZoneIsHeld(t *testing.T) {
 	s.step()
 	if b.Patrol[world.DownDeep] != 0 || !b.Held[world.DownDeep] || b.HeldDays[world.DownDeep] != 2 {
 		t.Errorf("patrol %v, held %v for %d days; want no patrol, held 2 days", b.Patrol, b.Held, b.HeldDays[world.DownDeep])
+	}
+}
+
+// ODD §6.14, Sabotage, with p_sab = 1 and no officers (so no fights). On
+// the Mechanical floor the first violent rebel wrecks the generator, the
+// second the pump, the third breaks segment 2 (floors 2–3); on floor 2,
+// below the court, the fourth breaks segment 1. Each act is the offence
+// sabotage.
+func TestSabotage(t *testing.T) {
+	s, _, rebels := battle(t, 0, 0, 0)
+	s.cfg.Rebellion.SabotageChance = 1
+	s.m.sab = 1
+	w, b := s.w, s.w.Rebellion
+	w.Depts[1].Headcount = 0
+	for _, id := range rebels[:3] {
+		w.Space.Location[id] = 3
+	}
+	for _, id := range rebels[4:] {
+		b.Stage[id] = world.Calm
+		w.Beliefs.Known[id] = 0 // calm for good: G < T
+	}
+	w.Events, w.Control.Acts = nil, nil
+	s.step()
+	var got []string
+	for _, e := range w.Events {
+		if ev, ok := e.(world.SabotageEvent); ok {
+			got = append(got, ev.Target)
+		}
+	}
+	if !slices.Equal(got, []string{"generator", "pump", "stairs", "stairs"}) || b.Sabotage != [3]int{1, 1, 2} {
+		t.Errorf("sabotage %v, counts %v; want generator, pump, stairs, stairs", got, b.Sabotage)
+	}
+	if !b.GeneratorHit || !b.PumpHit || !w.Space.Broken[0] || !w.Space.Broken[1] {
+		t.Errorf("generator hit %v, pump hit %v, broken %v", b.GeneratorHit, b.PumpHit, w.Space.Broken)
+	}
+	n := 0
+	for _, a := range w.Control.Acts {
+		if a.Offence == world.Sabotage {
+			n++
+		}
+	}
+	if n != 4 {
+		t.Errorf("%d sabotage acts, want 4", n)
+	}
+	// Nothing left to wreck the next day: the generator and pump wait for
+	// the resources module, the segments are broken.
+	w.Events = nil
+	s.step()
+	for _, e := range w.Events {
+		if _, ok := e.(world.SabotageEvent); ok {
+			t.Errorf("sabotage %+v with nothing left to wreck", e)
+		}
+	}
+}
+
+// ODD §6.14, Stair repairs: at full Mechanical coverage and D_stair = 1 a
+// broken segment is repaired the same day, unless a floor at either end
+// lies in a held zone. breakStairs breaks a segment and rejects one that
+// isn't in the silo.
+func TestStairRepairs(t *testing.T) {
+	s := newTiny(t)
+	s.add(30, 1, 1)
+	s.cfg.Rebellion.StairRepairDays = 1
+	s.start()
+	w, b := s.w, s.w.Rebellion
+	w.Depts[3].Coverage = 1
+	fire := s.m.EventTypes()[0].Fire
+	if err := fire(w, s.r, config.Event{Segment: 3}); err == nil {
+		t.Error("breakStairs segment 3 of 2: no error")
+	}
+	if err := fire(w, s.r, config.Event{Segment: 1}); err != nil || !w.Space.Broken[0] {
+		t.Fatalf("breakStairs segment 1: %v, broken %v", err, w.Space.Broken)
+	}
+	b.Held[world.DownDeep] = true // floor 2, at the segment's lower end
+	s.m.repairs(w, s.r)
+	if !w.Space.Broken[0] {
+		t.Error("repaired next to a held zone")
+	}
+	b.Held[world.DownDeep] = false
+	s.m.repairs(w, s.r)
+	if w.Space.Broken[0] || b.Repairs != 1 {
+		t.Errorf("broken %v, %d repairs; want repaired", w.Space.Broken, b.Repairs)
+	}
+}
+
+// ODD §1.2, Collapse: air below 0.2 for 30 days in a row collapses the
+// silo on the 30th, ends a running rebellion with that ending and stops
+// the run, unless output.runAfterCollapse; a population below P_min
+// collapses it too.
+func TestCollapse(t *testing.T) {
+	for _, after := range []bool{false, true} {
+		s := newTiny(t)
+		s.add(30, 1, 1)
+		s.cfg.Output.RunAfterCollapse = after
+		s.start()
+		w, b := s.w, s.w.Rebellion
+		b.RebellionStart = w.Day - 10
+		w.Silo.AirQuality = 0.19
+		for range 29 {
+			s.m.collapse(w)
+		}
+		w.Silo.WaterSupply = 0.1 // too late to matter: 1 day
+		if b.Collapsed != world.None || w.Over {
+			t.Fatal("collapse after 29 days of bad air")
+		}
+		w.Events = nil
+		s.m.collapse(w)
+		if b.Collapsed != w.Day || w.Over == after || b.RebellionStart != world.None {
+			t.Fatalf("collapsed %d, over %v, rebellion %d", b.Collapsed, w.Over, b.RebellionStart)
+		}
+		if ev := w.Events[0].(world.CollapseEvent); ev.Cause != "air" || w.Events[1].(world.RebellionEvent).Ending != "collapse" {
+			t.Errorf("events %v, want collapse (air) and the rebellion ended by it", w.Events)
+		}
+	}
+	s := newTiny(t)
+	s.add(30, 1, 1)
+	s.cfg.Rebellion.PointOfNoReturn = 2
+	s.start()
+	s.m.collapse(s.w)
+	if s.w.Rebellion.Collapsed != s.w.Day || s.w.Events[0].(world.CollapseEvent).Cause != "population" {
+		t.Errorf("1 person, P_min 2: events %v", s.w.Events)
 	}
 }

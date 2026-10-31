@@ -84,6 +84,8 @@ func (s *Scenario) Validate() error {
 		{"rebellion.violentThreshold", s.Rebellion.ViolentThreshold},
 		{"rebellion.strikeShare", s.Rebellion.StrikeShare},
 		{"rebellion.killedShare", s.Rebellion.KilledShare},
+		{"rebellion.sabotageChance", s.Rebellion.SabotageChance},
+		{"rebellion.collapseLevel", s.Rebellion.CollapseLevel},
 		{"rebellion.unrestShare", s.Rebellion.UnrestShare},
 		{"rebellion.rebellionShare", s.Rebellion.RebellionShare},
 	}
@@ -142,6 +144,8 @@ func (s *Scenario) Validate() error {
 		{"rebellion.rebellionDays", float64(s.Rebellion.RebellionDays)},
 		{"rebellion.quietDays", float64(s.Rebellion.QuietDays)},
 		{"rebellion.regimeDays", float64(s.Rebellion.RegimeDays)},
+		{"rebellion.collapseDays", float64(s.Rebellion.CollapseDays)},
+		{"rebellion.stairRepairDays", s.Rebellion.StairRepairDays},
 	}
 	for i, d := range s.Work.Departments {
 		positive = append(positive, struct {

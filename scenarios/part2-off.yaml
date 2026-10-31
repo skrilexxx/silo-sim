@@ -67,9 +67,14 @@ rebellion:                # M12, off
   officerEffect: 1
   rebelEffect: 1
   killedShare: 1
+  sabotageChance: 1
+  stairRepairDays: 1
+  pointOfNoReturn: 20000
   unrestShare: 0
   unrestDays: 1
   rebellionShare: 0
   rebellionDays: 1
   quietDays: 1
   regimeDays: 1
+  collapseLevel: 1
+  collapseDays: 1

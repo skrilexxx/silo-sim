@@ -2,6 +2,7 @@ package demography
 
 import (
 	"fmt"
+	"math"
 	"slices"
 
 	"github.com/skrilexxx/silo-sim/internal/config"
@@ -47,6 +48,38 @@ func (m *Module) Steps() []engine.Step {
 	}
 }
 
+// EventTypes: ODD §6.1 (part 2, draft), cull. A share of the living
+// people, or of a department's workers, drawn uniformly, die just before
+// the day's deaths step, each handled as any death. It starts runs from the
+// damaged states that measure the point of no return P_min (§1.2, T12.6).
+func (m *Module) EventTypes() []engine.EventType {
+	return []engine.EventType{{Name: "cull", Phase: engine.PhaseDeaths, Fire: m.cull}}
+}
+
+func (m *Module) cull(w *world.World, r *rng.Stream, ev config.Event) error {
+	pool := slices.Clone(w.Alive)
+	if ev.Department != "" {
+		d := slices.IndexFunc(w.Depts, func(dep world.Department) bool { return dep.Name == ev.Department })
+		if d < 0 {
+			return fmt.Errorf("cull: no department %q", ev.Department)
+		}
+		pool = slices.DeleteFunc(pool, func(id world.PersonID) bool {
+			p := &w.People[id]
+			return p.Stage != world.Worker || p.Department != d
+		})
+	}
+	before := m.deaths30
+	for i := range int(math.Round(ev.Share * float64(len(pool)))) {
+		j := r.IntRange(i, len(pool)-1)
+		pool[i], pool[j] = pool[j], pool[i]
+		if err := m.die(w, r, pool[i]); err != nil {
+			return err
+		}
+	}
+	m.removeDead(w, before)
+	return nil
+}
+
 // ODD §6.1: mortality. Each living person, in this tick's shuffled order,
 // dies with DeathChance for their age and health. Each death is handled at
 // once (ODD §3, asynchronous updating), so a later death in the same tick
@@ -76,6 +109,12 @@ func (m *Module) deaths(w *world.World, r *rng.Stream) error {
 	// Removed after the loop, not during it, so the loop's order is the
 	// tick's shuffled order throughout.
 	m.removeDead(w, before)
+	// Part 2 (ODD §1.2): the last death ends the run, whether or not a
+	// collapse ended it first.
+	if len(w.Alive) == 0 && !w.Over {
+		w.Events = append(w.Events, world.EventHeader{Day: w.Day, Type: "extinction"})
+		w.Over = true
+	}
 	return nil
 }
 
@@ -106,8 +145,9 @@ func (m *Module) deathChance(days world.Tick, health float64) float64 {
 // If an adult still lives in the household, the children stay with them
 // (their other parent, or a step-parent). Otherwise the children move
 // together to a random household in the same zone with a living adult, or
-// in any zone if their own has none. A household left empty is dissolved,
-// which frees its home.
+// in any zone if their own has none; with no adult anywhere they stay in
+// their home (part 2: a dead silo, which §1.2 ends). A household left empty
+// is dissolved, which frees its home.
 //
 // The dead keep their Partner and Household fields as a record; the
 // invariants only follow references from the living.
@@ -126,15 +166,13 @@ func (m *Module) die(w *world.World, r *rng.Stream, id world.PersonID) error {
 	hh := &w.Households[p.Household]
 	hh.Members = slices.DeleteFunc(hh.Members, func(x world.PersonID) bool { return x == id })
 	if len(hh.Members) > 0 && !m.hasAdult(w, hh) {
-		to, err := m.fosterHome(w, r, hh)
-		if err != nil {
-			return err
+		if to, ok := m.fosterHome(w, r, hh); ok {
+			for _, kid := range hh.Members {
+				w.People[kid].Household = to
+			}
+			w.Households[to].Members = append(w.Households[to].Members, hh.Members...)
+			hh.Members = nil
 		}
-		for _, kid := range hh.Members {
-			w.People[kid].Household = to
-		}
-		w.Households[to].Members = append(w.Households[to].Members, hh.Members...)
-		hh.Members = nil
 	}
 	if len(hh.Members) == 0 {
 		hh.Floor = world.None
@@ -154,9 +192,8 @@ func (m *Module) hasAdult(w *world.World, hh *world.Household) bool {
 
 // fosterHome picks, uniformly, another household in from's zone with at
 // least one living adult. If the zone has none (a mass death), it picks
-// from every zone instead; only a silo with no adult left at all stops
-// the run.
-func (m *Module) fosterHome(w *world.World, r *rng.Stream, from *world.Household) (world.HouseholdID, error) {
+// from every zone instead; false if there is no adult left at all.
+func (m *Module) fosterHome(w *world.World, r *rng.Stream, from *world.Household) (world.HouseholdID, bool) {
 	zone := w.Floors[from.Floor-1].Zone
 	var homes []world.HouseholdID
 	for _, anyZone := range []bool{false, true} {
@@ -167,8 +204,8 @@ func (m *Module) fosterHome(w *world.World, r *rng.Stream, from *world.Household
 			}
 		}
 		if len(homes) > 0 {
-			return homes[r.IntRange(0, len(homes)-1)], nil
+			return homes[r.IntRange(0, len(homes)-1)], true
 		}
 	}
-	return 0, fmt.Errorf("demography: orphans of household %d have no household with an adult anywhere in the silo", from.ID)
+	return 0, false
 }

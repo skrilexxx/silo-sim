@@ -361,7 +361,7 @@ func TestRevealHistory(t *testing.T) {
 		t.Fatalf("event types %+v", types)
 	}
 	s.w.Day++
-	if err := types[0].Fire(s.w, nil); err != nil {
+	if err := types[0].Fire(s.w, nil, config.Event{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.m.step(s.w, s.r); err != nil {
@@ -708,7 +708,7 @@ func (s *tiny) fire(name string) {
 	s.t.Helper()
 	for _, et := range s.m.EventTypes() {
 		if et.Name == name {
-			if err := et.Fire(s.w, nil); err != nil {
+			if err := et.Fire(s.w, nil, config.Event{}); err != nil {
 				s.t.Fatal(err)
 			}
 			return

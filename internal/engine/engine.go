@@ -115,7 +115,7 @@ func New(cfg *config.Scenario, w *world.World, modules []Module) (*Engine, error
 
 // Run plays every tick: warm-up, then the measured years.
 func (e *Engine) Run() error {
-	for e.w.Day < e.days {
+	for e.w.Day < e.days && !e.w.Over {
 		if err := e.Tick(); err != nil {
 			return err
 		}

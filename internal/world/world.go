@@ -187,6 +187,7 @@ type World struct {
 	HousingQueue []HousingRequest // oldest first
 
 	Counts Counts  // running totals for the output files
+	Over   bool    // the run ends after this tick: a collapse or extinction (ODD §1.2)
 	Events []Event // not yet written to events.jsonl; the output module drains it
 
 	// Part-2 state, one field per module, nil when the module is off

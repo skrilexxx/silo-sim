@@ -52,6 +52,11 @@ type Scenario struct {
 type Event struct {
 	Day  int    `yaml:"day"`
 	Type string `yaml:"type"`
+
+	// Settings some types take (ODD §6.1 cull, §6.14 breakStairs).
+	Segment    int     `yaml:"segment,omitempty"`
+	Share      float64 `yaml:"share,omitempty"`
+	Department string  `yaml:"department,omitempty"`
 }
 
 // Zones holds one value per zone: a share of people or a policy weight.
@@ -67,6 +72,9 @@ type Output struct {
 	InvariantEvery int    `yaml:"invariantEvery"`
 	Frames         bool   `yaml:"frames"`
 	FrameEvery     int    `yaml:"frameEvery"`
+	// RunAfterCollapse keeps a run going after a collapse, to extinction or
+	// the last day (ODD §1.2).
+	RunAfterCollapse bool `yaml:"runAfterCollapse"`
 
 	UnderstaffedShare float64 `yaml:"understaffedShare"`
 }
@@ -253,6 +261,9 @@ type Rebellion struct {
 	OfficerEffect     float64 `yaml:"officerEffect"`
 	RebelEffect       float64 `yaml:"rebelEffect"`
 	KilledShare       float64 `yaml:"killedShare"`
+	SabotageChance    float64 `yaml:"sabotageChance"`
+	StairRepairDays   float64 `yaml:"stairRepairDays"`
+	PointOfNoReturn   int     `yaml:"pointOfNoReturn"`
 
 	// Definitions of unrest and rebellion (ODD §1.2, decision D1).
 	UnrestShare    float64 `yaml:"unrestShare"`
@@ -261,6 +272,8 @@ type Rebellion struct {
 	RebellionDays  int     `yaml:"rebellionDays"`
 	QuietDays      int     `yaml:"quietDays"`
 	RegimeDays     int     `yaml:"regimeDays"`
+	CollapseLevel  float64 `yaml:"collapseLevel"`
+	CollapseDays   int     `yaml:"collapseDays"`
 }
 
 // Rule is one row of the Pact (ODD §6.9).

@@ -79,7 +79,7 @@ func (s shocker) Init(*world.World, *config.Scenario, *rng.Stream) error { retur
 func (s shocker) Steps() []engine.Step                                   { return nil }
 func (s shocker) EventTypes() []engine.EventType {
 	return []engine.EventType{{Name: "testShock", Phase: engine.PhaseHealth,
-		Fire: func(w *world.World, _ *rng.Stream) error {
+		Fire: func(w *world.World, _ *rng.Stream, _ config.Event) error {
 			*s.fired = append(*s.fired, w.Day)
 			return nil
 		}}}

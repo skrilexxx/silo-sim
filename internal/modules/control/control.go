@@ -135,7 +135,7 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 // and not dosed learns the outside and the screen flags as lived. It fires
 // just before the control step.
 func (m *Module) EventTypes() []engine.EventType {
-	return []engine.EventType{{Name: "cleaningFailure", Phase: engine.PhaseControl, Fire: func(w *world.World, r *rng.Stream) error {
+	return []engine.EventType{{Name: "cleaningFailure", Phase: engine.PhaseControl, Fire: func(w *world.World, r *rng.Stream, _ config.Event) error {
 		m.shock(w, r, 1)
 		return nil
 	}}}

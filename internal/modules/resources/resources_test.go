@@ -447,3 +447,40 @@ func TestRationingEvents(t *testing.T) {
 		t.Errorf("rationing events %v, want [rationingOn rationingOff]", kinds)
 	}
 }
+
+// ODD §6.14, Sabotage: a wrecked generator fails at the next generator
+// step as if the draw had come up. A wrecked pump cuts water to 0 for as
+// long as a generator outage would take (the cap here: no Mechanical
+// workers), using the same 30 parts.
+func TestSabotagedGeneratorAndPump(t *testing.T) {
+	cfg := baseline(t)
+	cfg.Resources.FailureBase = 0
+	w, m, r := silo(t, cfg)
+	w.Silo.PartsStock = 100
+	w.Rebellion = &world.Rebellion{GeneratorHit: true, PumpHit: true}
+	step(t, w, m, r)
+	if w.Silo.GeneratorDown == 0 || w.Rebellion.GeneratorHit {
+		t.Fatalf("generator down %d, hit %v; want a failure", w.Silo.GeneratorDown, w.Rebellion.GeneratorHit)
+	}
+	w.Day = 10
+	parts := w.Silo.PartsStock
+	if err := m.lifeSupport(w, r); err != nil {
+		t.Fatal(err)
+	}
+	days := cfg.Resources.OutageMaxDays
+	if w.Rebellion.PumpUntil != w.Day+world.Tick(days)-1 || w.Silo.WaterSupply != 0 || parts-w.Silo.PartsStock != cfg.Resources.PartsPerFailure {
+		t.Fatalf("pump down until %d (want %d), water %v, parts %v → %v", w.Rebellion.PumpUntil, w.Day+world.Tick(days)-1, w.Silo.WaterSupply, parts, w.Silo.PartsStock)
+	}
+	for range days - 1 {
+		w.Day++
+		_ = m.lifeSupport(w, r)
+		if w.Silo.WaterSupply != 0 {
+			t.Fatalf("day %d: water %v while the pump is down", w.Day, w.Silo.WaterSupply)
+		}
+	}
+	w.Day++
+	_ = m.lifeSupport(w, r)
+	if w.Silo.WaterSupply == 0 {
+		t.Error("water still 0 the day after the repair")
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"fmt"
 
+	"github.com/skrilexxx/silo-sim/internal/config"
 	"github.com/skrilexxx/silo-sim/internal/rng"
 	"github.com/skrilexxx/silo-sim/internal/world"
 )
@@ -116,7 +117,7 @@ func (q *entries) Pop() any {
 type EventType struct {
 	Name  string
 	Phase Phase
-	Fire  func(w *world.World, r *rng.Stream) error
+	Fire  func(w *world.World, r *rng.Stream, ev config.Event) error // ev carries the type's settings
 }
 
 // EventSource is a module that defines scripted event types.
@@ -158,7 +159,7 @@ func (e *Engine) scheduleEvents(modules []Module) error {
 		_, err := e.agenda.Schedule(world.Tick(ev.Day), t.Phase, func(w *world.World) error {
 			w.Events = append(w.Events, world.ScriptedEvent{
 				EventHeader: world.EventHeader{Day: w.Day, Type: "scripted"}, Event: t.Name})
-			if err := t.Fire(w, stream); err != nil {
+			if err := t.Fire(w, stream, ev); err != nil {
 				return fmt.Errorf("event %q: %w", t.Name, err)
 			}
 			return nil

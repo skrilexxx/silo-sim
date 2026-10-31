@@ -205,7 +205,7 @@ func (s shocks) EventTypes() []EventType { return s.types }
 
 // logShock returns a type that logs its name when it fires.
 func logShock(name string, phase Phase, log *[]string) EventType {
-	return EventType{Name: name, Phase: phase, Fire: func(w *world.World, _ *rng.Stream) error {
+	return EventType{Name: name, Phase: phase, Fire: func(w *world.World, _ *rng.Stream, _ config.Event) error {
 		*log = append(*log, fmt.Sprintf("day %d %s", w.Day, name))
 		return nil
 	}}
@@ -248,7 +248,7 @@ func TestScriptedEventsUseTheEventsStream(t *testing.T) {
 	cfg.Events = []config.Event{{Day: 1, Type: "draw"}}
 	e := mustNew(t, cfg, &world.World{}, shocks{
 		fake: fake{name: "health"},
-		types: []EventType{{Name: "draw", Phase: PhaseHealth, Fire: func(_ *world.World, r *rng.Stream) error {
+		types: []EventType{{Name: "draw", Phase: PhaseHealth, Fire: func(_ *world.World, r *rng.Stream, _ config.Event) error {
 			got = r.Float64()
 			return nil
 		}}},

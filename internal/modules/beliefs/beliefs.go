@@ -106,7 +106,7 @@ func (m *Module) Steps() []engine.Step {
 //     the Flamekeepers shield if they are warned today.
 func (m *Module) EventTypes() []engine.EventType {
 	return []engine.EventType{
-		{Name: "revealHistory", Phase: engine.PhaseBeliefs, Fire: func(w *world.World, _ *rng.Stream) error {
+		{Name: "revealHistory", Phase: engine.PhaseBeliefs, Fire: func(w *world.World, _ *rng.Stream, _ config.Event) error {
 			for _, id := range w.Alive {
 				// Age first: newborns have no beliefs until the step.
 				if w.Day-w.People[id].BirthDay >= m.shadowAge && !w.Beliefs.Dosed(w, id) {
@@ -115,7 +115,7 @@ func (m *Module) EventTypes() []engine.EventType {
 			}
 			return nil
 		}},
-		{Name: "waterDosing", Phase: engine.PhaseBeliefs, Fire: func(w *world.World, _ *rng.Stream) error {
+		{Name: "waterDosing", Phase: engine.PhaseBeliefs, Fire: func(w *world.World, _ *rng.Stream, _ config.Event) error {
 			w.Beliefs.Water = max(w.Beliefs.Water, w.Day+world.Tick(m.waterDays)-1)
 			w.Beliefs.Warned = m.warned(w)
 			return nil

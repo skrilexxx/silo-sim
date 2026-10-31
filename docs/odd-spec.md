@@ -60,7 +60,7 @@ The answers are **conditional and comparative**. The agents follow rules, not hu
   3. population below the **point of no return** P\_min.
 
   P\_min is measured, not guessed (T12.6): runs start from damaged states (population cut to 9,000, 8,000, 7,000 … and Mechanical cut by 10%, 20% …), and P\_min is the highest population at which fewer than 5% of seeds recover to above 9,000 within 50 years. Until it is measured, test 3 is off. The baseline already shows why the last person is the wrong line: in the T3.2 collapse, health was 0 and the silo still held 643 people in year 100. Canon agrees: Silo 17, with fewer than a hundred survivors and later one, is a dead silo.
-- **Extinction:** the last person dies. Logged only, in runs that set `output.runAfterCollapse: true` to see how a dead silo empties.
+- **Extinction:** the last person dies. It is logged and ends the run, whether or not a collapse came first (Adam, 2026-10-31): a silo can die out before any test fires, as when air and water stay above 0.2 but a strike leaves too few people to run it. Runs that set `output.runAfterCollapse: true` go on after a collapse to see how a dead silo empties.
 
 **Canon patterns** (calibration and validation targets for part 2). They are checked on `scenarios/canon.yaml`, the regime at the show's settings, 300 measured years, 100 seeds. These are the only targets part-2 parameters are tuned to.
 
@@ -274,7 +274,9 @@ Each day each person dies with a probability from a Gompertz hazard (risk of dea
 h(a) = A e^{B a} + h_{infant}[a < 1], \quad p_{day} = 1 - \exp\left(-\frac{h(a)\,(1 + k_h (1 - health))}{365}\right)
 ```
 
-With A = 0.0002 and B = 0.085, half of people reach about 67 before health effects. A person whose health reaches 0 dies that day: the health step (§3 step 6) comes just before deaths, so the death chance is 1 then. Deaths are drawn person by person in the tick's shuffled order and handled at once. On a death: the partner becomes unpartnered and may pair again; if an adult (18+) still lives in the household, the children under 18 stay with them (their other parent, or a step-parent); otherwise all the children in that household move together to a random household in the same zone with at least one living adult. If their zone has none (only after a mass death), they go to such a household in any zone. Only when no household in the silo has an adult does the run stop with an error. A household left with no members is dissolved, which frees its home. The job becomes a vacancy (6.5).
+With A = 0.0002 and B = 0.085, half of people reach about 67 before health effects. A person whose health reaches 0 dies that day: the health step (§3 step 6) comes just before deaths, so the death chance is 1 then. Deaths are drawn person by person in the tick's shuffled order and handled at once. On a death: the partner becomes unpartnered and may pair again; if an adult (18+) still lives in the household, the children under 18 stay with them (their other parent, or a step-parent); otherwise all the children in that household move together to a random household in the same zone with at least one living adult. If their zone has none (only after a mass death), they go to such a household in any zone. *Part 2:* when no household in the silo has an adult, the children stay in their own home (Adam, 2026-10-31); the silo is dead, and §1.2 ends the run at its collapse or extinction. The baseline never reaches this state. A household left with no members is dissolved, which frees its home. The job becomes a vacancy (6.5).
+
+*Part 2, scripted event `cull`* (share, department optional; §5): a share of the living people, or of the department's workers, rounded to the nearest whole number and drawn uniformly, die just before that day's deaths step, each handled as any death. It starts runs from the damaged states that measure the point of no return P\_min (§1.2, T12.6). It belongs to this section, not to §6.14, so P\_min is measured on the baseline modules alone (Adam, 2026-10-31).
 
 ### 6.2 Health and Medical
 
@@ -828,7 +830,7 @@ A loss that is not a whole number is rounded down, plus one with a chance equal 
 Effects:
 
 - *Generator:* it fails at the next generator step as if the failure draw had come up (§6.6: condition − 0.1, an outage, 30 parts).
-- *Water pump:* from the next day water is 0 (§6.6) until it is repaired, which takes the same work as a generator failure: ⌈3 / (skill × partsShare)⌉ days, at most 10, and 30 parts. Silo 17's raider wrecked the groundwater pump (lore reference). Water harms nobody's health in the baseline; a pump kept down kills the silo through the collapse check below.
+- *Water pump:* from the next day water is 0 (§6.6) until it is repaired, which takes the same work as a generator failure, worked out by the resources module at its next life-support step: ⌈3 / (skill × partsShare)⌉ days, at most 10, and 30 parts. Silo 17's raider wrecked the groundwater pump (lore reference). Water harms nobody's health in the baseline; a pump kept down kills the silo through the collapse check below.
 - *Stair segment:* it is broken (§6.10).
 
 Each sabotage is the offence `sabotage` (§6.9).
@@ -837,7 +839,7 @@ Each sabotage is the offence `sabotage` (§6.9).
 
 **Unrest, rebellion and endings.** At the end of the step the module applies the tests of §1.2 to the day's stages: unrest, the start and end of a rebellion, and its ending. A *collective action* is under way on a day with a critical department on strike, a fight in any zone, or a held zone. A rebellion's *starting zone* is the home zone of most of the adults active on its start day (on a tie, the first in the order Up Top, Mids, Down Deep).
 
-**Collapse** (§1.2). Checked at the end of the step, and only with this module on, so a baseline run never stops early: air or water below 0.2 for 30 days in a row, or the population below P\_min, which is off (0) until T12.6 measures it. The Safeguard comes with §6.16. On collapse the run records the day and cause and stops, unless `output.runAfterCollapse` is true; then it runs on, logging extinction if the last person dies.
+**Collapse** (§1.2). Checked at the end of the step, and only with this module on, so a baseline run never stops early: air or water below 0.2 for 30 days in a row, or the population below P\_min, which is off (0) until T12.6 measures it. The level and the days are §1.2 settings (`collapseLevel`, `collapseDays`). The Safeguard comes with §6.16. The first collapse is logged with its cause and ends a running rebellion with that ending; the run stops after that day, unless `output.runAfterCollapse` is true. Extinction always ends it (§1.2).
 
 **Nobody says "I want to go out" yet.** No question needs it before Silo 1, where walking out is a contact attempt (§6.16), so this module reports no `askToGoOut`, and the `goingOut` rule has no effect for now.
 
@@ -855,8 +857,8 @@ Each sabotage is the offence `sabotage` (§6.9).
 
 **Scripted events** (§5):
 
-- `breakStairs` (segment): breaks the segment, as in S2's blast at levels 90–92.
-- `cull` (share, department optional): a share of the living people, or of the department's workers, drawn uniformly, die at that day's deaths step. It starts runs from the damaged states that measure P\_min (T12.6).
+- `breakStairs` (segment): breaks the segment just before the rebellion step, as in S2's blast at levels 90–92.
+- `cull` lives in §6.1, so it works without this module.
 
 **Outputs** (only when the module is on):
 
@@ -893,10 +895,12 @@ rebellion:                        # ODD §6.14; used only when `rebellion` is in
   rebellionDays: 7                # ... on this many days in a row, with a collective action on one of them
   quietDays: 30                   # both end after this many days in a row below unrestShare
   regimeDays: 30                  # regime change: rebels hold Up Top this many days in a row
+  collapseLevel: 0.2              # collapse: air or water below this level ...
+  collapseDays: 30                # ... for this many days in a row
   pointOfNoReturn: 0              # P_min (§1.2); 0 = off until measured in T12.6
 ```
 
-`output.runAfterCollapse` (default false) sits with the other output settings. Checked at load: ℓ, s\_DD, T, T\_v, p\_kill, p\_sab, q\_strike and both shares of §1.2 are in [0, 1], and T\_v ≥ T; the four day counts are integers ≥ 1; T\_loss, k and D\_stair are strictly greater than 0; e\_J and e\_R are ≥ 0; P\_min is an integer ≥ 0.
+`output.runAfterCollapse` (default false) sits with the other output settings. Checked at load: ℓ, s\_DD, T, T\_v, p\_kill, p\_sab, q\_strike and both shares of §1.2 are in [0, 1], and T\_v ≥ T; the collapse level is in [0, 1]; the five day counts are integers ≥ 1; T\_loss, k and D\_stair are strictly greater than 0; e\_J and e\_R are ≥ 0; P\_min is an integer ≥ 0.
 
 ## 7. Parameters
 

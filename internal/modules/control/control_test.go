@@ -641,7 +641,7 @@ func TestCleaningFailure(t *testing.T) {
 	s = newTiny(t)
 	a, kid = s.on(1), s.add(10, world.Child, world.None, 0)
 	s.start()
-	s.m.EventTypes()[0].Fire(s.w, s.r)
+	s.m.EventTypes()[0].Fire(s.w, s.r, config.Event{})
 	if b := s.w.Beliefs; b.Known[a] != both || b.Known[kid] != 0 {
 		t.Errorf("scripted: adult knows %05b, child %05b", b.Known[a], b.Known[kid])
 	}

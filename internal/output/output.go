@@ -57,10 +57,12 @@ type Writer struct {
 
 	// Counts at the previous row.
 	births, deaths, permits  int
-	zoneMoves                int              // at the previous yearly row
-	tally                    world.Tally      // control, at the previous yearly row
-	unrestSpells, rebellions int              // rebellion, at the previous yearly row
-	fights                   world.FightTally // rebellion, at the previous yearly row
+	zoneMoves                int                   // at the previous yearly row
+	tally                    world.Tally           // control, at the previous yearly row
+	unrestSpells, rebellions int                   // rebellion, at the previous yearly row
+	fights                   world.FightTally      // rebellion, at the previous yearly row
+	sabotage                 [world.NumTargets]int // rebellion, at the previous yearly row
+	repairs                  int
 }
 
 // ODD §8: the age pyramid uses 5-year bands, the last open-ended.
@@ -120,7 +122,7 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 		return err
 	}
 	if w.Rebellion != nil {
-		if _, err := o.daily.WriteString(",active,joined,violent,onStrike,heldUpTop,heldMids,heldDownDeep"); err != nil {
+		if _, err := o.daily.WriteString(",active,joined,violent,onStrike,heldUpTop,heldMids,heldDownDeep,brokenSegments,pumpDown"); err != nil {
 			return err
 		}
 	}
@@ -163,7 +165,7 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 		h = append(h, ",actsSeen,arrests,warnings,prison,mines,cleanings,failedCleanings,relicsTaken,raids,deniedWins,flaggedBirths,held,flagged,openCases,lift,fear"...)
 	}
 	if w.Rebellion != nil {
-		h = append(h, ",meanH,meanHUpTop,meanHMids,meanHDownDeep,meanG,meanGUpTop,meanGMids,meanGDownDeep,unrestSpells,rebellions,rebelsKilled,rebelsArrested,officersKilled,officersWounded"...)
+		h = append(h, ",meanH,meanHUpTop,meanHMids,meanHDownDeep,meanG,meanGUpTop,meanGMids,meanGDownDeep,unrestSpells,rebellions,rebelsKilled,rebelsArrested,officersKilled,officersWounded,sabotageGenerator,sabotagePump,sabotageStairs,stairRepairs"...)
 	}
 	h = append(h, '\n')
 	if _, err := o.yearly.Write(h); err != nil {
@@ -283,7 +285,7 @@ func (o *Writer) writeDaily(w *world.World, births, deaths, permits int) error {
 	}
 	b = appendF(b, coverage(w, "medical"), 4)
 	b = appendF(b, coverage(w, "mechanical"), 4)
-	if r := w.Rebellion; r != nil { // ODD §6.14, Outputs: adults active or beyond, joined or beyond, violent; workers on strike; held zones
+	if r := w.Rebellion; r != nil { // ODD §6.14, Outputs: adults active or beyond, joined or beyond, violent; workers on strike; held zones; broken segments; pump down
 		var at [world.Violent + 1]int
 		for _, id := range w.Alive {
 			at[r.Stage[id]]++
@@ -299,6 +301,14 @@ func (o *Writer) writeDaily(w *world.World, births, deaths, permits int) error {
 		for _, held := range r.Held {
 			b = append(b, ',')
 			b = strconv.AppendInt(b, int64(flag(held)), 10)
+		}
+		broken := 0
+		for _, x := range w.Space.Broken {
+			broken += flag(x)
+		}
+		for _, n := range []int{broken, flag(w.Day <= r.PumpUntil)} {
+			b = append(b, ',')
+			b = strconv.AppendInt(b, int64(n), 10)
 		}
 	}
 	o.row = append(b, '\n')
@@ -572,7 +582,8 @@ func (o *Writer) appendControl(w *world.World, b []byte) []byte {
 // appendRebellion writes the rebellion columns (ODD §6.14, Outputs): the
 // mean hardship H and grievance G of adults, overall and by home zone; over
 // the year, unrest spells ended, rebellions started, and rebels killed and
-// arrested and officers killed and wounded in fights.
+// arrested and officers killed and wounded in fights, sabotage by target and
+// stair repairs.
 func (o *Writer) appendRebellion(w *world.World, b []byte) []byte {
 	var h, g [world.NumZones + 1]float64 // the last one is everyone
 	var n [world.NumZones + 1]int
@@ -598,11 +609,13 @@ func (o *Writer) appendRebellion(w *world.World, b []byte) []byte {
 	r := w.Rebellion
 	t, p := r.Tally, o.fights
 	for _, n := range []int{r.UnrestSpells - o.unrestSpells, r.Rebellions - o.rebellions, t.RebelsKilled - p.RebelsKilled,
-		t.RebelsArrested - p.RebelsArrested, t.OfficersKilled - p.OfficersKilled, t.OfficersWounded - p.OfficersWounded} {
+		t.RebelsArrested - p.RebelsArrested, t.OfficersKilled - p.OfficersKilled, t.OfficersWounded - p.OfficersWounded,
+		r.Sabotage[world.TargetGenerator] - o.sabotage[world.TargetGenerator], r.Sabotage[world.TargetPump] - o.sabotage[world.TargetPump],
+		r.Sabotage[world.TargetStairs] - o.sabotage[world.TargetStairs], r.Repairs - o.repairs} {
 		b = append(b, ',')
 		b = strconv.AppendInt(b, int64(n), 10)
 	}
-	o.unrestSpells, o.rebellions, o.fights = r.UnrestSpells, r.Rebellions, t
+	o.unrestSpells, o.rebellions, o.fights, o.sabotage, o.repairs = r.UnrestSpells, r.Rebellions, t, r.Sabotage, r.Repairs
 	return b
 }
 

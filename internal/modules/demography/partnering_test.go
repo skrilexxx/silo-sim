@@ -329,15 +329,15 @@ func TestMechanicalCouplesStayDownDeep(t *testing.T) {
 }
 
 // Orphans whose zone has no household with an adult go to one in any
-// zone; with no adult anywhere the run stops.
+// zone; with no adult anywhere there is no foster home.
 func TestOrphansMoveToAnyZoneWhenTheirsHasNoAdult(t *testing.T) {
 	w, m := town(t, person{world.Female, 5, world.DownDeep, world.None}, person{world.Male, 40, world.Mids, 0})
-	to, err := m.fosterHome(w, stream(t), &w.Households[0])
-	if err != nil || to != 1 {
-		t.Errorf("foster home %d, %v; want household 1 in the Mids", to, err)
+	to, ok := m.fosterHome(w, stream(t), &w.Households[0])
+	if !ok || to != 1 {
+		t.Errorf("foster home %d, %v; want household 1 in the Mids", to, ok)
 	}
 	w.People[1].BirthDay = w.Day - 10*year // now a child too
-	if _, err := m.fosterHome(w, stream(t), &w.Households[0]); err == nil {
-		t.Error("no adult left anywhere, but no error")
+	if _, ok := m.fosterHome(w, stream(t), &w.Households[0]); ok {
+		t.Error("no adult left anywhere, but a foster home")
 	}
 }
