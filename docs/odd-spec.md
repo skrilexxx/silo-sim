@@ -180,6 +180,7 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 10. **Partnering** — unpartnered adults may pair up (6.3)
 10.5. **Network** *(part 2, draft)* — weak ties ended and drawn again; the connected runs of floors for the day's conversations (6.11)
 10.7. **Beliefs** *(part 2, draft)* — upbringing, forgetting, Vitamin D+, relics, the day's conversations that pass knowledge on, Flamekeepers (6.12)
+10.8. **Control** *(part 2, draft)* — Head of IT, detection, releases, trials and cleanings, raids, arrests (6.13)
 11. **Logging** — daily metrics written (8)
 
 ### Every 30 days
@@ -315,7 +316,7 @@ D₃₀ = deaths in the last 30 days, T = target (10,000), P = people alive.
 D₃₀ counts deaths since the last lottery; round is half away from zero. Unused permits are not carried over.
 
 - **Eligible couples:** woman and man, woman aged 18–40 in whole years (up to her 41st birthday), fewer than 3 children born (alive or not), her last birth at least 2 years ago, no open window or pregnancy. Couples still waiting for a home are eligible.
-- **Draw:** winners are picked uniformly at random, without replacement; if fewer couples are eligible than there are permits, all of them win. (The covert-denial rule from the show arrives with the dissent modules; here the draw is fair.)
+- **Draw:** winners are picked uniformly at random, without replacement; if fewer couples are eligible than there are permits, all of them win. With the control module on, flagged couples win but stay childless: covert lottery denial (§6.13). Otherwise the draw is fair.
 - **Window:** winners join Medical's removal queue (6.2); the couple has the 365 days after the removal. Women still waiting count as open windows in E. If her partner dies while she waits or while the window is open, the permit or window ends and the implant stays or goes back in.
 - **Conception:** daily chance 0.0044, which gives about an 80% chance within the year. Her partner is recorded as the father.
 - **Birth:** 270 days after conception the child is born into the mother's household: a girl with chance 0.5, health 1. The father is the partner recorded at conception, even if he has died since; a pregnancy goes on after his death. The implant goes back in. If the window ends without a pregnancy, the implant goes back in.
@@ -405,14 +406,14 @@ Each row says what is forbidden, which offences break it, how hard it is to see,
 | enforcer | Who carries out the penalty: Sheriff, Judicial, or Silo 1 |
 | visibility | 0–1: how widely an enforcement is seen. It scales the effect on fear and legitimacy (§6.12, §6.14) |
 
-**Penalties:** `warning`, `confiscate` (relics), `prison(days)` and `mines(days)` (no work, no contacts outside the place of detention), `cleaning` (death, public), `flagFamily` (covert lottery denial for the household, §6.13). A `contactAttempt` can also bring Silo 1's response (§6.16), which the table doesn't control.
+**Penalties:** `warning`, `confiscate` (relics), `prison(days)` and `mines(days)` (no work, no conversations), `cleaning` (death, public), `flagFamily` (covert lottery denial for the household, §6.13). A `contactAttempt` can also bring Silo 1's response (§6.16), which the table doesn't control.
 
 **The canon Pact** (default for `scenarios/canon.yaml`):
 
 | id | Forbids | Offences | Detection | Penalty: first / repeat | Enforcer | Visibility | Source |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| noRelics | Owning or trading objects from before the silo | holdRelic, tradeRelic | 1.0 | confiscate + prison(90) / prison(365) | Judicial | 0.5 | Show: relics banned down to a Pez dispenser (S1) |
-| noForbiddenTalk | Speaking about the outside, the time before, or other silos | speakForbidden | 0.5 | warning / prison(180) | Judicial | 0.3 | Show: questioning the rules can lead to cleaning (S1) |
+| noRelics | Owning or trading objects from before the silo | holdRelic, tradeRelic | 1.0 | confiscate + prison(90) / confiscate + prison(365) | Judicial | 0.5 | Show: relics banned down to a Pez dispenser (S1) |
+| noForbiddenTalk | Speaking about the outside, the time before, or other silos | speakForbidden | 0.5 | warning + flagFamily / prison(180) + flagFamily | Judicial | 0.3 | Show: questioning the rules can lead to cleaning (S1); people who ask questions are quietly denied children (lore reference) |
 | goingOut | Saying "I want to go out" | askToGoOut | 1.0 | cleaning / — | Sheriff | 1.0 | Show: the request is binding (S1E1) |
 | lottery | Conceiving without a permit or removing one's own implant | unpermittedConception | 0.8 | prison(180) + flagFamily / cleaning | Judicial | 0.6 | Show: implants and lottery (S1E1) |
 | noContact | Radio contact, digging toward other silos, opening the doors below | contactAttempt | 0.7 | cleaning / — | Judicial | 0.2 | Show: Safeguard and the Directive (S2–S3) |
@@ -428,19 +429,29 @@ Detection weights, penalties and visibilities are guesses, to be checked by the 
 | travelPermits | Crossing zones without a permit | Fewer cross-zone contacts (§6.11), slower rebel gathering | warning / prison(30) |
 | curfew | Being away from one's home floor at night | Fewer contacts outside the household | warning / prison(30) |
 
-Format in the scenario file (illustrative; the exact keys are fixed when M11 implements it):
+**In the scenario file** (keys fixed in T11.0), one entry per row under `pact:`:
 
 ```yaml
-pact:
-  rules:
-    - id: noRelics
-      active: true
-      offences: [holdRelic, tradeRelic]
-      detection: 1.0
-      penalty: { first: [confiscate, prison90], repeat: [prison365] }
-      enforcer: judicial
-      visibility: 0.5
+pact:                             # ODD §6.9, §6.13; used only when `control` is in modules
+  - id: noRelics
+    active: true
+    offences: [holdRelic, tradeRelic]
+    detection: 1.0
+    first:  { confiscate: true, prison: 90 }
+    repeat: { confiscate: true, prison: 365 }
+    enforcer: judicial
+    visibility: 0.5
+  - id: noForbiddenTalk
+    active: true
+    offences: [speakForbidden]
+    detection: 0.5
+    first:  { flagFamily: true }  # a warning, and the household quietly flagged
+    repeat: { prison: 180, flagFamily: true }
+    enforcer: judicial
+    visibility: 0.3
 ```
+
+A penalty is a map of `prison` and `mines` (days, integers ≥ 1), and `cleaning`, `confiscate` and `flagFamily` (true or absent); `{}` is a warning. `repeat` may be left out, and is then the same as `first`. Checked at load: ids are unique; every offence is one of the nine above, and no offence is listed by two active rules, so each act has one weight and one penalty; a penalty holds at most one of prison, mines and cleaning; detection is ≥ 0; visibility is in [0, 1]; enforcer is `judicial`, `sheriff` or `silo1`. Judicial and the Sheriff share one arrest capacity (§6.13), so the enforcer has no effect until Silo 1 (§6.16); it is kept so the table reads like the show.
 
 ### 6.10 Location and travel (draft)
 
@@ -515,7 +526,7 @@ Each rule looks only at the two people's state today, not at what changed.
 
 The lost ties are drawn again at the next network step.
 
-**Conversations.** A tie is *used* on a day, meaning the two talk, with a chance set by its kind: p\_s for a strong tie, w\_weak × p\_s for a weak one. Each tie and day gets one draw, independent of every other tie and day. It can only be used if the two can reach each other: neither is on the stairs, and the stairs connect their day locations (§6.10). A conversation is between two people, and either may pass something to the other (§6.12). On average a person talks p\_s × (strong ties + w\_weak × weak ties) times a day: about 3.5 for an adult with 4 strong and 10 weak ties at the defaults.
+**Conversations.** A tie is *used* on a day, meaning the two talk, with a chance set by its kind: p\_s for a strong tie, w\_weak × p\_s for a weak one. Each tie and day gets one draw, independent of every other tie and day. It can only be used if the two can reach each other: neither is on the stairs, neither is in custody or detained (§6.13), and the stairs connect their day locations (§6.10). A conversation is between two people, and either may pass something to the other (§6.12). On average a person talks p\_s × (strong ties + w\_weak × weak ties) times a day: about 3.5 for an adult with 4 strong and 10 weak ties at the defaults.
 
 The draw for a tie and a day depends only on the run's seed, the day and the pair, never on who asks or in what order (a counter-based random stream, §4). Conversations are therefore not generated for the whole silo each day. A module that needs one asks whether a given tie is used today, and gets the same answer from either end. The cost then follows the people who have something to pass on, not the population: with every tie drawn every day the network took more run time than the whole baseline (T9.2).
 
@@ -551,17 +562,17 @@ And for each relic: the floor it is hidden on, and the person holding it, if any
 | screen | the view of the outside on the screen is a lie | a cleaning failure (§6.13) |
 | history | the true history: the world before the silo and the rebellions the regime erased | Flamekeepers and relics (below); the scripted event `revealHistory` |
 | silos | other silos exist | contact with other silos (§6.16) |
-| lottery | the lottery is rigged | covert lottery denial (§6.13) |
+| lottery | the lottery is rigged | the implant doctors, who see each denied win, and a former Head of IT (§6.13) |
 
-Every flag spreads in conversations. With this module alone, only history has a source; the other flags get theirs from M11 and M14, and tests seed them by hand.
+Every flag spreads in conversations. With this module alone, only history has a source; outside, screen and lottery get theirs from M11 and silos from M14. Tests seed them by hand.
 
 **Legitimacy.** L, 0–1, is how much a person believes the Pact and the leaders are right:
 
 ```latex
-L = \max\left(0,\; base - \delta \times \text{flags known}\right)
+L = \min\left(1,\; \max\left(0,\; base - \delta \times \text{flags known} + S\right)\right)
 ```
 
-Hidden flags don't count. Learning a flag lowers L by δ at once; forgetting it, or having it hidden, gives the δ back.
+S is the silo-wide lift from cleanings (§6.13); it is 0 without the control module. Hidden flags don't count. Learning a flag lowers L by δ at once; forgetting it, or having it hidden, gives the δ back.
 
 *Upbringing.* Until worker age (18, §6.5), a person's base is recomputed every 30 days, on the days the monthly steps run (§3), from Education and from the adults who raise them:
 
@@ -571,7 +582,7 @@ base = \varepsilon \times L_{edu} + (1 - \varepsilon) \times \text{mean } L \tex
 
 with base = L\_edu when none of them is alive. A newborn starts with base = L\_edu until the next recompute. At worker age the base is fixed for life, at its last recomputed value. Upbringing is slow, so a month's lag changes nothing measured; recomputing it daily cost about 3% of a run's time (T10.1). L\_edu is the legitimacy the regime teaches, in Education and on Freedom Day: its propaganda level, a policy lever (§6.15). Everyone alive on day 1 starts with base = L\_edu, so with nothing known, L = L\_edu for everyone, for ever; the rule itself never drifts. Doubt runs in families: a child whose parents know something grows up with a lower base before learning anything, and the effect shrinks by the share ε with each generation that learns nothing.
 
-Hardship is not part of L. It enters grievance, G = H × (1 − L) (§6.14), so it isn't counted twice. Later modules may add silo-wide shifts to L, such as a cleaning (§6.13) or a Pact rewrite (§6.15), and say so in their own sections.
+Hardship is not part of L. It enters grievance, G = H × (1 − L) (§6.14), so it isn't counted twice. Later modules shift L silo-wide only through S, and say so in their own sections: cleanings (§6.13), perhaps Pact rewrites (§6.15).
 
 **Telling and believing.** In a conversation (§6.11), each flag the teller knows and the listener doesn't passes to the listener, who knows it from then on as *heard*, with chance
 
@@ -617,6 +628,8 @@ Relics are not lost or destroyed in this module. The regime can find and take th
 
 **Flamekeepers.** A secret group of N\_F seats that keeps the true history alive. On day 1, N\_F adults drawn uniformly take the seats and know the history as lived. Members never forget it, and tell what they know like anyone else. Each day, each empty seat goes to an adult who knows the history, isn't a member, and talks today (§6.11) with a member over a strong tie; one is drawn uniformly from all such people. With nobody who qualifies, the seat stays empty. A member who dies leaves a seat, and so does one whose history flag is hidden by Vitamin D+; later modules may remove members too (arrests, §6.13). With no members left, the group is gone for good.
 
+*The Head of IT.* With the control module on, the Head of IT (§6.13) knows all five flags as lived, and while in office never forgets them, is never dosed, never tells anything, can't take a Flamekeeper seat and never warns the Flamekeepers. Telling and handing over a relic are offences there (§6.13), and people held by Judicial have no conversations and can't use their relics.
+
 **Step.** The beliefs step (§3 step 10.7) runs after the network has drawn the day's ties, in this order:
 
 1. newcomers get R and base = L\_edu; every 30 days, the bases of people under worker age are recomputed;
@@ -641,6 +654,125 @@ Relics are not lost or destroyed in this module. The regime can find and take th
 **Off and null.** With the module off, nothing of this exists. With it on, it changes no baseline state and draws only from its own stream, so `daily.csv` and `events.jsonl` are byte-identical to a run without it, whatever its settings; `yearly.csv` keeps its baseline columns and gains the module's. In the null setting (no Flamekeepers, no relics, no events) nobody ever knows anything and L = L\_edu for everyone.
 
 **Parameters:** taught legitimacy L\_edu, Education weight ε, legitimacy cost per flag δ, pass chance π, the two half-lives, hiding while dosed d, water dosing length D\_water, cue chance κ, relics N\_relic, relic hiding and keeping times T\_find and T\_keep, and Flamekeeper seats N\_F, in §7 (M10 done, 2026-10-31). Risk aversion R is uniform on 0–1, as in Epstein (2002); it adds no parameter.
+
+### 6.13 Regime control (draft)
+
+*Answers Q1 and Q3.* The deterrence half of the rebellion model: what the regime sees, whom it takes, and what follows. Offences and penalties come from the Pact table (§6.9); this section says how an offence is seen, how the offender is brought in and tried, and what each penalty does. It also gives the silo its Head of IT (decision D13). The module needs the beliefs module (§6.12), and through it the network and space modules: an arrest is a trip (§6.10).
+
+**State** (owned by this module; §2 is unchanged): the Head of IT and their successor; the implant doctors; the open cases; for each person, whether they are in custody or detained and until when, the Pact rules they were convicted under, and whether they are flagged; for each woman, her denied wins and the day the last one ends; the lift S.
+
+**Head of IT** (D13). The most powerful person in the silo: one IT worker who alone enters the vault, where the Algorithm tells them what the silo hides (lore reference, Season 3).
+
+- *Knowledge.* On taking office the Head learns all five flags as lived. While in office they never forget them, are never dosed (by water or a targeted dose), never tell anything in a conversation, can't take a Flamekeeper seat and never warn the Flamekeepers (§6.12). They know everything and pass on nothing. A Head who leaves office alive is an ordinary person again: what they know fades and can be told.
+- *The first Head* is chosen on day 1: the most skilled IT worker, ties to the lower ID, as for the department heads of §6.8.
+- *Successor.* The Head trains their own. A Head without a successor names their shadow (§6.5), the older of two (lower ID on a tie). A Head with no shadow takes one if they can be a master (§6.5): the youngest IT shadow (lower ID on a tie), whose master becomes the Head. The successor keeps the role after becoming a worker. It lapses if they die, retire or are arrested, and when the Head leaves office: a new Head starts without one.
+- *Leaving office:* death, retirement or arrest (sick leave keeps the post). The post is filled at the next control step: by the successor if they are a worker, otherwise by the most skilled IT worker. With no IT worker it stays empty and is retried each day.
+- *What the Head decides.* In this module, nothing yet: surveillance, raids and the Pact are scenario settings. They become the Head's levers in §6.15, and Silo 1 speaks to the Head in §6.16.
+
+**Offences.** An offence is an *act* by one person, reported by the module where it happens, under the active Pact rule that lists it; an act no active rule lists is not an offence. Acts by children under 14 (shadow age, §6.5) are not offences. With this milestone, three exist:
+
+| Offence | What counts | Reported by |
+| --- | --- | --- |
+| speakForbidden | Each *telling* (§6.12): a flag's draw at π lands for a listener who doesn't know it, and the two talk today, whether or not the listener believes it. Cued recall is not a telling | Beliefs |
+| tradeRelic | Each handover (§6.12); one act by both giver and receiver | Beliefs |
+| holdRelic | Holding is not an act: it is found only by searches (below) | — |
+
+The rest come with later modules: `organise`, `violence`, `sabotage` and `askToGoOut` with rebellion (§6.14), which decides who says "I want to go out"; `contactAttempt` with Silo 1 (§6.16). No module produces `unpermittedConception` yet, so its row has no effect.
+
+**Detection.** Each act is seen with chance
+
+```latex
+p = \min\left(1,\; \sigma \times c_{IT} \times w_{rule}\right)
+```
+
+where σ is the surveillance level (a policy lever, §6.15), c\_IT is IT's coverage today (§6.6), and w\_rule is the rule's detection weight (§6.9). The control step draws once for each act reported since the last control step, in the order they were reported. A seen act opens a *case* against the offender (for a handover, against both). With σ = 0 nothing is ever seen: the null setting.
+
+**Cases.** A case is a person and the rules they are charged under. A person has at most one open case: a detection against someone whose case is open, or who is in custody awaiting trial, adds the rule to it. Against someone serving a sentence, it opens a case that waits until they are released.
+
+**Arrests.** Each day Judicial arrests up to ⌊a × officers⌋ people, where officers are the workers of Judicial and the Sheriff who are not off work (§6.10). Open cases are taken oldest first, in the order they were opened. An arrest starts a trip (§6.10) to the *court*: the Judicial office floor nearest to where the person is, among those connected to it (lower on a tie). If the trip can't start (they are on the stairs, or no court floor is connected), the case waits and uses no capacity. From the arrest to the trial the person is *in custody*. On arrest:
+
+- their flat is searched (below);
+- a Flamekeeper loses their seat and names each other member with chance p\_name; a named member is charged with `speakForbidden`, with no detection draw, if a rule listing it is active. Named members name others when they are arrested in turn, which is how arrests can destroy the group (T10.5).
+
+**Trial.** On the day they reach the court. For each rule in the case the penalty is the first-offence one if they were never convicted under that rule, the repeat one otherwise; every rule in the case counts as convicted from then on. They serve the most severe detention among those penalties (cleaning, then mines, then prison, then none; the longer of the same kind), and every confiscation and family flag among them.
+
+**Penalties** (§6.9):
+
+- *Warning* (no detention): free at once; they walk home.
+- *Prison(days):* detained on the court floor until the trial day + days.
+- *Mines(days):* a trip to the mines floor, detained there until the trial day + days (the walk counts).
+- *Cleaning:* carried out the same day (below).
+- *Confiscate:* every relic the offender holds leaves the silo for good.
+- *FlagFamily:* everyone living in the offender's household, children included, is flagged for life (covert lottery denial, below).
+
+People in custody or detained have no conversations (§6.11) and can't use their relics; detained people are away (§6.10), so they don't work. They keep their household, department, skill and partner. On the release day they are free and start a trip home; if the stairs are broken they stay where they are, free, and try again each day. Arrests don't take officers away from work: capacity is abstract.
+
+**Searches.** A search is of one flat: each relic held by someone living there is found with chance p\_find, because relics are hidden well (§6.12). A found relic is confiscated and its holder is charged with `holdRelic`. Flats are searched on every arrest, and in *raids*: each day, with chance R\_raid / 365, Judicial raids one residential floor drawn uniformly and searches every flat on it. Relics hidden in the floors themselves, not yet found by anyone, are never found by the regime.
+
+**Cleaning.** The cleaner dies, handled as any death (§6.1: partner, orphans, job vacancy). With chance p\_fail the cleaning *fails*: the cleaner refuses, walks out of sight and never comes back, which the silo records as a death too. With v the visibility of the rule they were sentenced under (§6.9):
+
+- *Cleaned:* the silo-wide lift S (§6.12) rises by λ × v, and halves every T\_S years, so everyone's L is a little higher for a while and dissent (G = H × (1 − L), §6.14) falls. The fear a cleaning causes belongs to activation (§6.14), which reads the cleanings this module logs.
+- *Failed:* the cleaning-failure shock. Each living person aged 14 or more who is not dosed watches with chance v, and learns the outside and screen flags as lived. Nobody else learns anything directly, but the watchers tell others (§6.12). There is no lift.
+
+**Covert lottery denial** (§6.4). A couple is flagged if either partner is. A flagged couple can win the lottery as usual and believes it has, but the permit is used up with no implant removed: the year passes with no child. For 365 days from the draw she is not eligible, as with an open window, but the lottery does not count her in E (the regime knows the window is empty). After that she can enter and win again, and is denied again. Medical puts it down to infertility, so the couple learns nothing. Only the *implant doctors* know: N\_doc Medical workers who do every implant removal, so the regime keeps the secret to as few people as it can. Each denied win teaches the lottery flag, as lived, to every implant doctor not dosed that day, and they can tell others like any knower (§6.12). On day 1 the posts go to the N\_doc most skilled Medical workers; a doctor who dies, retires or is arrested leaves a post, filled at the next control step by the most skilled Medical worker not holding one. The Head of IT knows it too, but tells only once out of office. After N\_try denied wins she believes it and stops entering, never eligible again, whoever her partner is later. Draws are unchanged, so with nobody flagged the lottery runs as in the baseline.
+
+**Step.** The control step (§3 step 10.8) runs after the beliefs step, in this order:
+
+1. newcomers get their state;
+2. Head of IT: the post filled if empty, the successor named; empty implant doctor posts filled;
+3. detection of the acts reported since the last step;
+4. releases;
+5. trials of those who reached the court today, and cleanings;
+6. a raid, perhaps;
+7. arrests, with their searches and naming;
+8. each lottery win denied since the last step teaches the implant doctors;
+9. the lift decays.
+
+**Scripted events** (§5): `cleaningFailure`, a failed cleaning that everyone sees (v = 1) with no cleaner: everyone alive aged 14 or more and not dosed learns the outside and screen flags as lived. It is the shock of pattern C2 (§1.2).
+
+**Outputs** (only when the module is on):
+
+- *yearly.csv:* over the year, acts seen, arrests, trials by penalty served (warning, prison, mines, cleaning), failed cleanings, relics confiscated, raids and denied wins; at the snapshot, people in custody or detained, flagged people alive, open cases, and S.
+- *events.jsonl:* `cleaning` (person, rule, failed or not) and `headOfIT` (person, whether they were the successor).
+
+**Invariants** (§8): the Head of IT, if any, is a living IT worker who knows all five flags and holds no Flamekeeper seat; every implant doctor is a living Medical worker; everyone in custody or detained is alive and holds no seat; every open case is against a living person; relics hidden, held and taken add up to N\_relic; S ≥ 0.
+
+**Off and null.** With the module off, nothing of this exists and the lottery is fair. With it on, σ = 0, no raids and no scripted events, nobody is seen, arrested, flagged or cleaned. The only change is the Head of IT, who knows all five flags: `daily.csv` is byte-identical to a run without the module, `events.jsonl` gains only `headOfIT` lines, and the beliefs columns of `yearly.csv` differ by one knower and, through the Head's L, their children's upbringing.
+
+**Parameters** (move to §7 when M11 is done). The Pact table's weights, penalties and visibilities are in §6.9.
+
+| Parameter | Default | Basis |
+| --- | --- | --- |
+| Surveillance σ | 0.05 | Guess. A plausibility check in T12.8: about 0–2 cleanings a year on `canon.yaml` (lore reference, "years can pass between cleanings") |
+| Arrests per officer a | 0.05 a day | Guess: about 20 a day with about 400 officers, more than peacetime needs; it binds only in a rebellion |
+| Raids R\_raid | 4 a year | Guess |
+| Find chance p\_find | 0.2 per held relic and search | Guess: relics are hard to find (Adam, T10.4) |
+| Naming p\_name | 0.3 per other member | Guess |
+| Mines floor | 144 | Lore: the mines lie below Mechanical, at the bottom \[Likely\] |
+| Failed cleaning p\_fail | 0.05 | Guess; experiments script the C2 shock instead |
+| Cleaning lift λ | 0.05 × visibility | Guess |
+| Lift half-life T\_S | 1 year | Guess |
+| Implant doctors N\_doc | 2 | Show: one or two doctors do the implants |
+| Tries before giving up N\_try | 3 denied wins | Guess: "after 3–4 tries they stop" (Adam, 2026-10-31) |
+
+In the scenario file:
+
+```yaml
+control:                          # ODD §6.13; used only when `control` is in modules
+  surveillance: 0.05              # σ: chance an act is seen at full IT coverage and detection weight 1
+  arrestsPerOfficer: 0.05         # a: arrests a day per Judicial or Sheriff worker
+  raidsPerYear: 4                 # R_raid
+  findChance: 0.2                 # p_find: per held relic and search
+  nameChance: 0.3                 # p_name: an arrested Flamekeeper names each other member
+  minesFloor: 144
+  cleaningFailChance: 0.05        # p_fail
+  cleaningLift: 0.05              # λ: lift of L from a cleaning seen by all (× visibility)
+  liftHalfLifeYears: 1            # T_S
+  implantDoctors: 2               # N_doc: Medical workers who do the implants and know of the denials
+  deniedTries: 3                  # N_try: denied lottery wins before a flagged couple stops entering
+```
+
+Checked at load: σ, a, p\_find, p\_name, p\_fail and λ are in [0, 1]; R\_raid is in [0, 365]; T\_S is strictly greater than 0; N\_try is an integer ≥ 1; N\_doc is an integer ≥ 0; the mines floor is in the silo. That it is a Down Deep floor, and that Judicial has office floors, is checked when the module starts.
 
 ## 7. Parameters
 

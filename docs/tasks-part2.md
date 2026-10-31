@@ -43,7 +43,7 @@ Each one is settled in the spec task named. Decided ones point to the spec; for 
 | D10 | The Pact: prose or rules | T7.1 | **Decided 2026-10-30:** a rule table in the scenario file, no prose (ODD §6.9) |
 | D11 | Run length and seeds for part 2 | T7.1 | **Decided 2026-10-30:** 50 + 300 years; 100 seeds for calibration, 1,000 for the final experiments (ODD §1.2) |
 | D12 | Viewer technology | T16.0 | [`silosim serve`: Go's standard HTTP server with the page embedded in the binary, plus one vendored JavaScript chart library; read-only] |
-| D13 | The Head of IT as a role | T11.0 (role, succession), T13.0 (decisions), T14.0 (Silo 1's link) | [Open; raised by Adam 2026-10-31, see below] |
+| D13 | The Head of IT as a role | T11.0 (role, succession), T13.0 (decisions), T14.0 (Silo 1's link) | **Role and succession decided 2026-10-31:** one IT worker; knows all five flags, never dosed, never tells; trains their own shadow as successor, else the most skilled IT worker (ODD §6.13). Decisions (T13.0) and Silo 1's link (T14.0) still open |
 
 **D13, the Head of IT (raised by Adam, 2026-10-31).** The Head of IT is the most powerful person in the silo, not the Mayor: they know almost everything about it, and Silo 1 speaks to them, and only them, through the Algorithm in the vault on the IT floors, which nobody else can enter (lore reference, Season 3). The model has no such role yet: the baseline has a Mayor (§6.8) and an IT department, nothing more. Before it is built, the specs must settle:
 
@@ -130,16 +130,17 @@ Questions, definitions and the plumbing every later module needs. No model behav
 
 *Answers Q1 and Q3.* The deterrence half of the rebellion model: how likely being caught is, and what follows.
 
-- [ ] **T11.0 Spec: surveillance, Judicial, punishment, cleaning (ODD §6.13).** Offences and penalties come from the Pact table (ODD §6.9); this task fixes its exact YAML keys. Decision D13: the Head of IT as a role (who holds it, succession, what they know).
+- [x] **T11.0 Spec: surveillance, Judicial, punishment, cleaning (ODD §6.13).** (2026-10-31; Pact YAML keys fixed; D13 role and succession decided; denied couples blame infertility, only the implant doctors know) Offences and penalties come from the Pact table (ODD §6.9); this task fixes its exact YAML keys. Decision D13: the Head of IT as a role (who holds it, succession, what they know).
   - **Offences:** holding a relic, spreading forbidden knowledge, organising, violence, contact attempts.
   - **Detection:** a chance per offence that rises with IT coverage and the surveillance level (a policy lever).
   - **Judicial and Sheriff:** capacity from coverage; arrests are trips (M8), so a Down Deep arrest takes days.
   - **Sentences:** warning, prison, the mines (forced labour), cleaning.
   - **Covert lottery denial:** flagged people "win" the lottery but their implant stays in.
-- [ ] **T11.1 Surveillance and detection.**
-- [ ] **T11.2 Arrests, trials and sentences.** Prison and the mines take people out of work and out of contact.
-- [ ] **T11.3 Cleaning.** Sentenced cleanings and "I want to go out". A cleaning raises fear in everyone and slightly raises L when the cleaner cleans. A cleaner who refuses and walks out of sight is the **cleaning-failure shock**: everyone watching learns that the outside may be survivable, and L drops across the silo. It is also a scripted event type for experiments (pattern C2).
-  - *Done when:* the shock's effect on L and knowledge matches the spec; a normal cleaning lowers dissent for a while (test).
+- [ ] **T11.1 Pact table, Head of IT, surveillance and detection.** The `pact:` and `control:` sections; the Head of IT and successor; acts reported by beliefs (tellings, handovers) and seen at σ × c\_IT × w.
+- [ ] **T11.2 Arrests, trials and sentences.** Prison and the mines take people out of work and out of contact. Arrest capacity, trips to the court, searches and raids, confiscation, Flamekeepers naming each other.
+  - *Done when:* with arrests on, the Flamekeepers can die out (T10.5); with σ = 0 and no raids nobody is arrested.
+- [ ] **T11.3 Cleaning.** Sentenced cleanings ("I want to go out" is said under M12's rules). A cleaning slightly raises everyone's L for a while (the lift S); the fear it causes is read by activation in M12. A cleaner who refuses and walks out of sight is the **cleaning-failure shock**: everyone watching learns that the outside may be survivable and the screen lies, and L drops as they tell others. It is also a scripted event type for experiments (pattern C2).
+  - *Done when:* the shock's effect on L and knowledge matches the spec; a normal cleaning raises L, and so lowers dissent, for a while (test).
 - [ ] **T11.4 Covert lottery denial.** Flagged couples never conceive; their family lines shrink.
   - *Done when:* the share of births to flagged families falls as the spec predicts; logged as an outcome, not tuned.
 
