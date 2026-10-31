@@ -16,3 +16,8 @@ network:                  # M9, off
   weakTiesPerKind: 2
   strongTieDailyChance: 0.9
   weakTieStrength: 0.9
+
+beliefs:                  # M10, off
+  taughtLegitimacy: 0.3
+  educationWeight: 0.9
+  legitimacyCostPerFlag: 0.5

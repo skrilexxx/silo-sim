@@ -65,6 +65,9 @@ func (s *Scenario) Validate() error {
 		{"output.understaffedShare", s.Output.UnderstaffedShare},
 		{"network.weakTieStrength", s.Network.WeakTieStrength},
 		{"network.strongTieDailyChance", s.Network.StrongTieDailyChance},
+		{"beliefs.taughtLegitimacy", s.Beliefs.TaughtLegitimacy},
+		{"beliefs.educationWeight", s.Beliefs.EducationWeight},
+		{"beliefs.legitimacyCostPerFlag", s.Beliefs.LegitimacyCostPerFlag},
 	}
 	for _, u := range unit {
 		if u.v < 0 || u.v > 1 {

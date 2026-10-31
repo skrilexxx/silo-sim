@@ -105,7 +105,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
   - **risk aversion R** (a fixed trait)
 
   Rules: L moves down with knowledge and hardship and up with propaganda (Freedom Day, Education); children inherit L partly from their parents and partly from Education; knowledge spreads in contacts, faster between kin; knowledge fades, and dies with the people who held it.
-- [ ] **T10.1 Belief state and legitimacy.** Day-1 beliefs, the legitimacy rule, socialisation of children and shadows.
+- [x] **T10.1 Belief state and legitimacy.** (2026-10-31) Day-1 beliefs, the legitimacy rule, socialisation of children and shadows.
   - *Done when:* with nothing to learn, L stays steady in every zone for 200 years (no drift from the rule itself).
 - [ ] **T10.2 Information spread.** Telling and believing in daily contacts; the chance to believe falls with the listener's L.
   - *Done when:* one seeded "knower" gives an S-shaped spread curve; spread through Porters crosses zones faster than without them (test).

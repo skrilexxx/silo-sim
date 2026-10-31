@@ -563,13 +563,13 @@ L = \max\left(0,\; base - \delta \times \text{flags known}\right)
 
 Hidden flags don't count. Learning a flag lowers L by δ at once; forgetting it, or having it hidden, gives the δ back.
 
-*Upbringing.* Until worker age (18, §6.5), a person's base is recomputed every day from Education and from the adults who raise them:
+*Upbringing.* Until worker age (18, §6.5), a person's base is recomputed every 30 days, on the days the monthly steps run (§3), from Education and from the adults who raise them:
 
 ```latex
 base = \varepsilon \times L_{edu} + (1 - \varepsilon) \times \text{mean } L \text{ of their living parents and, for a shadow, their master}
 ```
 
-with base = L\_edu when none of them is alive. At worker age the base is fixed for life. L\_edu is the legitimacy the regime teaches, in Education and on Freedom Day: its propaganda level, a policy lever (§6.15). Everyone alive on day 1 starts with base = L\_edu, so with nothing known, L = L\_edu for everyone, for ever; the rule itself never drifts. Doubt runs in families: a child whose parents know something grows up with a lower base before learning anything, and the effect shrinks by the share ε with each generation that learns nothing.
+with base = L\_edu when none of them is alive. A newborn starts with base = L\_edu until the next recompute. At worker age the base is fixed for life, at its last recomputed value. Upbringing is slow, so a month's lag changes nothing measured; recomputing it daily cost about 3% of a run's time (T10.1). L\_edu is the legitimacy the regime teaches, in Education and on Freedom Day: its propaganda level, a policy lever (§6.15). Everyone alive on day 1 starts with base = L\_edu, so with nothing known, L = L\_edu for everyone, for ever; the rule itself never drifts. Doubt runs in families: a child whose parents know something grows up with a lower base before learning anything, and the effect shrinks by the share ε with each generation that learns nothing.
 
 Hardship is not part of L. It enters grievance, G = H × (1 − L) (§6.14), so it isn't counted twice. Later modules may add silo-wide shifts to L, such as a cleaning (§6.13) or a Pact rewrite (§6.15), and say so in their own sections.
 
@@ -609,7 +609,7 @@ This is how Juliette's memory came back (S3).
 
 **Step.** The beliefs step (§3 step 10.7) runs after the network has drawn the day's ties, in this order:
 
-1. newcomers get R and a base; the bases of people under worker age are recomputed, and fixed on the day they reach it;
+1. newcomers get R and base = L\_edu; every 30 days, the bases of people under worker age are recomputed;
 2. relics held by people who died today pass on;
 3. forgetting, then dosing hides flags;
 4. hidden relics are found, and relics work on their holders;

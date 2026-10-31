@@ -30,7 +30,8 @@ import (
 //
 // Part 2 (draft): every living person is on a real floor, and workers on
 // their department's floors (space, ODD §6.10); weak ties are symmetric
-// and between the living (network, ODD §6.11).
+// and between the living (network, ODD §6.11); base, L and R lie in 0–1
+// (beliefs, ODD §6.12).
 func Check(w *world.World, cfg *config.Scenario) error {
 	for _, check := range []func(*world.World) error{countsAgree, oneHousehold, homeCapacity, partnerships, unitRanges, foodConserved} {
 		if err := check(w); err != nil {
@@ -46,7 +47,34 @@ func Check(w *world.World, cfg *config.Scenario) error {
 	if err := space(w); err != nil {
 		return err
 	}
-	return network(w, cfg.Network.WeakTiesPerKind)
+	if err := network(w, cfg.Network.WeakTiesPerKind); err != nil {
+		return err
+	}
+	return beliefs(w)
+}
+
+// ODD §6.12 (draft): every living person's base, L and risk aversion lie
+// in 0–1, and they know only the five flags.
+func beliefs(w *world.World) error {
+	b := w.Beliefs
+	if b == nil {
+		return nil
+	}
+	for _, id := range w.Alive {
+		if x := b.Base[id]; x < 0 || x > 1 {
+			return fmt.Errorf("person %d: base legitimacy %v outside 0–1", id, x)
+		}
+		if x := b.L(id); x < 0 || x > 1 {
+			return fmt.Errorf("person %d: legitimacy %v outside 0–1", id, x)
+		}
+		if x := b.Risk[id]; x < 0 || x > 1 {
+			return fmt.Errorf("person %d: risk aversion %v outside 0–1", id, x)
+		}
+		if k := b.Known[id]; k >= 1<<world.NumFlags {
+			return fmt.Errorf("person %d: knows flags %b, beyond the %d facts", id, k, world.NumFlags)
+		}
+	}
+	return nil
 }
 
 // ODD §6.11 (draft): every weak tie of a living person joins two different

@@ -48,10 +48,11 @@ type Writer struct {
 	w                 *world.World
 	warmupDays        world.Tick // 0 if warm-up is logged too
 	understaffedShare float64
-	born0             int    // people on day 0; later ones were born
-	under             []bool // per department: below understaffedShare of target
-	ages              []int  // reused, in days
-	degrees           []int  // reused: ties per living person (network)
+	born0             int        // people on day 0; later ones were born
+	under             []bool     // per department: below understaffedShare of target
+	ages              []int      // reused, in days
+	degrees           []int      // reused: ties per living person (network)
+	adultAge          world.Tick // worker age in days (beliefs columns)
 	ties              []world.Tie
 
 	// Counts at the previous row.
@@ -103,6 +104,7 @@ func (o *Writer) Requires() []string { return nil }
 func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error {
 	o.w, o.born0 = w, len(w.People)
 	o.understaffedShare = cfg.Output.UnderstaffedShare
+	o.adultAge = world.Tick(cfg.Work.WorkerAge * engine.DaysPerYear)
 	o.under = make([]bool, len(w.Depts))
 	if !cfg.Output.LogWarmup {
 		o.warmupDays = world.Tick(cfg.WarmupYears * engine.DaysPerYear)
@@ -137,6 +139,9 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 			name := k.String()
 			h = append(h, ",talks"+strings.ToUpper(name[:1])+name[1:]...)
 		}
+	}
+	if w.Beliefs != nil {
+		h = append(h, ",meanL,meanLUpTop,meanLMids,meanLDownDeep"...)
 	}
 	h = append(h, '\n')
 	if _, err := o.yearly.Write(h); err != nil {
@@ -373,6 +378,9 @@ func (o *Writer) logYearly(w *world.World, _ *rng.Stream) error {
 	if w.Network != nil {
 		b = o.appendTies(w, b)
 	}
+	if w.Beliefs != nil {
+		b = o.appendBeliefs(w, b)
+	}
 	o.row = append(b, '\n')
 	_, err := o.yearly.Write(o.row)
 	return err
@@ -419,6 +427,31 @@ func (o *Writer) appendTies(w *world.World, b []byte) []byte {
 	}
 	for _, x := range talks {
 		b = appendF(b, x, 1)
+	}
+	return b
+}
+
+// appendBeliefs writes the beliefs columns (ODD §6.12, Outputs): the mean
+// L of adults, overall and by the zone of their home (0 with no adults).
+func (o *Writer) appendBeliefs(w *world.World, b []byte) []byte {
+	var sum [world.NumZones + 1]float64 // the last one is everyone
+	var n [world.NumZones + 1]int
+	for _, id := range w.Alive {
+		if w.Day-w.People[id].BirthDay < o.adultAge {
+			continue
+		}
+		l, z := w.Beliefs.L(id), zoneOf(w, id)
+		sum[z] += l
+		n[z]++
+		sum[world.NumZones] += l
+		n[world.NumZones]++
+	}
+	for _, z := range [...]int{world.NumZones, int(world.UpTop), int(world.Mids), int(world.DownDeep)} {
+		mean := 0.0
+		if n[z] > 0 {
+			mean = sum[z] / float64(n[z])
+		}
+		b = appendF(b, mean, 4)
 	}
 	return b
 }

@@ -193,6 +193,7 @@ type World struct {
 	// (docs/architecture.md, Part-2 state).
 	Space   *Space
 	Network *Network
+	Beliefs *Beliefs
 }
 
 // Counts are running totals since day 0 that no state variable holds.

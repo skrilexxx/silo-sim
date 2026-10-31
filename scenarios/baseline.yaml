@@ -148,6 +148,11 @@ network:                          # ODD §6.11 (part 2, draft); used only when `
   strongTieDailyChance: 0.5       # p_s: chance a strong tie is used on a day; a weak one w_weak × p_s; guess
   weakTieStrength: 0.3            # w_weak: a weak tie is used w_weak times as often as a strong one; guess
 
+beliefs:                          # ODD §6.12 (part 2, draft); used only when `beliefs` is in modules
+  taughtLegitimacy: 0.8           # L_edu: the legitimacy Education teaches; everyone's base on day 1; guess
+  educationWeight: 0.5            # ε: Education's share of a young person's base, the rest from parents (and master); guess
+  legitimacyCostPerFlag: 0.15     # δ: legitimacy lost per known flag; guess
+
 governance:                       # ODD §6.8
   mode: appointment               # or: election
   term: 5y                        # or: life

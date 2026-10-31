@@ -345,3 +345,38 @@ func TestNetworkNullSetting(t *testing.T) {
 	}
 	t.Logf("year 20: %s", netRows[len(netRows)-1][len(baseRows[len(baseRows)-1])+1:])
 }
+
+// ODD §6.12 / T10.1: the beliefs module on changes nothing in daily.csv or
+// events.jsonl, and with nothing to learn, legitimacy stays at the taught
+// level in every zone for 200 years: the rule itself never drifts.
+func TestBeliefsSteadyWithNothingToLearn(t *testing.T) {
+	golden := loadInto(t, goldenScenario)
+	run := func(extra ...string) string {
+		cfg := loadInto(t, "../../scenarios/baseline.yaml")
+		// A small silo that stays small: the lottery aims at its own size.
+		cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, 0, 200, golden.Population
+		cfg.Lottery.TargetPopulation = cfg.Population
+		cfg.Output.InvariantEvery = 30
+		cfg.Modules = append(cfg.Modules, extra...)
+		return mustSimulate(t, cfg)
+	}
+	base, on := run(), run("space", "network", "beliefs")
+	for _, f := range []string{"daily.csv", "events.jsonl"} {
+		if !bytes.Equal(readFile(t, filepath.Join(base, f)), readFile(t, filepath.Join(on, f))) {
+			t.Errorf("the beliefs module changed %s", f)
+		}
+	}
+	rows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(on, "yearly.csv")))), "\n")
+	if !strings.HasSuffix(rows[0], ",meanL,meanLUpTop,meanLMids,meanLDownDeep") || len(rows) != 201 {
+		t.Fatalf("%d rows, header %q", len(rows), rows[0])
+	}
+	want := strconv.FormatFloat(loadInto(t, "../../scenarios/baseline.yaml").Beliefs.TaughtLegitimacy, 'f', 4, 64)
+	for i, row := range rows[1:] {
+		cols := strings.Split(row, ",")
+		for _, c := range cols[len(cols)-4:] {
+			if c != want {
+				t.Fatalf("year %d: mean L %v, want %s everywhere", i+1, cols[len(cols)-4:], want)
+			}
+		}
+	}
+}

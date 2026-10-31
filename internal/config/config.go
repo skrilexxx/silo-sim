@@ -39,6 +39,7 @@ type Scenario struct {
 	Governance  Governance `yaml:"governance"`
 	Space       Space      `yaml:"space"`
 	Network     Network    `yaml:"network"`
+	Beliefs     Beliefs    `yaml:"beliefs"`
 	Events      []Event    `yaml:"events,omitempty"`
 }
 
@@ -201,6 +202,13 @@ type Network struct {
 	WeakTiesPerKind      int     `yaml:"weakTiesPerKind"`
 	StrongTieDailyChance float64 `yaml:"strongTieDailyChance"`
 	WeakTieStrength      float64 `yaml:"weakTieStrength"`
+}
+
+// Beliefs is the beliefs, knowledge and memory module (ODD §6.12).
+type Beliefs struct {
+	TaughtLegitimacy      float64 `yaml:"taughtLegitimacy"`
+	EducationWeight       float64 `yaml:"educationWeight"`
+	LegitimacyCostPerFlag float64 `yaml:"legitimacyCostPerFlag"`
 }
 
 // HasOffices reports whether a department works on office floors: every

@@ -20,6 +20,7 @@ const (
 	PhaseLifeStages   Phase = 900
 	PhasePartnering   Phase = 1000
 	PhaseNetwork      Phase = 1050 // part 2: ties and conversations (ODD §6.11)
+	PhaseBeliefs      Phase = 1070 // part 2: legitimacy, knowledge and memory (ODD §6.12)
 	PhaseLogDaily     Phase = 1100
 	PhaseLottery      Phase = 1200
 	PhaseHousing      Phase = 1300
@@ -31,9 +32,9 @@ const (
 
 // ODD §2 Scales: a year is 365 ticks; monthly steps run every 30 ticks.
 const (
-	daily       = 1
-	everyMonth  = 30
-	DaysPerYear = 365
+	daily        = 1
+	DaysPerMonth = 30
+	DaysPerYear  = 365
 )
 
 // schedule lists the phases in the order they run, with each one's name,
@@ -54,10 +55,11 @@ var schedule = []phaseInfo{
 	{PhaseLifeStages, "life stages", daily, false},
 	{PhasePartnering, "partnering", daily, false},
 	{PhaseNetwork, "network", daily, false},
+	{PhaseBeliefs, "beliefs", daily, false},
 	{PhaseLogDaily, "logging", daily, false},
-	{PhaseLottery, "lottery", everyMonth, false},
-	{PhaseHousing, "housing", everyMonth, false},
-	{PhaseStaffing, "staffing", everyMonth, false},
+	{PhaseLottery, "lottery", DaysPerMonth, false},
+	{PhaseHousing, "housing", DaysPerMonth, false},
+	{PhaseStaffing, "staffing", DaysPerMonth, false},
 	{PhaseSnapshot, "snapshot", DaysPerYear, true},
 	{PhaseGovernance, "governance", DaysPerYear, false},
 	{PhaseLocation, "location", daily, false},
