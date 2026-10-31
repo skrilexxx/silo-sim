@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -406,30 +407,61 @@ func TestBeliefsSteadyWithNothingToLearn(t *testing.T) {
 	}
 }
 
-// T11.1: 200 years of a 1,000-person silo with the control module on and
-// invariants checked every 30 days. There is always a Head of IT, acts
-// are seen, and with no arrests yet cases close only when people die.
-func TestControlDetects(t *testing.T) {
-	on := runSmallCentury(t, false, "space", "network", "beliefs", "control")
-	rows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(on, "yearly.csv")))), "\n")
-	if !strings.HasSuffix(rows[0], ",flamekeepers,actsSeen,openCases") {
-		t.Fatalf("header %q", rows[0])
+// column returns the named column of yearly.csv, one value per year.
+func column(t *testing.T, dir, name string) []int {
+	t.Helper()
+	rows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(dir, "yearly.csv")))), "\n")
+	i := slices.Index(strings.Split(rows[0], ","), name)
+	if i < 0 {
+		t.Fatalf("no column %s in %q", name, rows[0])
 	}
-	seen, open := 0, 0
+	var out []int
 	for _, row := range rows[1:] {
-		cols := strings.Split(row, ",")
-		seen, open = seen+atoi(t, cols[len(cols)-2]), atoi(t, cols[len(cols)-1])
+		out = append(out, atoi(t, strings.Split(row, ",")[i]))
 	}
+	return out
+}
+
+func sum(xs []int) int {
+	n := 0
+	for _, x := range xs {
+		n += x
+	}
+	return n
+}
+
+// T11.1–T11.2: 200 years of a 1,000-person silo at the canon settings,
+// with the control module on and invariants checked every 30 days. There
+// is always a Head of IT; acts are seen, people arrested and tried. T11.2
+// done-when: with arrests on, the Flamekeepers can die out; here they do.
+func TestControlRuns(t *testing.T) {
+	on := runSmallCentury(t, false, "space", "network", "beliefs", "control")
 	heads := strings.Count(string(readFile(t, filepath.Join(on, "events.jsonl"))), `"type":"headOfIT"`)
-	t.Logf("200 years: %d acts seen, %d cases open at the end, %d Heads of IT", seen, open, heads)
-	if seen == 0 || open == 0 || heads < 2 {
-		t.Errorf("%d acts seen, %d open cases, %d Heads of IT; want some of each", seen, open, heads)
+	keepers := column(t, on, "flamekeepers")
+	gone := slices.Index(keepers, 0)
+	t.Logf("200 years: %d acts seen, %d arrests, %d warnings, %d prison, %d mines, %d relics taken, %d raids, %d Heads of IT",
+		sum(column(t, on, "actsSeen")), sum(column(t, on, "arrests")), sum(column(t, on, "warnings")), sum(column(t, on, "prison")),
+		sum(column(t, on, "mines")), sum(column(t, on, "relicsTaken")), sum(column(t, on, "raids")), heads)
+	t.Logf("Flamekeepers every 10 years: %v; gone in year %d", everyNth(keepers, 10), gone+1)
+	if sum(column(t, on, "arrests")) == 0 || heads < 2 {
+		t.Errorf("no arrests or fewer than 2 Heads of IT")
+	}
+	if gone < 0 {
+		t.Error("the Flamekeepers survived 200 years of arrests")
 	}
 }
 
-// ODD §6.13, Off and null: with σ = 0 and no raids nobody is ever
-// charged. The files are not byte-identical to a run without the module:
-// the Head of IT taking a shadow shifts the work module's draws.
+func everyNth(xs []int, n int) []int {
+	var out []int
+	for i := n - 1; i < len(xs); i += n {
+		out = append(out, xs[i])
+	}
+	return out
+}
+
+// ODD §6.13, Off and null: with σ = 0 and no raids nobody is charged or
+// arrested. The files are not byte-identical to a run without the
+// module: the Head of IT taking a shadow shifts the work module's draws.
 func TestControlNull(t *testing.T) {
 	golden := loadInto(t, goldenScenario)
 	cfg := loadInto(t, "../../scenarios/baseline.yaml")
@@ -438,10 +470,10 @@ func TestControlNull(t *testing.T) {
 	cfg.Control.Surveillance, cfg.Control.RaidsPerYear = 0, 0
 	cfg.Output.InvariantEvery = 30
 	cfg.Modules = append(cfg.Modules, "space", "network", "beliefs", "control")
-	rows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(mustSimulate(t, cfg), "yearly.csv")))), "\n")
-	for i, row := range rows[1:] {
-		if !strings.HasSuffix(row, ",0,0") {
-			t.Fatalf("year %d: %q, want no acts seen and no cases", i+1, row)
+	dir := mustSimulate(t, cfg)
+	for _, name := range []string{"actsSeen", "arrests", "relicsTaken", "raids", "held", "flagged", "openCases"} {
+		if n := sum(column(t, dir, name)); n != 0 {
+			t.Errorf("%s: %d, want 0", name, n)
 		}
 	}
 }

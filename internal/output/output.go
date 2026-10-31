@@ -57,8 +57,8 @@ type Writer struct {
 
 	// Counts at the previous row.
 	births, deaths, permits int
-	zoneMoves               int // at the previous yearly row
-	seen                    int // acts seen (control), at the previous yearly row
+	zoneMoves               int         // at the previous yearly row
+	tally                   world.Tally // control, at the previous yearly row
 }
 
 // ODD §8: the age pyramid uses 5-year bands, the last open-ended.
@@ -150,7 +150,7 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 		h = append(h, ",hiddenAny,dosed,relicsHidden,relicsHeld,flamekeepers"...)
 	}
 	if w.Control != nil {
-		h = append(h, ",actsSeen,openCases"...)
+		h = append(h, ",actsSeen,arrests,warnings,prison,mines,relicsTaken,raids,held,flagged,openCases"...)
 	}
 	h = append(h, '\n')
 	if _, err := o.yearly.Write(h); err != nil {
@@ -390,12 +390,8 @@ func (o *Writer) logYearly(w *world.World, _ *rng.Stream) error {
 	if w.Beliefs != nil {
 		b = o.appendBeliefs(w, b)
 	}
-	if c := w.Control; c != nil { // ODD §6.13, Outputs: acts seen over the year, open cases now
-		b = append(b, ',')
-		b = strconv.AppendInt(b, int64(c.Seen-o.seen), 10)
-		o.seen = c.Seen
-		b = append(b, ',')
-		b = strconv.AppendInt(b, int64(len(c.Cases)), 10)
+	if w.Control != nil {
+		b = o.appendControl(w, b)
 	}
 	o.row = append(b, '\n')
 	_, err := o.yearly.Write(o.row)
@@ -505,6 +501,35 @@ func (o *Writer) appendBeliefs(w *world.World, b []byte) []byte {
 	b = strconv.AppendInt(b, int64(held), 10)
 	b = append(b, ',')
 	return strconv.AppendInt(b, int64(len(w.Beliefs.Members)), 10)
+}
+
+// appendControl writes the control columns (ODD §6.13, Outputs): over
+// the year, acts seen, arrests, trials by the penalty served (warning,
+// prison, mines), relics confiscated and raids; now, people held by
+// Judicial, flagged people alive and open cases not yet arrested.
+func (o *Writer) appendControl(w *world.World, b []byte) []byte {
+	c := w.Control
+	t, p := c.Tally, o.tally
+	for _, n := range []int{t.Seen - p.Seen, t.Arrests - p.Arrests, t.Warnings - p.Warnings, t.Prisons - p.Prisons,
+		t.Mines - p.Mines, t.Taken - p.Taken, t.Raids - p.Raids} {
+		b = append(b, ',')
+		b = strconv.AppendInt(b, int64(n), 10)
+	}
+	o.tally = t
+	held, flagged := 0, 0
+	for _, id := range w.Alive {
+		if c.Held(id) {
+			held++
+		}
+		if c.Flagged[id] {
+			flagged++
+		}
+	}
+	for _, n := range []int{held, flagged, len(c.Cases)} {
+		b = append(b, ',')
+		b = strconv.AppendInt(b, int64(n), 10)
+	}
+	return b
 }
 
 // checkDepartments logs a department whose workers fall below

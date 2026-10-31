@@ -261,7 +261,7 @@ func (m *Module) relics(w *world.World, r *rng.Stream) {
 // as lived with chance κ.
 func (m *Module) cueByRelic(w *world.World, r *rng.Stream, id world.PersonID) {
 	b := w.Beliefs
-	if b.Dosed(w, id) {
+	if b.Dosed(w, id) || w.Control.Held(id) { // ODD §6.13: the relic is at home
 		return
 	}
 	m.fl = flagsOf(b.Hidden[id], m.fl[:0])

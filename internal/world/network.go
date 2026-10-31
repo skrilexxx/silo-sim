@@ -90,8 +90,12 @@ func (n *Network) Forget(w *World, touched []PersonID, buf []Tie) {
 }
 
 // Reachable reports whether two people can talk today (ODD §6.11):
-// neither is on the stairs and the stairs connect their day locations.
+// neither is on the stairs or held by Judicial (ODD §6.13), and the stairs
+// connect their day locations.
 func (n *Network) Reachable(w *World, a, b PersonID) bool {
+	if w.Control.Held(a) || w.Control.Held(b) { // ODD §6.13: held people talk with nobody
+		return false
+	}
 	fa, fb := w.Space.Where(w, a), w.Space.Where(w, b)
 	return fa != 0 && fb != 0 && n.Part[fa-1] == n.Part[fb-1]
 }

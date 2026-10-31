@@ -208,9 +208,12 @@ func TestTripFromTopToBottom(t *testing.T) {
 		t.Errorf("after arriving: away %d, off work %v; want away on 144", s.Away[0], s.OffWork[0])
 	}
 
-	// Home again: one more 2-day trip ends being away.
+	// Home again: setting off ends being away, and the 2-day trip ends home.
 	if err := s.StartTrip(0, w.Day, 1); err != nil {
 		t.Fatal(err)
+	}
+	if s.Away[0] != 0 {
+		t.Errorf("on the stairs, still away on %d", s.Away[0])
 	}
 	endDay(t, w, m, r)
 	endDay(t, w, m, r)

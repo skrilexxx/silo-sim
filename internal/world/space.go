@@ -82,7 +82,7 @@ func (s *Space) StartTrip(id PersonID, today Tick, to int) error {
 		return fmt.Errorf("no way from floor %d to %d: the stairs are broken", from, to)
 	}
 	s.From[id], s.Dest[id], s.Arrive[id] = from, to, today+Tick(s.TripDays(from, to))
-	s.Location[id], s.OffWork[id] = 0, true
+	s.Location[id], s.OffWork[id], s.Away[id] = 0, true, 0 // a new trip ends being away (ODD §6.10)
 	s.Travelling++
 	return nil
 }

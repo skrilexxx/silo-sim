@@ -489,7 +489,7 @@ With a full descent of H\_descent = 12 hours of walking and H\_walk = 8 walking 
 - A trip can start only between connected floors, and only for a person who is not already on one. Otherwise it is refused, and the module that asked decides what that means.
 - The traveller is on the stairs from the departure day until the arrival day, departure + days, and is on the destination floor from the arrival day on (placed there by the location step the evening before). While on the stairs they don't work, as if stranded.
 - If a segment on the route breaks during the trip, the traveller stops on the floor next to the break, on the side they left from, and arrives there on the planned day. Where on the route they were when it broke is not tracked.
-- After arriving, the person is *away*: their day location is the floor they reached, and they don't work, until a module sends them on another trip. A trip back to the home floor ends being away.
+- After arriving, the person is *away*: their day location is the floor they reached, and they don't work, until a module sends them on another trip; setting off ends being away. A trip back to the home floor ends being away, except for someone held by Judicial (§6.13), who stays away wherever they are held.
 - A death ends the trip.
 
 **State** (owned by this module; §2 is unchanged): the 143 segment states; for each person, their day location, whether they are stranded, and their trip or away floor. Home and work floors are not stored, because they follow from the household and the department.
@@ -700,7 +700,7 @@ where σ is the surveillance level (a policy lever, §6.15), c\_IT is IT's cover
 
 - *Warning* (no detention): free at once; they walk home.
 - *Prison(days):* detained on the court floor until the trial day + days.
-- *Mines(days):* a trip to the mines floor, detained there until the trial day + days (the walk counts).
+- *Mines(days):* a trip to the mines floor, detained there until the trial day + days (the walk counts). If the stairs to the mines are broken, the sentence is served in the court's prison.
 - *Cleaning:* carried out the same day (below).
 - *Confiscate:* every relic the offender holds leaves the silo for good.
 - *FlagFamily:* everyone living in the offender's household, children included, is flagged for life (covert lottery denial, below).

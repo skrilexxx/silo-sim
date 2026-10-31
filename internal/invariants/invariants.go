@@ -59,7 +59,9 @@ func Check(w *world.World, cfg *config.Scenario) error {
 // ODD §6.13 (draft): the Head of IT, if any, is a living IT worker (on
 // sick leave or not) who knows all five flags and holds no Flamekeeper
 // seat; the successor is alive; every open case is against a living
-// person, listed once, with charges only under rules of the Pact.
+// person not in custody, with charges only under rules of the Pact; the
+// people in custody are charged; everyone held is alive and holds no
+// seat, and a detention has a last day.
 func control(w *world.World, rules int) error {
 	c := w.Control
 	if c == nil {
@@ -78,21 +80,31 @@ func control(w *world.World, rules int) error {
 	if s := c.Successor; s != world.None && !w.People[s].Alive {
 		return fmt.Errorf("day %d: successor %d is dead", w.Day, s)
 	}
-	open := 0
-	for id, ch := range c.Charges {
+	charged := 0
+	for i, ch := range c.Charges {
+		id := world.PersonID(i)
 		if ch>>rules != 0 {
 			return fmt.Errorf("day %d: person %d charged under a rule beyond the Pact's %d", w.Day, id, rules)
 		}
-		if ch != 0 {
-			open++
+		if ch != 0 && c.Hold[id] != world.Custody {
+			charged++
+		}
+		if c.Hold[id] == world.Free {
+			continue
+		}
+		if !w.People[id].Alive || w.Beliefs.IsMember[id] {
+			return fmt.Errorf("day %d: %d held by Judicial, but dead or a Flamekeeper", w.Day, id)
+		}
+		if c.Hold[id] == world.Custody && ch == 0 || c.Hold[id] != world.Custody && c.Until[id] == 0 {
+			return fmt.Errorf("day %d: %d in custody with no charge, or detained with no last day", w.Day, id)
 		}
 	}
-	if open != len(c.Cases) {
-		return fmt.Errorf("day %d: %d people charged, %d open cases", w.Day, open, len(c.Cases))
+	if charged != len(c.Cases) {
+		return fmt.Errorf("day %d: %d people charged and not in custody, %d open cases", w.Day, charged, len(c.Cases))
 	}
 	for _, id := range c.Cases {
-		if c.Charges[id] == 0 || !w.People[id].Alive {
-			return fmt.Errorf("day %d: open case of %d, who is dead or charged with nothing", w.Day, id)
+		if c.Charges[id] == 0 || !w.People[id].Alive || c.Hold[id] == world.Custody {
+			return fmt.Errorf("day %d: open case of %d, who is dead, in custody or charged with nothing", w.Day, id)
 		}
 	}
 	return nil
@@ -108,8 +120,12 @@ func beliefs(w *world.World, relics int) error {
 	if b == nil {
 		return nil
 	}
-	if len(b.Relics) != relics {
-		return fmt.Errorf("%d relics, want %d", len(b.Relics), relics)
+	taken := 0
+	if w.Control != nil {
+		taken = w.Control.Tally.Taken
+	}
+	if len(b.Relics)+taken != relics { // ODD §6.13: confiscated relics leave the silo
+		return fmt.Errorf("%d relics and %d taken, want %d", len(b.Relics), taken, relics)
 	}
 	for _, id := range b.Members {
 		if !w.People[id].Alive || !b.IsMember[id] || !b.Known[id].Has(world.FlagHistory) {

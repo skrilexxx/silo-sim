@@ -13,8 +13,11 @@ import (
 
 const year = engine.DaysPerYear
 
-// tiny is a one-floor world with departments general, it and medical; the
-// beliefs state is sized to the people added, and nothing else runs.
+// tiny is a four-floor world: homes on floors 1 and 3, the court on
+// floor 2, the mines on floor 4. Its departments are general, it, medical,
+// judicial and sheriff. The beliefs and space states are sized to the
+// people added; nothing else runs, and walk stands in for the location
+// step.
 type tiny struct {
 	t   *testing.T
 	cfg *config.Scenario
@@ -24,16 +27,23 @@ type tiny struct {
 }
 
 func newTiny(t *testing.T) *tiny {
-	w := &world.World{Day: 100 * year, Floors: []world.Floor{{Number: 1, Homes: 99}},
-		Depts: []world.Department{{Name: "general"}, {Name: "it", Coverage: 1}, {Name: "medical"}}}
+	w := &world.World{Day: 100 * year,
+		Floors: []world.Floor{{Number: 1, Homes: 99, Zone: world.UpTop}, {Number: 2, Zone: world.UpTop}, {Number: 3, Homes: 99, Zone: world.Mids},
+			{Number: 4, Zone: world.DownDeep, Function: world.Mechanical}},
+		Depts: []world.Department{{Name: "general"}, {Name: "it", Coverage: 1}, {Name: "medical"}, {Name: "judicial", Headcount: 100}, {Name: "sheriff"}},
+		Space: &world.Space{Broken: make([]bool, 3), DeptFloors: [][]int{nil, nil, nil, {2}, nil}, DescentHours: 3, WalkHours: 8}}
 	r, _ := rng.New(1, "control")
 	cfg := &config.Scenario{}
 	cfg.Work.ShadowAge, cfg.Work.MasterMinSkill = 14, 0.5
-	cfg.Control.Surveillance = 1
+	cfg.Control.Surveillance, cfg.Control.ArrestsPerOfficer, cfg.Control.MinesFloor = 1, 1, 4
+	cfg.Control.FindChance, cfg.Control.NameChance = 1, 1
 	cfg.Pact = []config.Rule{
-		{ID: "noRelics", Active: true, Offences: []string{"holdRelic", "tradeRelic"}, Detection: 1},
-		{ID: "noForbiddenTalk", Active: true, Offences: []string{"speakForbidden"}, Detection: 0.5},
+		{ID: "noRelics", Active: true, Offences: []string{"holdRelic", "tradeRelic"}, Detection: 1,
+			First: config.Penalty{Confiscate: true, Prison: 90}, Repeat: &config.Penalty{Confiscate: true, Prison: 365}},
+		{ID: "noForbiddenTalk", Active: true, Offences: []string{"speakForbidden"}, Detection: 1,
+			First: config.Penalty{FlagFamily: true}, Repeat: &config.Penalty{Prison: 180, FlagFamily: true}},
 		{ID: "noOrganising", Active: false, Offences: []string{"organise"}, Detection: 1},
+		{ID: "noViolence", Active: true, Offences: []string{"violence"}, Detection: 1, First: config.Penalty{Mines: 730}},
 	}
 	return &tiny{t: t, cfg: cfg, w: w, m: New(), r: r}
 }
@@ -51,8 +61,9 @@ func (s *tiny) add(ageYears int, stage world.Stage, dept int, skill float64) wor
 }
 
 const (
-	general = 0
-	it      = 1
+	general  = 0
+	it       = 1
+	judicial = 3
 )
 
 // kill marks a person dead and takes them off the living list, as the
@@ -67,16 +78,55 @@ func (s *tiny) start() {
 	n := len(s.w.People)
 	s.w.Beliefs = &world.Beliefs{Base: make([]float64, n), Known: make([]world.Flags, n), Lived: make([]world.Flags, n),
 		Hidden: make([]world.Flags, n), DosedUntil: make([]world.Tick, n), IsMember: make([]bool, n), Water: world.None}
+	sp := s.w.Space
+	sp.Location, sp.From, sp.Dest, sp.Away = make([]int, n), make([]int, n), make([]int, n), make([]int, n)
+	sp.Arrive, sp.OffWork = make([]world.Tick, n), make([]bool, n)
+	for id := range n {
+		sp.Location[id] = s.w.Households[s.w.People[id].Household].Floor
+	}
 	if err := s.m.Init(s.w, s.cfg, s.r); err != nil {
 		s.t.Fatal(err)
 	}
 }
 
+// step runs a day: the control step, then walk.
 func (s *tiny) step() {
 	s.t.Helper()
 	s.w.Day++
 	if err := s.m.step(s.w, s.r); err != nil {
 		s.t.Fatal(err)
+	}
+	s.walk()
+}
+
+// walk does what the location step does with trips (ODD §6.10): a trip
+// due tomorrow ends; arriving at home ends being away, except for someone
+// held; anyone else away stays where they are.
+func (s *tiny) walk() {
+	sp, c := s.w.Space, s.w.Control
+	for _, id := range s.w.Alive {
+		home := s.w.Households[s.w.People[id].Household].Floor
+		switch {
+		case sp.Dest[id] != 0 && sp.Arrive[id] > s.w.Day+1:
+			sp.Location[id] = 0
+		case sp.Dest[id] != 0:
+			sp.Away[id], sp.Dest[id] = sp.Dest[id], 0
+			if sp.Away[id] == home && !c.Held(id) {
+				sp.Away[id] = 0
+			}
+			sp.Location[id] = sp.Away[id]
+			if sp.Away[id] == 0 {
+				sp.Location[id] = home
+			}
+		}
+	}
+}
+
+// days runs n days.
+func (s *tiny) days(n int) {
+	s.t.Helper()
+	for range n {
+		s.step()
 	}
 }
 
@@ -221,7 +271,7 @@ func TestSuccession(t *testing.T) {
 // × the rule's weight). Here 0.5 × 0.8 × 0.5 = 0.2, over 10,000 acts.
 func TestDetectionRate(t *testing.T) {
 	s := newTiny(t)
-	s.cfg.Control.Surveillance = 0.5
+	s.cfg.Control.Surveillance, s.cfg.Pact[1].Detection = 0.5, 0.5
 	var ids []world.PersonID
 	for range 100 {
 		ids = append(ids, s.add(30, world.Worker, general, 0.5))
@@ -235,10 +285,10 @@ func TestDetectionRate(t *testing.T) {
 	s.step()
 	p := 0.2
 	sd := math.Sqrt(n * p * (1 - p))
-	if got := float64(s.w.Control.Seen); math.Abs(got-n*p) > 4*sd {
+	if got := float64(s.w.Control.Tally.Seen); math.Abs(got-n*p) > 4*sd {
 		t.Errorf("%v of %d acts seen, want %v ± %.0f", got, n, n*p, 4*sd)
 	}
-	t.Logf("%d of %d acts seen (want about %v)", s.w.Control.Seen, n, n*p)
+	t.Logf("%d of %d acts seen (want about %v)", s.w.Control.Tally.Seen, n, n*p)
 	if len(s.w.Control.Acts) != 0 {
 		t.Errorf("%d acts left after the step", len(s.w.Control.Acts))
 	}
@@ -253,13 +303,13 @@ func TestCases(t *testing.T) {
 	a := s.add(30, world.Worker, general, 0.5)
 	b := s.add(30, world.Worker, general, 0.5)
 	kid := s.add(13, world.Child, world.None, 0)
-	s.cfg.Pact[1].Detection = 1 // every act seen
+	s.cfg.Control.ArrestsPerOfficer = 0 // nobody arrested
 	s.start()
 	c := s.w.Control
 	for _, act := range []world.Act{
 		{Person: a, Other: world.None, Offence: world.Organise},    // the rule is inactive
 		{Person: kid, Other: world.None, Offence: world.HoldRelic}, // too young
-		{Person: b, Other: world.None, Offence: world.Violence},    // no rule lists it
+		{Person: b, Other: world.None, Offence: world.Sabotage},    // no rule lists it
 		{Person: a, Other: b, Offence: world.TradeRelic},
 		{Person: a, Other: world.None, Offence: world.SpeakForbidden},
 	} {
@@ -269,8 +319,8 @@ func TestCases(t *testing.T) {
 	if !slices.Equal(c.Cases, []world.PersonID{a, b}) || c.Charges[a] != 0b11 || c.Charges[b] != 0b01 || c.Charges[kid] != 0 {
 		t.Fatalf("cases %v, charges %v; want a charged under rules 0 and 1, b under 0", c.Cases, c.Charges)
 	}
-	if c.Seen != 2 {
-		t.Errorf("%d acts seen, want 2", c.Seen)
+	if c.Tally.Seen != 2 {
+		t.Errorf("%d acts seen, want 2", c.Tally.Seen)
 	}
 	s.kill(a)
 	s.step()
@@ -285,8 +335,8 @@ func TestCases(t *testing.T) {
 	before := *s.r
 	s.w.Control.Report(world.Act{Person: a, Other: world.None, Offence: world.HoldRelic})
 	s.step()
-	if s.w.Control.Seen != 0 || len(s.w.Control.Cases) != 0 || *s.r != before {
-		t.Errorf("σ = 0: %d seen, cases %v, stream moved %v", s.w.Control.Seen, s.w.Control.Cases, *s.r != before)
+	if s.w.Control.Tally.Seen != 0 || len(s.w.Control.Cases) != 0 || *s.r != before {
+		t.Errorf("σ = 0: %d seen, cases %v, stream moved %v", s.w.Control.Tally.Seen, s.w.Control.Cases, *s.r != before)
 	}
 }
 
@@ -299,5 +349,204 @@ func TestOffenceNames(t *testing.T) {
 	}
 	if len(config.Offences) != int(world.NumOffences) {
 		t.Errorf("%d names in config, %d offences", len(config.Offences), world.NumOffences)
+	}
+}
+
+// on adds an adult worker of General services at home on floor f.
+func (s *tiny) on(f int) world.PersonID {
+	id := s.add(30, world.Worker, general, 0.5)
+	s.w.Households[s.w.People[id].Household].Floor = f
+	return id
+}
+
+// offend reports one act, seen for sure in the tiny world (σ = 1, rule
+// weight 1, IT coverage 1).
+func (s *tiny) offend(id world.PersonID, o world.Offence) {
+	s.w.Control.Report(world.Act{Person: id, Other: world.None, Offence: o})
+}
+
+// ODD §6.13, Arrests, Trial, Penalties: an arrest is a walk to the court;
+// the trial on arrival gives the first-offence penalty, prison(90) here,
+// served on the court floor; the release is a walk home; a second
+// offence under the same rule gets the repeat penalty.
+func TestArrestTrialPrisonRelease(t *testing.T) {
+	s := newTiny(t)
+	a := s.on(3)
+	s.start()
+	c, sp := s.w.Control, s.w.Space
+	s.offend(a, world.TradeRelic)
+	s.step()
+	if c.Hold[a] != world.Custody || c.Tally.Arrests != 1 || len(c.Cases) != 0 || sp.Location[a] != 2 {
+		t.Fatalf("after the arrest: hold %d, %d arrests, cases %v, at floor %d", c.Hold[a], c.Tally.Arrests, c.Cases, sp.Location[a])
+	}
+	s.step() // reached the court: tried
+	tried := s.w.Day
+	if c.Hold[a] != world.Prison || c.Until[a] != tried+90 || c.Charges[a] != 0 || c.Convicted[a] != 0b1 {
+		t.Fatalf("after the trial: hold %d until %d (want %d), charges %b, convicted %b", c.Hold[a], c.Until[a], tried+90, c.Charges[a], c.Convicted[a])
+	}
+	s.days(90)
+	if !c.Held(a) || sp.Location[a] != 2 {
+		t.Fatalf("day %d: held %v at floor %d; want in prison on the court floor until day %d", s.w.Day, c.Held(a), sp.Location[a], tried+90)
+	}
+	s.step() // free, walking home
+	s.step()
+	if c.Held(a) || sp.Location[a] != 3 || sp.Away[a] != 0 {
+		t.Fatalf("after the release: held %v, at floor %d, away %d; want home on floor 3", c.Held(a), sp.Location[a], sp.Away[a])
+	}
+	s.offend(a, world.TradeRelic)
+	s.days(2)
+	if c.Hold[a] != world.Prison || c.Until[a] != s.w.Day+365 {
+		t.Errorf("repeat: hold %d until %d, want prison until %d", c.Hold[a], c.Until[a], s.w.Day+365)
+	}
+	if c.Tally.Prisons != 2 {
+		t.Errorf("%d prison sentences, want 2", c.Tally.Prisons)
+	}
+}
+
+// ODD §6.13, Penalties: a warning frees the person at once and flags the
+// household; mines(730) is served on the mines floor; with several rules
+// in one case the most severe detention is served, with every
+// confiscation and flag.
+func TestPenalties(t *testing.T) {
+	s := newTiny(t)
+	a, kid := s.on(3), s.add(10, world.Child, world.None, 0)
+	s.w.People[kid].Household = s.w.People[a].Household
+	s.w.Households[s.w.People[a].Household].Members = append(s.w.Households[s.w.People[a].Household].Members, kid)
+	v := s.on(1)
+	s.start()
+	c, sp := s.w.Control, s.w.Space
+	s.offend(a, world.SpeakForbidden)
+	s.offend(v, world.Violence)
+	s.days(2)
+	if c.Held(a) || !c.Flagged[a] || !c.Flagged[kid] || c.Flagged[v] || c.Tally.Warnings != 1 {
+		t.Errorf("warning: held %v, flagged %v %v %v, %d warnings", c.Held(a), c.Flagged[a], c.Flagged[kid], c.Flagged[v], c.Tally.Warnings)
+	}
+	s.step()
+	if c.Hold[v] != world.Mines || sp.Location[v] != 4 || c.Until[v] != s.w.Day-1+730 {
+		t.Errorf("mines: hold %d at floor %d until %d", c.Hold[v], sp.Location[v], c.Until[v])
+	}
+
+	s = newTiny(t)
+	a = s.on(3)
+	s.start()
+	c = s.w.Control
+	s.w.Beliefs.Relics = []world.Relic{{Floor: 3, Holder: a}, {Floor: 1, Holder: world.None}}
+	c.Charges[a] = 0b11 // noRelics (prison 90, confiscate) and noForbiddenTalk (flag)
+	c.Cases = []world.PersonID{a}
+	s.cfg.Control.FindChance = 0
+	s.m.find = 0 // the arrest's search finds nothing; the confiscation still takes it
+	s.days(2)
+	if c.Hold[a] != world.Prison || c.Until[a] != s.w.Day+90 || !c.Flagged[a] || len(s.w.Beliefs.Relics) != 1 || c.Tally.Taken != 1 {
+		t.Errorf("hold %d until %d, flagged %v, relics %v, taken %d; want prison 90, flagged, the held relic taken",
+			c.Hold[a], c.Until[a], c.Flagged[a], s.w.Beliefs.Relics, c.Tally.Taken)
+	}
+}
+
+// ODD §6.13, Arrests: at most ⌊a × officers⌋ a day, oldest case first; a
+// case whose arrest can't start (the stairs to the court are broken)
+// waits and uses no capacity.
+func TestArrestCapacity(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Control.ArrestsPerOfficer = 0.02 // × 100 Judicial workers = 2 a day
+	cut := s.on(3)
+	var rest []world.PersonID
+	for range 5 {
+		rest = append(rest, s.on(1))
+	}
+	s.start()
+	c := s.w.Control
+	s.w.Space.Broken[1] = true // floors 2 and 3 apart
+	s.offend(cut, world.SpeakForbidden)
+	for _, id := range rest {
+		s.offend(id, world.SpeakForbidden)
+	}
+	for day, want := range []int{2, 4, 5, 5} {
+		s.step()
+		if c.Tally.Arrests != want {
+			t.Fatalf("day %d: %d arrests, want %d", day+1, c.Tally.Arrests, want)
+		}
+	}
+	if !slices.Equal(c.Cases, []world.PersonID{cut}) || c.Held(cut) {
+		t.Errorf("cases %v, want only the one cut off from the court", c.Cases)
+	}
+	for _, id := range rest[:2] {
+		if c.Convicted[id] == 0 {
+			t.Errorf("%d not tried: the oldest cases go first", id)
+		}
+	}
+}
+
+// ODD §6.13, Searches: an arrest searches the flat; a raid searches every
+// flat on one residential floor. Found relics leave the silo and their
+// holders are charged with holdRelic.
+func TestSearches(t *testing.T) {
+	s := newTiny(t)
+	a, mate, up, down := s.on(3), s.on(3), s.on(1), s.on(3)
+	hh := s.w.People[a].Household
+	s.w.People[mate].Household = hh
+	s.w.Households[hh].Members = []world.PersonID{a, mate}
+	s.start()
+	c, b := s.w.Control, s.w.Beliefs
+	b.Relics = []world.Relic{{Floor: 3, Holder: mate}, {Floor: 1, Holder: up}, {Floor: 3, Holder: down}, {Floor: 2, Holder: world.None}}
+	s.offend(a, world.SpeakForbidden)
+	s.step()
+	if c.Tally.Taken != 1 || c.Charges[mate] != 0b1 || len(b.Relics) != 3 {
+		t.Fatalf("arrest search: %d taken, mate charged %b, relics %v", c.Tally.Taken, c.Charges[mate], b.Relics)
+	}
+
+	s = newTiny(t)
+	s.cfg.Control.RaidsPerYear, s.cfg.Control.ArrestsPerOfficer = year, 0 // a raid every day, no arrests
+	up, down = s.on(1), s.on(3)
+	s.start()
+	b = s.w.Beliefs
+	b.Relics = []world.Relic{{Floor: 1, Holder: up}, {Floor: 3, Holder: down}, {Floor: 2, Holder: world.None}}
+	s.step()
+	if c := s.w.Control; c.Tally.Raids != 1 || c.Tally.Taken != 1 || len(b.Relics) != 2 || b.Relics[1].Holder != world.None {
+		t.Errorf("raid: %d raids, %d taken, relics %v; want one floor's held relic taken, the hidden one kept", c.Tally.Raids, c.Tally.Taken, b.Relics)
+	}
+}
+
+// ODD §6.13, Arrests: an arrested Flamekeeper loses their seat and names
+// the others (p_name = 1 here), who are arrested in turn: arrests can
+// destroy the group (T10.5).
+func TestFlamekeepersNamed(t *testing.T) {
+	s := newTiny(t)
+	members := []world.PersonID{s.on(1), s.on(3), s.on(1), s.on(3)}
+	s.start()
+	b, c := s.w.Beliefs, s.w.Control
+	for _, id := range members {
+		b.IsMember[id] = true
+	}
+	b.Members = slices.Clone(members)
+	s.offend(members[2], world.SpeakForbidden)
+	s.step()
+	if len(b.Members) != 0 || c.Tally.Arrests != 4 {
+		t.Errorf("members %v, %d arrests; want the whole group arrested", b.Members, c.Tally.Arrests)
+	}
+	for _, id := range members {
+		if b.IsMember[id] || !c.Held(id) {
+			t.Errorf("%d: member %v, held %v", id, b.IsMember[id], c.Held(id))
+		}
+	}
+}
+
+// ODD §6.11, §6.13: held people talk with nobody; a death ends custody.
+func TestHeldTalkWithNobody(t *testing.T) {
+	s := newTiny(t)
+	a, b := s.on(1), s.on(1)
+	s.w.Network = &world.Network{Part: []int{0, 0, 0, 0}}
+	s.start()
+	if !s.w.Network.Reachable(s.w, a, b) {
+		t.Fatal("not reachable before the arrest")
+	}
+	s.offend(a, world.TradeRelic)
+	s.days(2)
+	if s.w.Network.Reachable(s.w, a, b) {
+		t.Error("a prisoner can talk")
+	}
+	s.kill(a)
+	s.step()
+	if s.w.Control.Held(a) || slices.Contains(s.m.held, a) {
+		t.Error("the dead are still held")
 	}
 }

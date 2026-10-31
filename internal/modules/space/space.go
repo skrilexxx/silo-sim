@@ -153,7 +153,8 @@ func (m *Module) workFloor(p *world.Person, home int) int {
 // it ends tomorrow.
 // A segment that broke on the route stops the traveller on the floor next
 // to the break, on the side they left from; they still arrive on the
-// planned day. Arriving at home ends being away; anywhere else starts it.
+// planned day. Arriving at home ends being away, except for someone held
+// by Judicial (ODD §6.13); anywhere else starts it.
 func (m *Module) travel(w *world.World, id world.PersonID, home int) bool {
 	s := w.Space
 	from, dest := s.From[id], s.Dest[id]
@@ -169,7 +170,7 @@ func (m *Module) travel(w *world.World, id world.PersonID, home int) bool {
 		return false
 	}
 	s.Dest[id], s.Away[id] = 0, dest
-	if dest == home {
+	if dest == home && !w.Control.Held(id) {
 		s.Away[id] = 0
 	}
 	return true
