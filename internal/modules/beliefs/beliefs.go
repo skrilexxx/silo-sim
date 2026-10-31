@@ -30,8 +30,9 @@ type Module struct {
 	adultAge       world.Tick       // worker age in days: the base is fixed from then on
 	young          []world.PersonID // alive and under worker age at the last step, in ID order
 
-	hide      float64 // d: daily chance a known flag is hidden while dosed
-	waterDays int     // D_water: days a water dosing lasts
+	hide        float64 // d: daily chance a known flag is hidden while dosed
+	waterDays   int     // D_water: days a water dosing lasts
+	it, medical int     // department indexes, or None
 
 	tellers []world.PersonID // today's knowers, shuffled
 	hiders  []world.PersonID // people with a hidden flag, and some who no longer have one
@@ -64,6 +65,15 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	m.cue = cfg.Beliefs.CueChance
 	m.seats = cfg.Beliefs.FlamekeeperSeats
 	m.hide, m.waterDays = cfg.Beliefs.DoseHideChance, cfg.Beliefs.WaterDosingDays
+	m.it, m.medical = world.None, world.None
+	for d, dep := range w.Depts {
+		switch dep.Name {
+		case "it":
+			m.it = d
+		case "medical":
+			m.medical = d
+		}
+	}
 	w.Beliefs = &world.Beliefs{Cost: cfg.Beliefs.LegitimacyCostPerFlag, Water: world.None}
 	m.newcomers(w, r)
 	// ODD §6.12, Relics: on day 1, each hidden on a floor drawn uniformly.
@@ -92,13 +102,14 @@ func (m *Module) Steps() []engine.Step {
 //     everyone alive aged 14 or more and not dosed learns the history as
 //     lived, passed on from tomorrow like anything learned today.
 //   - waterDosing puts Vitamin D+ in the water for D_water days from today,
-//     dosing everyone alive and everyone born while it lasts.
+//     dosing everyone alive and everyone born while it lasts, except those
+//     the Flamekeepers shield if they are warned today.
 func (m *Module) EventTypes() []engine.EventType {
 	return []engine.EventType{
 		{Name: "revealHistory", Phase: engine.PhaseBeliefs, Fire: func(w *world.World, _ *rng.Stream) error {
 			for _, id := range w.Alive {
 				// Age first: newborns have no beliefs until the step.
-				if w.Day-w.People[id].BirthDay >= m.shadowAge && !w.Beliefs.Dosed(id, w.Day) {
+				if w.Day-w.People[id].BirthDay >= m.shadowAge && !w.Beliefs.Dosed(w, id) {
 					m.teach(w.Beliefs, id, world.FlagHistory, true)
 				}
 			}
@@ -106,6 +117,7 @@ func (m *Module) EventTypes() []engine.EventType {
 		}},
 		{Name: "waterDosing", Phase: engine.PhaseBeliefs, Fire: func(w *world.World, _ *rng.Stream) error {
 			w.Beliefs.Water = max(w.Beliefs.Water, w.Day+world.Tick(m.waterDays)-1)
+			w.Beliefs.Warned = m.warned(w)
 			return nil
 		}},
 	}
@@ -246,7 +258,7 @@ func (m *Module) relics(w *world.World, r *rng.Stream) {
 // as lived with chance κ.
 func (m *Module) cueByRelic(w *world.World, r *rng.Stream, id world.PersonID) {
 	b := w.Beliefs
-	if b.Dosed(id, w.Day) {
+	if b.Dosed(w, id) {
 		return
 	}
 	m.fl = flagsOf(b.Hidden[id], m.fl[:0])
@@ -259,6 +271,35 @@ func (m *Module) cueByRelic(w *world.World, r *rng.Stream, id world.PersonID) {
 		return
 	}
 	m.teach(b, id, world.FlagHistory, true)
+}
+
+// warned: ODD §6.12, Warning the Flamekeepers. On the day a water dosing
+// starts, the group is warned if a member works in IT or Medical, or has a
+// strong tie to a worker or shadow there who knows the history.
+func (m *Module) warned(w *world.World) bool {
+	b, n := w.Beliefs, w.Network
+	for _, mem := range b.Members {
+		if !w.People[mem].Alive { // died today, before the step drops them
+			continue
+		}
+		if m.insider(w, mem) {
+			return true
+		}
+		for _, t := range n.TiesOf(w, mem) {
+			if !t.Kind.Weak() && m.insider(w, t.Other) && b.Known[t.Other].Has(world.FlagHistory) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// insider reports whether a person works in IT or Medical, as a worker or
+// shadow: the few who know what Vitamin D+ is.
+func (m *Module) insider(w *world.World, id world.PersonID) bool {
+	p := &w.People[id]
+	d := p.Department
+	return (p.Stage == world.Worker || p.Stage == world.Shadow) && d != world.None && (d == m.it || d == m.medical)
 }
 
 // ODD §6.12, Flamekeepers: on day 1, N_F adults drawn uniformly take the
@@ -383,7 +424,7 @@ func (m *Module) forget(w *world.World, r *rng.Stream) {
 				b.Forget(id, f)
 			}
 		}
-		if b.Dosed(id, w.Day) {
+		if b.Dosed(w, id) {
 			for known := b.Known[id]; known != 0; known &= known - 1 {
 				if dose.land(r) && b.Hide(id, world.Flag(bits.TrailingZeros8(uint8(known)))) {
 					m.hiders = append(m.hiders, id)
@@ -428,7 +469,7 @@ func (m *Module) converse(w *world.World, r *rng.Stream) {
 		for s := sk.next(r, slots); s >= 0; s = next(r, &sk, s, slots) {
 			t, f := ties[s/len(fl)], fl[s%len(fl)]
 			j := t.Other
-			if (b.Known[j] | b.Hidden[j]).Has(f) || b.Dosed(j, w.Day) || r.Float64() >= 1-b.L(j) || !n.Talk(w, k, j, t.Kind) {
+			if (b.Known[j] | b.Hidden[j]).Has(f) || b.Dosed(w, j) || r.Float64() >= 1-b.L(j) || !n.Talk(w, k, j, t.Kind) {
 				continue
 			}
 			m.learn(b, j, f)
@@ -451,7 +492,7 @@ func (m *Module) recall(w *world.World, r *rng.Stream) {
 	b, n := w.Beliefs, w.Network
 	sk := newSkip(r, m.cue)
 	for _, h := range m.hiders {
-		if b.Dosed(h, w.Day) {
+		if b.Dosed(w, h) {
 			continue
 		}
 		m.fl = flagsOf(b.Hidden[h], m.fl[:0])

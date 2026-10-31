@@ -593,8 +593,10 @@ P(\text{lost today}) = 1 - 2^{-1/(365\,T)}, \qquad T = T_{heard} \text{ or } T_{
 
 **Vitamin D+** (decision D5). While dosed, each day each known flag becomes *hidden* with chance d, and the person can't learn a flag or recall a hidden one. Their base is unchanged, so their L climbs back toward the base as flags are hidden. Two forms:
 
-- *Water dosing:* the scripted event `waterDosing` doses everyone alive, and everyone born while it lasts, for D\_water days from the event's day. A second event while one runs extends it to D\_water days from the later event.
+- *Water dosing:* the scripted event `waterDosing` doses everyone alive, and everyone born while it lasts, for D\_water days from the event's day, except those the Flamekeepers shield (below). A second event while one runs extends it to D\_water days from the later event.
 - *Targeted:* another module (§6.13, §6.15, §6.16) doses named people until a day it sets. Scripted events can't name people, so this form has no event type.
+
+*Warning the Flamekeepers.* Only a few insiders in IT and Medical know that Vitamin D+ exists and what it does. On the day a water dosing starts, the Flamekeepers are *warned* if a member works in IT or Medical (as a worker or shadow, §6.5), or has a strong tie (§6.11) to someone who does and who knows the history: a loyal insider doesn't tell. A warned group knows how to avoid the water, so for that dosing, members and everyone living in a member's household are not dosed by it; someone who joins or moves in while it lasts is shielded from then on, and someone who leaves is not. Each water dosing event is judged afresh on its own day. A targeted dose works on members as on anyone. An unwarned group is dosed like everyone else, and can be erased by it (below).
 
 A hidden flag never fades on its own. Once the dose has ended, it comes back, known again as heard or lived as before, with chance κ per *cue*:
 

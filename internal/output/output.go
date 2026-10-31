@@ -447,7 +447,7 @@ func (o *Writer) appendBeliefs(w *world.World, b []byte) []byte {
 	var know [world.NumFlags]float64
 	hidden, dosed := 0.0, 0
 	for _, id := range w.Alive {
-		if w.Beliefs.Dosed(id, w.Day) {
+		if w.Beliefs.Dosed(w, id) {
 			dosed++
 		}
 		if w.Day-w.People[id].BirthDay < o.adultAge {

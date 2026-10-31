@@ -30,7 +30,7 @@ func newTiny(t *testing.T) *tiny {
 		n.Chance[k] = 1 // every tie is used every day, unless a test says otherwise
 	}
 	w := &world.World{Day: 1200*engine.DaysPerMonth - 1, Floors: []world.Floor{{Number: 1, Homes: 9}, {Number: 2, Homes: 9}},
-		Space: &world.Space{}, Network: n}
+		Depts: []world.Department{{Name: "general"}, {Name: "it"}, {Name: "medical"}}, Space: &world.Space{}, Network: n}
 	r, _ := rng.New(1, "beliefs")
 	cfg := &config.Scenario{}
 	cfg.Work.ShadowAge, cfg.Work.WorkerAge = 14, 18
@@ -746,8 +746,8 @@ func TestWaterDosingHidesAYearsWorth(t *testing.T) {
 		s.step()
 	}
 	baby := world.PersonID(each)
-	if !b.Dosed(baby, s.w.Day) || !b.Dosed(0, s.w.Day) {
-		t.Errorf("on the last day, baby dosed %v, adult %v; want both", b.Dosed(baby, s.w.Day), b.Dosed(0, s.w.Day))
+	if !b.Dosed(s.w, baby) || !b.Dosed(s.w, 0) {
+		t.Errorf("on the last day, baby dosed %v, adult %v; want both", b.Dosed(s.w, baby), b.Dosed(s.w, 0))
 	}
 	hidden := 0
 	for id := range world.PersonID(each) {
@@ -765,7 +765,7 @@ func TestWaterDosingHidesAYearsWorth(t *testing.T) {
 		t.Errorf("hidden after a year: %.4f, want at least 0.9 and %.4f ± %.4f", got, want, 5*sd)
 	}
 	s.step()
-	if b.Dosed(0, s.w.Day) {
+	if b.Dosed(s.w, 0) {
 		t.Error("still dosed after 365 days")
 	}
 }
@@ -778,7 +778,7 @@ func TestDosingLength(t *testing.T) {
 	a, other := s.add(30, world.Worker), s.add(30, world.Worker)
 	s.start()
 	b := s.w.Beliefs
-	if b.Dosed(a, s.w.Day) {
+	if b.Dosed(s.w, a) {
 		t.Fatal("dosed before any dosing")
 	}
 	s.w.Day = 1000
@@ -791,9 +791,13 @@ func TestDosingLength(t *testing.T) {
 	b.Water = world.None
 	b.Dose(a, 2000)
 	b.Dose(a, 1500)
-	if !b.Dosed(a, 2000) || b.Dosed(a, 2001) || b.Dosed(other, 1500) {
+	dosedOn := func(id world.PersonID, day world.Tick) bool {
+		s.w.Day = day
+		return b.Dosed(s.w, id)
+	}
+	if !dosedOn(a, 2000) || dosedOn(a, 2001) || dosedOn(other, 1500) {
 		t.Errorf("targeted: dosed on day 2000 %v, 2001 %v; other %v; want true, false, false",
-			b.Dosed(a, 2000), b.Dosed(a, 2001), b.Dosed(other, 1500))
+			dosedOn(a, 2000), dosedOn(a, 2001), dosedOn(other, 1500))
 	}
 }
 
@@ -889,6 +893,76 @@ func TestMemoryReturnsOnlyWithCues(t *testing.T) {
 	for _, id := range alone {
 		if !b.Hidden[id].Has(world.FlagScreen) || b.Known[id] != 0 {
 			t.Fatalf("person %d alone: known %b, hidden %b a year on; want still hidden", id, b.Known[id], b.Hidden[id])
+		}
+	}
+}
+
+// Departments of the tiny world.
+const (
+	general = iota
+	itDept
+	medical
+)
+
+// ODD §6.12, Warning the Flamekeepers: on the day a water dosing starts,
+// the group is warned if a member works in IT or Medical, or has a strong
+// tie to someone there who knows the history; then members and their
+// households are not dosed by the water (targeted doses still work), and
+// everyone else is. Unwarned, a member loses the history and the seat.
+func TestFlamekeepersWarned(t *testing.T) {
+	for _, c := range []struct {
+		name                    string
+		memberDept, contactDept int
+		contactKnows, weakTie   bool
+		targeted, warned        bool
+	}{
+		{name: "doubter in IT at home", memberDept: general, contactDept: itDept, contactKnows: true, warned: true},
+		{name: "member in Medical", memberDept: medical, contactDept: general, warned: true},
+		{name: "loyal insider", memberDept: general, contactDept: itDept},
+		{name: "doubter in IT, weak tie", memberDept: general, contactDept: itDept, contactKnows: true, weakTie: true},
+		{name: "doubter elsewhere", memberDept: general, contactDept: general, contactKnows: true},
+		{name: "warned, but a targeted dose", memberDept: medical, contactDept: general, targeted: true, warned: true},
+	} {
+		s := newTiny(t)
+		s.cfg.Beliefs.DoseHideChance = 1
+		s.cfg.Beliefs.HalfLifeHeardYears, s.cfg.Beliefs.HalfLifeLivedYears = 1e9, 1e9
+		member, contact, outsider := s.add(40, world.Worker), s.add(40, world.Worker), s.add(40, world.Worker)
+		s.w.People[member].Department, s.w.People[contact].Department = c.memberDept, c.contactDept
+		if !c.weakTie {
+			s.join(contact, s.w.People[member].Household)
+		}
+		s.startWith(0)
+		b, n := s.w.Beliefs, s.w.Network
+		if c.weakTie {
+			n.Weak[member] = []world.Tie{{Other: contact, Kind: world.TieNeighbour}}
+			n.Weak[contact] = []world.Tie{{Other: member, Kind: world.TieNeighbour}}
+			n.Forget(s.w, []world.PersonID{member, contact}, nil)
+		}
+		s.m.join(s.w, member)
+		b.Learn(member, world.FlagHistory, true)
+		b.Learn(outsider, world.FlagHistory, true)
+		if c.contactKnows {
+			b.Learn(contact, world.FlagHistory, false)
+		}
+		if c.targeted {
+			b.Dose(member, s.w.Day+10)
+		}
+		s.w.Day++
+		s.fire("waterDosing")
+		if err := s.m.step(s.w, s.r); err != nil {
+			t.Fatal(err)
+		}
+		s.step()
+		keeps := b.Known[member].Has(world.FlagHistory)
+		if b.Warned != c.warned || keeps != (c.warned && !c.targeted) || b.Known[outsider] != 0 {
+			t.Errorf("%s: warned %v, member keeps the history %v, outsider knows %b; want %v, %v, nothing",
+				c.name, b.Warned, keeps, b.Known[outsider], c.warned, c.warned && !c.targeted)
+		}
+		if seated := len(b.Members) == 1; seated != keeps {
+			t.Errorf("%s: member seated %v, keeps the history %v", c.name, seated, keeps)
+		}
+		if c.warned && !c.weakTie && c.contactKnows && !b.Known[contact].Has(world.FlagHistory) {
+			t.Errorf("%s: the member's household was dosed", c.name)
 		}
 	}
 }

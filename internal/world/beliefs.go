@@ -39,6 +39,7 @@ type Beliefs struct {
 	// person's targeted dose; −1 for none.
 	Water      Tick
 	DosedUntil []Tick
+	Warned     bool // the Flamekeepers were warned of the current water dosing
 
 	// The Flamekeepers (ODD §6.12): the members, in the order they took
 	// their seats, and whether each person is one.
@@ -76,9 +77,25 @@ func (b *Beliefs) Learn(id PersonID, f Flag, lived bool) bool {
 	return true
 }
 
-// Dosed reports whether the person is on Vitamin D+ on day.
-func (b *Beliefs) Dosed(id PersonID, day Tick) bool {
-	return b.Water >= day || b.DosedUntil[id] >= day
+// Dosed reports whether the person is on Vitamin D+ today: by a targeted
+// dose, or by the water unless the Flamekeepers were warned and shield
+// them (ODD §6.12, Warning the Flamekeepers).
+func (b *Beliefs) Dosed(w *World, id PersonID) bool {
+	if b.DosedUntil[id] >= w.Day {
+		return true
+	}
+	return b.Water >= w.Day && !(b.Warned && b.shielded(w, id))
+}
+
+// shielded reports whether a Flamekeeper lives in the person's household,
+// themselves included.
+func (b *Beliefs) shielded(w *World, id PersonID) bool {
+	for _, o := range w.Households[w.People[id].Household].Members {
+		if int(o) < len(b.IsMember) && b.IsMember[o] { // someone born today has no beliefs until the step
+			return true
+		}
+	}
+	return false
 }
 
 // Dose puts the person on Vitamin D+ until the day given (ODD §6.12,

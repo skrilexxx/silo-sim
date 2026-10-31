@@ -396,3 +396,17 @@ Every other pattern passes in 10/10.
 | 40.5 | 0.793 0.804 0.795 | 0 | 0 | 0 |
 
 **What it means:** water dosing alone is a short-lived wipe. Within half a year of its end, the few who still knew (those whose flag was never hidden, relic holders, the newly told) cue everyone else, and recall spreads like news, but at κ = 0.05 a conversation, 25 times faster than π. The level then follows the same course as without dosing. The Flamekeepers do not come back: their history was hidden, they lost their seats, and with no members left the group is gone for good. So, in this model, a wipe that lasts needs the cues removed too (relics confiscated, knowers silenced), which is what the memory-wipe strategy of M13 combines; and dosing is the one lever that ends the Flamekeepers. Nothing was tuned.
+
+## 2026-10-31 — The same wipe, with the Flamekeepers warned by insiders
+
+**Code:** T10.6 plus the warning rule (ODD §6.12, Warning the Flamekeepers; Adam's choice): on the day a water dosing starts, the group is warned if a member works in IT or Medical, or has a strong tie to a worker or shadow there who knows the history; warned, members and their households are not dosed by the water.
+**Setup:** as the previous entry, seeds 1–3.
+
+| Years after the reveal | Adults who know the history | Flamekeepers |
+| ---: | --- | --- |
+| 4.5 | 0.919 0.912 0.917 | 15 15 15 |
+| 5.5 (dosing) | 0.136 0.126 0.125 | 15 15 15 |
+| 6.5 | 0.895 0.899 0.893 | 15 15 15 |
+| 40.5 | 0.796 0.793 0.805 | 15 15 15 |
+
+**What it means:** with the history known by 92% when the dosing starts, some member always has a doubting insider among their strong ties, so the group is warned in every seed and comes through whole. Where the history is rare, as C4 wants after a crushed rebellion, such insiders are rare too, and a wipe can end the group; that case is the one T12.8 and M13 will see.
