@@ -381,3 +381,18 @@ Every other pattern passes in 10/10.
 | 150 | 31 / 69 | 0.824 | 0.560 |
 
 **What it means:** a few found relics are enough to start the history spreading; with nothing to stop it, it is endemic within about 30 years (as after a reveal, T10.3) and settles near 80%. Relics settle at about two thirds held: finds (2 a year at first) against relics left in empty flats at death. Mean L keeps falling for a century, as each generation is raised by doubting parents: the base converges to about 0.8 − 0.15 × (flags its parents know). Nothing was tuned; the regime (M11, M13) is what should hold this down.
+
+## 2026-10-31 — A year of water dosing after a reveal (T10.6)
+
+**Code:** T10.6 (Vitamin D+), on top of `eb1f04f`.
+**Setup:** as the C4 run of T10.3 (`scenarios/baseline.yaml` plus `space, network, beliefs` at their defaults, 5 + 45 years), with `revealHistory` on day 2000 and `waterDosing` (365 days, d = 0.01, κ = 0.05) on day 3825, five years later. No regime otherwise. Seeds 1–3.
+
+| Years after the reveal | Adults who know the history | Adults with a hidden flag | Dosed | Flamekeepers |
+| ---: | --- | --- | ---: | ---: |
+| 4.5 | 0.919 0.912 0.917 | 0 | 0 | 15 |
+| 5.5 (dosing) | 0.131 0.133 0.129 | 0.769 0.767 0.773 | 9,779 | 7 |
+| 6.5 | 0.894 0.894 0.898 | 0.001 0 0 | 0 | 0 |
+| 10.5 | 0.864 0.869 0.869 | 0 | 0 | 0 |
+| 40.5 | 0.793 0.804 0.795 | 0 | 0 | 0 |
+
+**What it means:** water dosing alone is a short-lived wipe. Within half a year of its end, the few who still knew (those whose flag was never hidden, relic holders, the newly told) cue everyone else, and recall spreads like news, but at κ = 0.05 a conversation, 25 times faster than π. The level then follows the same course as without dosing. The Flamekeepers do not come back: their history was hidden, they lost their seats, and with no members left the group is gone for good. So, in this model, a wipe that lasts needs the cues removed too (relics confiscated, knowers silenced), which is what the memory-wipe strategy of M13 combines; and dosing is the one lever that ends the Flamekeepers. Nothing was tuned.

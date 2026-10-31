@@ -37,6 +37,7 @@ func newTiny(t *testing.T) *tiny {
 	cfg.Beliefs.TaughtLegitimacy, cfg.Beliefs.EducationWeight, cfg.Beliefs.LegitimacyCostPerFlag = 0.8, 0.5, 0.15
 	cfg.Beliefs.HalfLifeHeardYears, cfg.Beliefs.HalfLifeLivedYears = 5, 20
 	cfg.Beliefs.RelicHiddenYears, cfg.Beliefs.RelicKeptYears, cfg.Beliefs.CueChance = 50, 10, 0.05
+	cfg.Beliefs.DoseHideChance, cfg.Beliefs.WaterDosingDays = 0.01, 365
 	return &tiny{t: t, cfg: cfg, w: w, m: New(), r: r}
 }
 
@@ -356,7 +357,7 @@ func TestRevealHistory(t *testing.T) {
 	b.Learn(heard, world.FlagHistory, false)
 
 	types := s.m.EventTypes()
-	if len(types) != 1 || types[0].Name != "revealHistory" || types[0].Phase != engine.PhaseBeliefs {
+	if len(types) != 2 || types[0].Name != "revealHistory" || types[0].Phase != engine.PhaseBeliefs {
 		t.Fatalf("event types %+v", types)
 	}
 	s.w.Day++
@@ -547,7 +548,7 @@ func TestRelicInherited(t *testing.T) {
 
 // ODD §6.12, Relics: holding several relics gives no more draws than one:
 // 2,000 holders of 3 relics each learn the history on a day with chance
-// ρ = 0.05, not 1 − 0.95³ = 0.14.
+// κ = 0.05, not 1 − 0.95³ = 0.14.
 func TestRelicsWorkOncePerDay(t *testing.T) {
 	s := newTiny(t)
 	s.cfg.Beliefs.RelicKeptYears = 1e9
@@ -699,5 +700,195 @@ func TestFlamekeepersDieOut(t *testing.T) {
 	}
 	if len(b.Members) != 0 || b.IsMember[gone] {
 		t.Errorf("members %v after the last one died, want none for good", b.Members)
+	}
+}
+
+// fire runs a scripted event of the module today, just before its step.
+func (s *tiny) fire(name string) {
+	s.t.Helper()
+	for _, et := range s.m.EventTypes() {
+		if et.Name == name {
+			if err := et.Fire(s.w, nil); err != nil {
+				s.t.Fatal(err)
+			}
+			return
+		}
+	}
+	s.t.Fatalf("no event type %q", name)
+}
+
+// T10.6 done-when: a scripted year of water dosing hides at least 90% of
+// a flag: with d = 0.01 a day, 1 − 0.99^365 = 97.4%. Hidden flags don't
+// count against L. Everyone born while it lasts is dosed too, and nobody
+// after it ends. 4,000 people, nobody tied to anybody, no forgetting.
+func TestWaterDosingHidesAYearsWorth(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Beliefs.HalfLifeHeardYears, s.cfg.Beliefs.HalfLifeLivedYears = 1e9, 1e9
+	const each = 4000
+	for range each {
+		s.add(30, world.Worker)
+	}
+	s.start()
+	b := s.w.Beliefs
+	for id := range world.PersonID(each) {
+		b.Learn(id, world.FlagScreen, false)
+	}
+	s.w.Day++
+	s.fire("waterDosing")
+	start := s.w.Day
+	if err := s.m.step(s.w, s.r); err != nil {
+		t.Fatal(err)
+	}
+	for s.w.Day < start+year-1 {
+		if s.w.Day == start+year/2 {
+			s.add(0, world.Child)
+		}
+		s.step()
+	}
+	baby := world.PersonID(each)
+	if !b.Dosed(baby, s.w.Day) || !b.Dosed(0, s.w.Day) {
+		t.Errorf("on the last day, baby dosed %v, adult %v; want both", b.Dosed(baby, s.w.Day), b.Dosed(0, s.w.Day))
+	}
+	hidden := 0
+	for id := range world.PersonID(each) {
+		if b.Hidden[id].Has(world.FlagScreen) {
+			hidden++
+			if b.L(id) != b.Base[id] {
+				t.Fatalf("person %d: L %v with the flag hidden, want the base %v", id, b.L(id), b.Base[id])
+			}
+		}
+	}
+	want := 1 - math.Pow(0.99, year)
+	got, sd := float64(hidden)/each, math.Sqrt(want*(1-want)/each)
+	t.Logf("hidden after a year of water dosing: %.4f (want %.4f)", got, want)
+	if got < 0.9 || math.Abs(got-want) > 5*sd {
+		t.Errorf("hidden after a year: %.4f, want at least 0.9 and %.4f ± %.4f", got, want, 5*sd)
+	}
+	s.step()
+	if b.Dosed(0, s.w.Day) {
+		t.Error("still dosed after 365 days")
+	}
+}
+
+// ODD §6.12, Vitamin D+: a second water dosing while one runs extends it
+// to D_water days from the later one. A targeted dose doses one person
+// only, until the day set, or longer if already dosed.
+func TestDosingLength(t *testing.T) {
+	s := newTiny(t)
+	a, other := s.add(30, world.Worker), s.add(30, world.Worker)
+	s.start()
+	b := s.w.Beliefs
+	if b.Dosed(a, s.w.Day) {
+		t.Fatal("dosed before any dosing")
+	}
+	s.w.Day = 1000
+	s.fire("waterDosing")
+	s.w.Day = 1100
+	s.fire("waterDosing")
+	if b.Water != 1100+year-1 {
+		t.Errorf("water dosing ends on day %d, want %d", b.Water, 1100+year-1)
+	}
+	b.Water = world.None
+	b.Dose(a, 2000)
+	b.Dose(a, 1500)
+	if !b.Dosed(a, 2000) || b.Dosed(a, 2001) || b.Dosed(other, 1500) {
+		t.Errorf("targeted: dosed on day 2000 %v, 2001 %v; other %v; want true, false, false",
+			b.Dosed(a, 2000), b.Dosed(a, 2001), b.Dosed(other, 1500))
+	}
+}
+
+// ODD §6.12, Vitamin D+: while dosed, nobody learns a flag, a relic brings
+// nothing back, and the reveal passes them by; the Flamekeeper whose
+// history is hidden leaves their seat.
+func TestDosedLearnNothing(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Beliefs.CueChance, s.cfg.Beliefs.DoseHideChance, s.cfg.Beliefs.FlamekeeperSeats = 1, 1, 1
+	keeper, listener := s.add(40, world.Worker), s.add(40, world.Worker)
+	s.join(listener, s.w.People[keeper].Household)
+	s.startWith(1)
+	b := s.w.Beliefs
+	if b.Members[0] == listener { // either may have been seated
+		keeper, listener = listener, keeper
+	}
+	b.Base[listener] = 0
+	b.Learn(listener, world.FlagLottery, true)
+	b.Relics = []world.Relic{{Floor: 1, Holder: listener}}
+	b.Dose(keeper, s.w.Day+5)
+	b.Dose(listener, s.w.Day+5)
+	s.step() // both dosed: every known flag hidden at once (d = 1)
+	s.fire("revealHistory")
+	for range 4 {
+		s.step()
+	}
+	if b.Known[keeper] != 0 || b.Known[listener] != 0 || !b.Hidden[keeper].Has(world.FlagHistory) || !b.Hidden[listener].Has(world.FlagLottery) {
+		t.Errorf("while dosed: keeper knows %b (hidden %b), listener %b (hidden %b); want nothing known, all hidden",
+			b.Known[keeper], b.Hidden[keeper], b.Known[listener], b.Hidden[listener])
+	}
+	if len(b.Members) != 0 {
+		t.Errorf("members %v, want the seat empty: the keeper's history is hidden", b.Members)
+	}
+}
+
+// T10.6 done-when: after dosing, memory comes back only with cues, at κ
+// per cue: 2,000 people alone get nothing back in a year; 2,000 holding a
+// relic, and 2,000 living with someone who knows the flag and talks with
+// them daily, get it back on a day with chance κ = 0.05, as lived or heard
+// as before.
+func TestMemoryReturnsOnlyWithCues(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Beliefs.DoseHideChance, s.cfg.Beliefs.RelicKeptYears = 1, 1e9
+	s.cfg.Beliefs.HalfLifeHeardYears, s.cfg.Beliefs.HalfLifeLivedYears = 1e9, 1e9
+	const each = 2000
+	var alone, relic, told, tellers []world.PersonID
+	for range each {
+		alone = append(alone, s.add(30, world.Worker))
+		relic = append(relic, s.add(30, world.Worker))
+		c, k := s.add(30, world.Worker), s.add(30, world.Worker)
+		s.join(k, s.w.People[c].Household)
+		told, tellers = append(told, c), append(tellers, k)
+	}
+	s.startWith(0)
+	b := s.w.Beliefs
+	for i := range each {
+		for _, id := range []world.PersonID{alone[i], relic[i], told[i]} {
+			b.Learn(id, world.FlagScreen, true)
+			b.Dose(id, s.w.Day+1)
+		}
+		b.Learn(tellers[i], world.FlagScreen, false)
+	}
+	s.step() // dosed: hidden at once
+	for i := range each {
+		b.Relics = append(b.Relics, world.Relic{Floor: 1, Holder: relic[i]})
+		if b.Known[relic[i]] != 0 || b.Known[told[i]] != 0 {
+			t.Fatal("not hidden while dosed")
+		}
+	}
+	s.step() // the first day after the dose
+	for _, g := range []struct {
+		name  string
+		group []world.PersonID
+	}{{"relic", relic}, {"contact", told}} {
+		back := 0
+		for _, id := range g.group {
+			if b.Known[id].Has(world.FlagScreen) {
+				back++
+				if !b.Lived[id].Has(world.FlagScreen) || b.Hidden[id] != 0 {
+					t.Fatalf("person %d back as lived %b, hidden %b; want lived, nothing hidden", id, b.Lived[id], b.Hidden[id])
+				}
+			}
+		}
+		got, sd := float64(back)/each, math.Sqrt(0.05*0.95/each)
+		t.Logf("back on the first day with a %s: %.4f (want 0.05)", g.name, got)
+		if math.Abs(got-0.05) > 5*sd {
+			t.Errorf("%s: %.4f back on the first day, want 0.05 ± %.4f", g.name, got, 5*sd)
+		}
+	}
+	for range year {
+		s.step()
+	}
+	for _, id := range alone {
+		if !b.Hidden[id].Has(world.FlagScreen) || b.Known[id] != 0 {
+			t.Fatalf("person %d alone: known %b, hidden %b a year on; want still hidden", id, b.Known[id], b.Hidden[id])
+		}
 	}
 }

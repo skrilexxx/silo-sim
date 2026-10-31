@@ -146,7 +146,7 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 			name := f.String()
 			h = append(h, ",know"+strings.ToUpper(name[:1])+name[1:]...)
 		}
-		h = append(h, ",relicsHidden,relicsHeld,flamekeepers"...)
+		h = append(h, ",hiddenAny,dosed,relicsHidden,relicsHeld,flamekeepers"...)
 	}
 	h = append(h, '\n')
 	if _, err := o.yearly.Write(h); err != nil {
@@ -438,15 +438,23 @@ func (o *Writer) appendTies(w *world.World, b []byte) []byte {
 
 // appendBeliefs writes the beliefs columns (ODD §6.12, Outputs): the mean
 // L of adults, overall and by the zone of their home, then the share of
-// adults who know each flag (0 with no adults), then relics hidden and
-// held, and Flamekeepers.
+// adults who know each flag (0 with no adults), the share with at least
+// one flag hidden, the people dosed today, then relics hidden and held,
+// and Flamekeepers.
 func (o *Writer) appendBeliefs(w *world.World, b []byte) []byte {
 	var sum [world.NumZones + 1]float64 // the last one is everyone
 	var n [world.NumZones + 1]int
 	var know [world.NumFlags]float64
+	hidden, dosed := 0.0, 0
 	for _, id := range w.Alive {
+		if w.Beliefs.Dosed(id, w.Day) {
+			dosed++
+		}
 		if w.Day-w.People[id].BirthDay < o.adultAge {
 			continue
+		}
+		if w.Beliefs.Hidden[id] != 0 {
+			hidden++
 		}
 		l, z := w.Beliefs.L(id), zoneOf(w, id)
 		sum[z] += l
@@ -471,6 +479,9 @@ func (o *Writer) appendBeliefs(w *world.World, b []byte) []byte {
 	for _, k := range know {
 		b = appendF(b, mean(k, n[world.NumZones]), 4)
 	}
+	b = appendF(b, mean(hidden, n[world.NumZones]), 4)
+	b = append(b, ',')
+	b = strconv.AppendInt(b, int64(dosed), 10)
 	held := 0
 	for _, r := range w.Beliefs.Relics {
 		if r.Holder != world.None {

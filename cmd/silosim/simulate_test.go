@@ -393,12 +393,12 @@ func TestBeliefsSteadyWithNothingToLearn(t *testing.T) {
 		}
 	}
 	rows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(on, "yearly.csv")))), "\n")
-	const tail = ",meanL,meanLUpTop,meanLMids,meanLDownDeep,knowOutside,knowScreen,knowHistory,knowSilos,knowLottery,relicsHidden,relicsHeld,flamekeepers"
+	const tail = ",meanL,meanLUpTop,meanLMids,meanLDownDeep,knowOutside,knowScreen,knowHistory,knowSilos,knowLottery,hiddenAny,dosed,relicsHidden,relicsHeld,flamekeepers"
 	if !strings.HasSuffix(rows[0], tail) || len(rows) != 201 {
 		t.Fatalf("%d rows, header %q", len(rows), rows[0])
 	}
 	l := strconv.FormatFloat(loadInto(t, "../../scenarios/baseline.yaml").Beliefs.TaughtLegitimacy, 'f', 4, 64)
-	want := strings.Join([]string{l, l, l, l, "0.0000", "0.0000", "0.0000", "0.0000", "0.0000", "0", "0", "0"}, ",")
+	want := strings.Join([]string{l, l, l, l, "0.0000", "0.0000", "0.0000", "0.0000", "0.0000", "0.0000", "0", "0", "0", "0"}, ",")
 	for i, row := range rows[1:] {
 		if !strings.HasSuffix(row, ","+want) {
 			t.Fatalf("year %d: %q, want it to end with mean L %s everywhere and nobody knowing anything", i+1, row, l)

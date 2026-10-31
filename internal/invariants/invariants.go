@@ -54,7 +54,8 @@ func Check(w *world.World, cfg *config.Scenario) error {
 }
 
 // ODD §6.12 (draft): every living person's base, L and risk aversion lie
-// in 0–1, they know only the five flags, and what they lived they know;
+// in 0–1, they know only the five flags, never one both known and hidden,
+// and what they lived they know or have hidden;
 // all the relics are there, each on a real floor, held by nobody or by a
 // living person; every Flamekeeper is alive and knows the history.
 func beliefs(w *world.World, relics int) error {
@@ -92,8 +93,11 @@ func beliefs(w *world.World, relics int) error {
 		if k := b.Known[id]; k >= 1<<world.NumFlags {
 			return fmt.Errorf("person %d: knows flags %b, beyond the %d facts", id, k, world.NumFlags)
 		}
-		if extra := b.Lived[id] &^ b.Known[id]; extra != 0 {
-			return fmt.Errorf("person %d: flags %b lived but not known", id, extra)
+		if both := b.Known[id] & b.Hidden[id]; both != 0 || b.Hidden[id] >= 1<<world.NumFlags {
+			return fmt.Errorf("person %d: flags %b both known and hidden, or hidden %b beyond the five", id, both, b.Hidden[id])
+		}
+		if extra := b.Lived[id] &^ (b.Known[id] | b.Hidden[id]); extra != 0 {
+			return fmt.Errorf("person %d: flags %b lived but neither known nor hidden", id, extra)
 		}
 	}
 	return nil

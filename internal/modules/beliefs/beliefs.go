@@ -23,14 +23,19 @@ type Module struct {
 	shadowAge      world.Tick   // in days: who sees a scripted reveal
 	findChance     float64      // daily chance a hidden relic is found
 	handChance     float64      // daily chance a holder hands a relic over
-	cue            float64      // ρ: chance a cue works
+	cue            float64      // κ: chance a cue works
 	used           []world.Tick // the last day a person's relics worked on them
 	candidates     []world.PersonID
 	seats          int              // N_F: Flamekeeper seats
 	adultAge       world.Tick       // worker age in days: the base is fixed from then on
 	young          []world.PersonID // alive and under worker age at the last step, in ID order
 
+	hide      float64 // d: daily chance a known flag is hidden while dosed
+	waterDays int     // D_water: days a water dosing lasts
+
 	tellers []world.PersonID // today's knowers, shuffled
+	hiders  []world.PersonID // people with a hidden flag, and some who no longer have one
+	fl      []world.Flag     // scratch
 	fresh   []world.Flags    // flags learned today, not passed on before tomorrow
 	learned []world.PersonID // who has fresh flags
 }
@@ -58,7 +63,8 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	m.handChance = 1 / (cfg.Beliefs.RelicKeptYears * engine.DaysPerYear)
 	m.cue = cfg.Beliefs.CueChance
 	m.seats = cfg.Beliefs.FlamekeeperSeats
-	w.Beliefs = &world.Beliefs{Cost: cfg.Beliefs.LegitimacyCostPerFlag}
+	m.hide, m.waterDays = cfg.Beliefs.DoseHideChance, cfg.Beliefs.WaterDosingDays
+	w.Beliefs = &world.Beliefs{Cost: cfg.Beliefs.LegitimacyCostPerFlag, Water: world.None}
 	m.newcomers(w, r)
 	// ODD §6.12, Relics: on day 1, each hidden on a floor drawn uniformly.
 	for range cfg.Beliefs.Relics {
@@ -80,19 +86,29 @@ func (m *Module) Steps() []engine.Step {
 	return []engine.Step{{Phase: engine.PhaseBeliefs, Run: m.step}}
 }
 
-// EventTypes: ODD §6.12, Scripted events. revealHistory stands in for a
-// crushed rebellion everyone saw: everyone alive aged 14 or more learns the
-// history as lived. It fires just before the beliefs step, and, like
-// anything learned today, is passed on from tomorrow.
+// EventTypes: ODD §6.12, Scripted events. Both fire just before the
+// beliefs step.
+//   - revealHistory stands in for a crushed rebellion everyone saw:
+//     everyone alive aged 14 or more and not dosed learns the history as
+//     lived, passed on from tomorrow like anything learned today.
+//   - waterDosing puts Vitamin D+ in the water for D_water days from today,
+//     dosing everyone alive and everyone born while it lasts.
 func (m *Module) EventTypes() []engine.EventType {
-	return []engine.EventType{{Name: "revealHistory", Phase: engine.PhaseBeliefs, Fire: func(w *world.World, _ *rng.Stream) error {
-		for _, id := range w.Alive {
-			if w.Day-w.People[id].BirthDay >= m.shadowAge { // checked first: newborns have no beliefs until the step
-				m.teach(w.Beliefs, id, world.FlagHistory, true)
+	return []engine.EventType{
+		{Name: "revealHistory", Phase: engine.PhaseBeliefs, Fire: func(w *world.World, _ *rng.Stream) error {
+			for _, id := range w.Alive {
+				// Age first: newborns have no beliefs until the step.
+				if w.Day-w.People[id].BirthDay >= m.shadowAge && !w.Beliefs.Dosed(id, w.Day) {
+					m.teach(w.Beliefs, id, world.FlagHistory, true)
+				}
 			}
-		}
-		return nil
-	}}}
+			return nil
+		}},
+		{Name: "waterDosing", Phase: engine.PhaseBeliefs, Fire: func(w *world.World, _ *rng.Stream) error {
+			w.Beliefs.Water = max(w.Beliefs.Water, w.Day+world.Tick(m.waterDays)-1)
+			return nil
+		}},
+	}
 }
 
 // ODD §6.12 / §3 step 10.7.
@@ -117,6 +133,8 @@ func (m *Module) newcomers(w *world.World, r *rng.Stream) {
 		b.Base = append(b.Base, m.edu)
 		b.Known = append(b.Known, 0)
 		b.Lived = append(b.Lived, 0)
+		b.Hidden = append(b.Hidden, 0)
+		b.DosedUntil = append(b.DosedUntil, world.None)
 		b.Risk = append(b.Risk, r.Float64())
 		m.young = append(m.young, world.PersonID(id))
 		m.fresh = append(m.fresh, 0)
@@ -218,10 +236,29 @@ func (m *Module) relics(w *world.World, r *rng.Stream) {
 			continue
 		}
 		m.used[rel.Holder] = w.Day
-		if !b.Known[rel.Holder].Has(world.FlagHistory) && r.Float64() < m.cue {
-			m.teach(b, rel.Holder, world.FlagHistory, true)
+		m.cueByRelic(w, r, rel.Holder)
+	}
+}
+
+// cueByRelic: ODD §6.12, Relics and Vitamin D+. A relic works on a holder
+// who isn't dosed like a cue: each hidden flag comes back with chance κ,
+// and the history, if they neither know it nor have it hidden, is learned
+// as lived with chance κ.
+func (m *Module) cueByRelic(w *world.World, r *rng.Stream, id world.PersonID) {
+	b := w.Beliefs
+	if b.Dosed(id, w.Day) {
+		return
+	}
+	m.fl = flagsOf(b.Hidden[id], m.fl[:0])
+	for _, f := range m.fl {
+		if r.Float64() < m.cue {
+			m.teach(b, id, f, false) // comes back as heard or lived, as before
 		}
 	}
+	if (b.Known[id] | b.Hidden[id]).Has(world.FlagHistory) || r.Float64() >= m.cue {
+		return
+	}
+	m.teach(b, id, world.FlagHistory, true)
 }
 
 // ODD §6.12, Flamekeepers: on day 1, N_F adults drawn uniformly take the
@@ -311,10 +348,23 @@ func (m *Module) pick(r *rng.Stream) world.PersonID {
 // dead and those who now know nothing, in its own (deterministic) order.
 // Losses are rare, so they are drawn by skipping (skip) at the higher of
 // the two chances and kept, for a flag with the lower one, in proportion.
+//
+// Then Vitamin D+: for a dosed knower, each flag still known is hidden
+// with chance d, the Flamekeepers' history too.
 func (m *Module) forget(w *world.World, r *rng.Stream) {
 	b := w.Beliefs
 	most := max(m.forgetHeard, m.forgetLived)
-	sk := newSkip(r, most)
+	sk, dose := newSkip(r, most), newSkip(r, m.hide)
+	// The list of people with hidden flags is cleaned before any are hidden
+	// today, so someone who recalled everything and is hidden again is
+	// listed once.
+	hid := m.hiders[:0]
+	for _, h := range m.hiders {
+		if w.People[h].Alive && b.Hidden[h] != 0 {
+			hid = append(hid, h)
+		}
+	}
+	m.hiders = hid
 	keep := b.Knowers[:0]
 	for _, id := range b.Knowers {
 		if !w.People[id].Alive {
@@ -333,6 +383,13 @@ func (m *Module) forget(w *world.World, r *rng.Stream) {
 				b.Forget(id, f)
 			}
 		}
+		if b.Dosed(id, w.Day) {
+			for known := b.Known[id]; known != 0; known &= known - 1 {
+				if dose.land(r) && b.Hide(id, world.Flag(bits.TrailingZeros8(uint8(known)))) {
+					m.hiders = append(m.hiders, id)
+				}
+			}
+		}
 		if b.Known[id] != 0 {
 			keep = append(keep, id)
 		}
@@ -344,18 +401,19 @@ func (m *Module) forget(w *world.World, r *rng.Stream) {
 // ask of each tie whether it is used today (ODD §6.11); in a conversation
 // each flag the teller knew before today and the listener doesn't know
 // passes with chance π × (1 − L of the listener), whose L drops as they
-// learn. Only knowers are visited, so the cost follows them, not the
-// population.
+// learn. A dosed listener learns nothing, and one who has the flag hidden
+// may recall it instead (recall). Only knowers are visited, so the cost
+// follows them, not the population.
 //
 // The draws are made in the cheapest order, with the same chances. Every
 // pair of a teller's tie and a flag they tell is a slot; a slot is a real
 // chance to pass the flag when the listener doesn't know it. First, which
-// slots would pass at π is drawn by skipping (almost none do), so a
-// teller none of whose slots land is passed over without reading their
-// ties; then, for a landed slot that is real, whether it passes at 1 − L
-// of the listener; and only then whether the two talk today. Asking every
-// tie whether it was used cost 1 ms a day with 80% of the silo knowing a
-// flag (T10.3).
+// slots would pass at π is drawn by skipping (almost none do), so the
+// step goes straight to them and a teller none of whose slots land is
+// passed over without reading their ties; then, for a landed slot that is
+// real, whether it passes at 1 − L of the listener; and only then whether
+// the two talk today. Asking every tie whether it was used cost 1 ms a day
+// with 80% of the silo knowing a flag (T10.3).
 func (m *Module) converse(w *world.World, r *rng.Stream) {
 	b, n := w.Beliefs, w.Network
 	m.tellers = append(m.tellers[:0], b.Knowers...)
@@ -363,25 +421,59 @@ func (m *Module) converse(w *world.World, r *rng.Stream) {
 
 	sk := newSkip(r, m.pass)
 	for _, k := range m.tellers {
-		tells := b.Known[k] &^ m.fresh[k]
+		m.fl = flagsOf(b.Known[k]&^m.fresh[k], m.fl[:0])
+		fl := m.fl
 		ties := n.TiesOf(w, k)
-		if sk.miss(tells.Count() * len(ties)) {
-			continue
-		}
-		for _, t := range ties {
+		slots := len(fl) * len(ties)
+		for s := sk.next(r, slots); s >= 0; s = next(r, &sk, s, slots) {
+			t, f := ties[s/len(fl)], fl[s%len(fl)]
 			j := t.Other
-			for f := range world.NumFlags {
-				if !tells.Has(f) || !sk.land(r) || b.Known[j].Has(f) || r.Float64() >= 1-b.L(j) || !n.Talk(w, k, j, t.Kind) {
-					continue
-				}
-				m.learn(b, j, f)
+			if (b.Known[j] | b.Hidden[j]).Has(f) || b.Dosed(j, w.Day) || r.Float64() >= 1-b.L(j) || !n.Talk(w, k, j, t.Kind) {
+				continue
 			}
+			m.learn(b, j, f)
 		}
 	}
+	m.recall(w, r)
 	for _, id := range m.learned {
 		m.fresh[id] = 0
 	}
 	m.learned = m.learned[:0]
+}
+
+// ODD §6.12, Vitamin D+: once the dose has ended, a hidden flag comes back,
+// known as before, with chance κ in each conversation with someone who
+// knew it before today: the person's own memory, so their L doesn't block
+// it. The people with hidden flags are visited in the order they first
+// had one hidden, and the draws skip to the slots (tie and hidden flag)
+// that land, as in converse.
+func (m *Module) recall(w *world.World, r *rng.Stream) {
+	b, n := w.Beliefs, w.Network
+	sk := newSkip(r, m.cue)
+	for _, h := range m.hiders {
+		if b.Dosed(h, w.Day) {
+			continue
+		}
+		m.fl = flagsOf(b.Hidden[h], m.fl[:0])
+		fl := m.fl
+		ties := n.TiesOf(w, h)
+		slots := len(fl) * len(ties)
+		for s := sk.next(r, slots); s >= 0; s = next(r, &sk, s, slots) {
+			t, f := ties[s/len(fl)], fl[s%len(fl)]
+			if !b.Hidden[h].Has(f) || !(b.Known[t.Other] &^ m.fresh[t.Other]).Has(f) || !n.Talk(w, h, t.Other, t.Kind) {
+				continue
+			}
+			m.teach(b, h, f, false)
+		}
+	}
+}
+
+// flagsOf lists the flags in a set, appended to out.
+func flagsOf(set world.Flags, out []world.Flag) []world.Flag {
+	for ; set != 0; set &= set - 1 {
+		out = append(out, world.Flag(bits.TrailingZeros8(uint8(set))))
+	}
+	return out
 }
 
 // learn teaches a flag in a conversation.
@@ -459,14 +551,26 @@ func (s *skip) draw(r *rng.Stream) {
 	}
 }
 
-// miss reports whether none of the next n items lands, and if so skips
-// them; otherwise it skips nothing.
-func (s *skip) miss(n int) bool {
-	if s.left < n {
-		return false
+// next returns how many of the next n items miss before one lands, and
+// moves past that one; or −1, moving past all n, if none lands.
+func (s *skip) next(r *rng.Stream, n int) int {
+	if s.left >= n {
+		s.left -= n
+		return -1
 	}
-	s.left -= n
-	return true
+	i := s.left
+	s.draw(r)
+	return i
+}
+
+// next, for a loop over slots 0 … n−1 whose slot at landed has just been
+// handled, returns the next slot that lands, or −1.
+func next(r *rng.Stream, sk *skip, landed, n int) int {
+	i := sk.next(r, n-landed-1)
+	if i < 0 {
+		return -1
+	}
+	return landed + 1 + i
 }
 
 // land reports whether the next item lands.

@@ -596,18 +596,18 @@ P(\text{lost today}) = 1 - 2^{-1/(365\,T)}, \qquad T = T_{heard} \text{ or } T_{
 - *Water dosing:* the scripted event `waterDosing` doses everyone alive, and everyone born while it lasts, for D\_water days from the event's day. A second event while one runs extends it to D\_water days from the later event.
 - *Targeted:* another module (§6.13, §6.15, §6.16) doses named people until a day it sets. Scripted events can't name people, so this form has no event type.
 
-A hidden flag never fades on its own. Once the dose has ended, it comes back, known again as heard or lived as before, with chance ρ per *cue*:
+A hidden flag never fades on its own. Once the dose has ended, it comes back, known again as heard or lived as before, with chance κ per *cue*:
 
 - each day the person holds a relic (one draw per hidden flag);
 - each conversation with someone who knows that flag, in place of the π × (1 − L) chance: it is the person's own memory, so their L doesn't block it.
 
-This is how Juliette's memory came back (S3).
+The conversations are drawn as in telling (above), from the side of the people with a hidden flag, visited in the order they first had one hidden. This is how Juliette's memory came back (S3).
 
 **Relics.** Relics are rare and hard to find, and whoever has one keeps it out of sight.
 
 - *Hidden:* on day 1, N\_relic relics are hidden, each on a floor drawn uniformly from all 144. Each day each hidden relic is found with chance 1 / (365 × T\_find), so it stays hidden T\_find years on average, by a person drawn uniformly from those aged 14 or more (shadowing age, §6.5) whose day location (§6.10) is its floor; with nobody there it stays hidden. The finder holds it.
 - *Held:* a holder keeps the relic hidden in their flat, so it lies on their home floor. They can use it every day, and nobody else sees it: the regime finds it only by searching or by catching it change hands (§6.13). A person can hold several.
-- *Used:* each day, for a holder who isn't dosed, their relics work like a cue: each hidden flag comes back with chance ρ, and if they don't know the history, they learn it as lived with chance ρ. Holding several relics gives no more draws than holding one.
+- *Used:* each day, for a holder who isn't dosed, their relics work like a cue: each hidden flag comes back with chance κ, and if they don't know the history, they learn it as lived with chance κ. Holding several relics gives no more draws than holding one.
 - *Handed over:* each day a holder hands each relic, with chance 1 / (365 × T\_keep), to someone aged 14 or more they talk with that day (§6.11), drawn uniformly from them; with nobody to talk to, they keep it. A relic is kept T\_keep years on average, and travels along the network, so the best-connected people, Porters among them, become the dealers. Selling and giving are the same act, since the model has no money, and both are the Pact's `tradeRelic` offence (§6.9).
 - *Inherited:* when a holder dies, each relic goes to a living member of their household aged 14 or more, drawn uniformly; with none, it stays hidden in the flat, on its floor, to be found when the flat is cleared.
 
@@ -638,25 +638,7 @@ Relics are not lost or destroyed in this module. The regime can find and take th
 
 **Off and null.** With the module off, nothing of this exists. With it on, it changes no baseline state and draws only from its own stream, so `daily.csv` and `events.jsonl` are byte-identical to a run without it, whatever its settings; `yearly.csv` keeps its baseline columns and gains the module's. In the null setting (no Flamekeepers, no relics, no events) nobody ever knows anything and L = L\_edu for everyone.
 
-**Parameters** (draft; they move into §7 when M10 is done):
-
-| Parameter | Default | Basis |
-| --- | --- | --- |
-| Taught legitimacy L\_edu | 0.8 | Guess: most people believe the Pact |
-| Education weight ε | 0.5 | Guess: school and home count equally |
-| Legitimacy cost per flag δ | 0.15 | Guess: all five flags take L from 0.8 to 0.05 |
-| Pass chance π | 0.002 per flag and conversation, × (1 − L) | Guess; calibrated against C4 (§1.2) in T12.8, together with p\_s (§6.11) |
-| Half-life of heard knowledge T\_heard | 5 years | Guess |
-| Half-life of lived knowledge T\_lived | 20 years | Guess: most witnesses keep it for decades, few for life |
-| Hiding while dosed d | 0.01 per flag and day | Guess: a year of water dosing hides 97% of a flag, past the 90% T10.6 asks for |
-| Water dosing length D\_water | 365 days | Guess |
-| Cue chance ρ | 0.05 per cue | Guess: a held relic brings a memory back within two weeks half the time |
-| Relics N\_relic | 100 | Guess: rare; banned "down to a Pez dispenser" (lore reference) |
-| Relic hiding time T\_find | 50 years on average (1 / 18,250 a day) | Guess: rare finds, about 2 a year silo-wide at the start (Adam, 2026-10-31) |
-| Relic keeping time T\_keep | 10 years on average (1 / 3,650 a day) | Guess |
-| Flamekeeper seats N\_F | 15 | Guess: "a small secret group" (lore reference) |
-
-Risk aversion R is uniform on 0–1, as in Epstein (2002); it adds no parameter. Ranges checked at load: L\_edu, ε, δ, π, d and ρ in [0, 1]; both half-lives, T\_find and T\_keep strictly greater than 0; D\_water an integer ≥ 1; N\_relic and N\_F integers ≥ 0. That N\_F is no more than the day-1 adults is checked when the module starts.
+**Parameters:** taught legitimacy L\_edu, Education weight ε, legitimacy cost per flag δ, pass chance π, the two half-lives, hiding while dosed d, water dosing length D\_water, cue chance κ, relics N\_relic, relic hiding and keeping times T\_find and T\_keep, and Flamekeeper seats N\_F, in §7 (M10 done, 2026-10-31). Risk aversion R is uniform on 0–1, as in Epstein (2002); it adds no parameter.
 
 ## 7. Parameters
 
@@ -664,7 +646,7 @@ Every number the model uses, in one place. Each one becomes a field in the scena
 
 The table below is the frozen baseline set. Part-2 parameters are listed in their draft sections (6.9 onward) and move into this table when their milestone is done.
 
-**Ranges checked at load.** No parameter may be negative. These must lie in [0, 1]: every daily chance and percentage; α, ρ, f₀ and the air recovery share (so the updates in 6.5 and 6.6 cannot overshoot); every amount subtracted from, or compared with, a 0–1 variable (injury and illness cost, condition drop, wear, start skill, master skill, sick-leave health); hunger and air damage; recovery; the open-window weight; the shadow output factor; the retraining threshold. Also maternalDeathBase ≤ 0.5 and injuryChance × the largest injury factor ≤ 1, so every derived daily probability stays ≤ 1. These must be strictly greater than 0, because they are divisors or define quantities that must exist: Gompertz A and B (so the day-1 age table ends), floors per zone, the coverage need factor, every department share, adult kcal, the age-gap scale, power demand per person, the capacity margin, kcal per farm unit, target and starting population, window, pregnancy and minimum outage length, and the invariant and frame intervals. invariantEvery and frameEvery are integers ≥ 1. Ages are ordered (shadow < worker < retire, mother min < max, partnering min age ≤ day-1 pairing age), outage min ≤ max, farm and Mechanical floors each fewer than the floors per zone (every zone keeps a residential floor), the home capacity margin is at least 1, and zone splits and department shares each sum to 1. Part 2: both walking hours are strictly greater than 0; every department with office floors lists at least one floor inside the silo, and Farms, Mechanical, General services and Porters list none. That each office floor is a residential floor (not a farm or Mechanical floor) in the department's zone is checked when the space module starts, once the floors exist. The weak ties per kind k is an integer ≥ 0; p\_s and w\_weak are in [0, 1].
+**Ranges checked at load.** No parameter may be negative. These must lie in [0, 1]: every daily chance and percentage; α, ρ, f₀ and the air recovery share (so the updates in 6.5 and 6.6 cannot overshoot); every amount subtracted from, or compared with, a 0–1 variable (injury and illness cost, condition drop, wear, start skill, master skill, sick-leave health); hunger and air damage; recovery; the open-window weight; the shadow output factor; the retraining threshold. Also maternalDeathBase ≤ 0.5 and injuryChance × the largest injury factor ≤ 1, so every derived daily probability stays ≤ 1. These must be strictly greater than 0, because they are divisors or define quantities that must exist: Gompertz A and B (so the day-1 age table ends), floors per zone, the coverage need factor, every department share, adult kcal, the age-gap scale, power demand per person, the capacity margin, kcal per farm unit, target and starting population, window, pregnancy and minimum outage length, and the invariant and frame intervals. invariantEvery and frameEvery are integers ≥ 1. Ages are ordered (shadow < worker < retire, mother min < max, partnering min age ≤ day-1 pairing age), outage min ≤ max, farm and Mechanical floors each fewer than the floors per zone (every zone keeps a residential floor), the home capacity margin is at least 1, and zone splits and department shares each sum to 1. Part 2: both walking hours are strictly greater than 0; every department with office floors lists at least one floor inside the silo, and Farms, Mechanical, General services and Porters list none. That each office floor is a residential floor (not a farm or Mechanical floor) in the department's zone is checked when the space module starts, once the floors exist. The weak ties per kind k is an integer ≥ 0; p\_s and w\_weak are in [0, 1]. L\_edu, ε, δ, π, d and κ are in [0, 1]; both half-lives, T\_find and T\_keep are strictly greater than 0; D\_water is an integer ≥ 1; N\_relic and N\_F are integers ≥ 0. That N\_F is no more than the day-1 adults is checked when the beliefs module starts.
 
 | Parameter | Default | Basis | Used in |
 | --- | --- | --- | --- |
@@ -727,6 +709,19 @@ The table below is the frozen baseline set. Part-2 parameters are listed in thei
 | Weak ties per kind k | 5 | Guess: a few close neighbours and workmates out of about 90 people on a floor | 6.11 |
 | Strong tie daily chance p\_s | 0.5 | Guess: family and close work ties talk on about every other day; sets how fast news travels, so it is checked against C4 (§1.2) in T12.8 | 6.11 |
 | Weak tie strength w\_weak | 0.3 | Guess: a weak tie is used about a third as often as a strong one (0.15 a day) | 6.11 |
+| Taught legitimacy L\_edu | 0.8 | Guess: most people believe the Pact | 6.12 |
+| Education weight ε | 0.5 | Guess: school and home count equally | 6.12 |
+| Legitimacy cost per flag δ | 0.15 | Guess: all five flags take L from 0.8 to 0.05 | 6.12 |
+| Pass chance π | 0.002 per flag and conversation, × (1 − L) | Guess; calibrated against C4 (§1.2) in T12.8, together with p\_s (§6.11) | 6.12 |
+| Half-life of heard knowledge T\_heard | 5 years | Guess | 6.12 |
+| Half-life of lived knowledge T\_lived | 20 years | Guess: most witnesses keep it for decades, few for life | 6.12 |
+| Hiding while dosed d | 0.01 per flag and day | Guess: a year of water dosing hides 97% of a flag, past the 90% T10.6 asks for | 6.12 |
+| Water dosing length D\_water | 365 days | Guess | 6.12 |
+| Cue chance κ | 0.05 per cue | Guess: a held relic brings a memory back within two weeks half the time | 6.12 |
+| Relics N\_relic | 100 | Guess: rare; banned "down to a Pez dispenser" (lore reference) | 6.12 |
+| Relic hiding time T\_find | 50 years on average (1 / 18,250 a day) | Guess: rare finds, about 2 a year silo-wide at the start (Adam, 2026-10-31) | 6.12 |
+| Relic keeping time T\_keep | 10 years on average (1 / 3,650 a day) | Guess | 6.12 |
+| Flamekeeper seats N\_F | 15 | Guess: "a small secret group" (lore reference) | 6.12 |
 
 ## 8. Outputs, tests and validation
 

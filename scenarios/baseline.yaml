@@ -158,8 +158,10 @@ beliefs:                          # ODD §6.12 (part 2, draft); used only when `
   relics: 100                     # N_relic: relics hidden on day 1, each on a random floor; guess
   relicHiddenYears: 50            # T_find: years a hidden relic stays hidden on average; guess
   relicKeptYears: 10              # T_keep: years a holder keeps a relic before handing it on, on average; guess
-  cueChance: 0.05                 # ρ: chance a cue (a day holding a relic) works; guess
+  cueChance: 0.05                 # κ: chance a cue (a day holding a relic) works; guess
   flamekeeperSeats: 15            # N_F: seats of the Flamekeepers, all filled on day 1; guess ("a small secret group")
+  doseHideChance: 0.01            # d: daily chance a known flag is hidden while on Vitamin D+; guess (a year hides 97%)
+  waterDosingDays: 365            # D_water: days the scripted event waterDosing lasts; guess
 
 governance:                       # ODD §6.8
   mode: appointment               # or: election

@@ -29,3 +29,5 @@ beliefs:                  # M10, off
   relicKeptYears: 1
   cueChance: 0.5
   flamekeeperSeats: 40
+  doseHideChance: 0.5
+  waterDosingDays: 30
