@@ -111,6 +111,8 @@ func (s *Scenario) Validate() error {
 		{"output.frameEvery", float64(s.Output.FrameEvery)},
 		{"space.fullDescentHours", s.Space.FullDescentHours},
 		{"space.walkingHoursPerDay", s.Space.WalkingHoursPerDay},
+		{"beliefs.halfLifeHeardYears", s.Beliefs.HalfLifeHeardYears},
+		{"beliefs.halfLifeLivedYears", s.Beliefs.HalfLifeLivedYears},
 	}
 	for i, d := range s.Work.Departments {
 		positive = append(positive, struct {

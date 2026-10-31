@@ -342,3 +342,25 @@ Every other pattern passes in 10/10.
 **Result: T6.1 done.** Every ODD §8 calibration target holds in at least 96 of 100 seeds.
 
 **Parameters marked "Calibrate" and left at their defaults,** because every target passes with them: hungerDamage 0.02, airDamage 0.05, recoveryRate 0.01, needFactor 0.84, searchRate 0.0009, sameSexWeight 0.05, generatorWear 0.0004, repairRate 0.002, failureBase 0.002. The one tuned value is kcalPerFarmUnit (16,000 → 11,900, 5% surplus). The other changes made during calibration were rule or design decisions, each recorded in the entries above: health 0 means death, sick leave, capacity 1.5 and backup 0.173, orphans to any zone, the Mechanical stay rule, and the 75% target.
+
+## 2026-10-31 — Pattern C4 measured on a scripted crushed rebellion (T10.3)
+
+**Code:** T10.3 (beliefs: upbringing, spread, forgetting), on top of `26c38d4`.
+**Setup:** `scenarios/baseline.yaml` with `modules` plus `space, network, beliefs` at their defaults (π = 0.002, T_heard 5 years, T_lived 20 years, p_s 0.5); 5 warm-up years, 45 measured; `revealHistory` on day 2000 (the first measured year): everyone aged 14+ learns the history as lived. No regime: nothing is punished, dosed or confiscated (M11, M13 not built). Seeds 1–5.
+
+**Target (ODD §1.2, C4):** 40 years after a suppressed rebellion, fewer than 10% of adults know the history.
+
+| Years after the reveal | Adults who know the history, seeds 1–5 | Mean | Mean L of adults |
+| ---: | --- | ---: | ---: |
+| 0.5 | 0.978 0.982 0.982 0.983 0.980 | 0.981 | 0.652 |
+| 5.5 | 0.908 0.905 0.908 0.904 0.903 | 0.906 | 0.656 |
+| 10.5 | 0.863 0.863 0.867 0.859 0.869 | 0.864 | 0.655 |
+| 20.5 | 0.824 0.817 0.817 0.818 0.822 | 0.820 | 0.648 |
+| 30.5 | 0.793 0.794 0.796 0.792 0.798 | 0.795 | 0.637 |
+| 40.5 | 0.796 0.800 0.794 0.799 0.798 | 0.798 | 0.620 |
+
+**Result: C4 fails, as expected without a regime.** Knowledge of the history settles near 80% instead of dying out. Every knower passes it on to about π × (1 − L) × conversations a day ≈ 0.002 × 0.35 × 3.5 ≈ 0.0025 people a day, against losing it at 0.00038 a day (heard) or 0.0001 (lived): each knower replaces themself several times over, so the history is endemic. Mean L drifts down (0.65 → 0.62) as children grow up with doubting parents, the same in all three zones.
+
+**What it means:** in this model, forgetting alone doesn't erase a rebellion; it takes the regime (arrests and the speech rule, M11; dosing and confiscation, M13) or a much smaller π. C4 is the target for π and p_s together in T12.8, with the regime on. Nothing was tuned here.
+
+**Cost:** 80% of the silo knowing a flag adds about 150 µs a day to a run (about 19 s over 350 years), after drawing the rare passing events first (T10.3); asking every tie whether it was used had cost 1 ms a day.

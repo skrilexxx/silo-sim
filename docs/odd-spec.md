@@ -581,7 +581,7 @@ Hardship is not part of L. It enters grievance, G = H × (1 − L) (§6.14), so 
 
 Either of the two can be the teller, so a tie between two knowers works both ways. The chance is the same for every flag and every tie kind: kin and households pass things on faster only because strong ties talk more often (§6.11). People who believe the regime are hard to convince, and once someone doubts, the next fact is easier to believe, because every flag they learn lowers their L. A dosed listener learns nothing; a listener with the flag hidden may recall it instead (Vitamin D+, below). A flag learned today is passed on from the next day.
 
-Only conversations that involve a knower are drawn (§6.11): the step visits the people who know at least one flag, in an order shuffled each day, and asks for each of their ties whether it is used today. The cost follows the knowers, not the population.
+Only conversations that involve a knower are drawn (§6.11): the step visits the people who know at least one flag, in an order shuffled each day. The chances are the ones above, but they are drawn rarest first: whether a flag would pass at π, then at 1 − L, and only then whether the tie is used today. Almost nothing passes on a given day, so most knowers are passed over without reading their ties, and the cost follows the knowers, not the population or their ties (T10.3: asking every tie cost 1 ms a day with 80% of the silo knowing a flag).
 
 **Forgetting.** A known flag is lost for good with a daily chance set by how it was learned:
 
@@ -618,7 +618,7 @@ This is how Juliette's memory came back (S3).
 
 **Scripted events** (§5):
 
-- `revealHistory`: everyone alive aged 14 or more and not dosed learns the history as lived. It stands in for a crushed rebellion that everyone saw, so pattern C4 can be measured before the rebellion modules exist (T10.3).
+- `revealHistory`: everyone alive aged 14 or more and not dosed learns the history as lived; someone who had only heard it now knows it as lived. It stands in for a crushed rebellion that everyone saw, so pattern C4 can be measured before the rebellion modules exist (T10.3).
 - `waterDosing`: water dosing, above.
 
 **Outputs** (only when the module is on):

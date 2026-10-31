@@ -54,7 +54,7 @@ func Check(w *world.World, cfg *config.Scenario) error {
 }
 
 // ODD §6.12 (draft): every living person's base, L and risk aversion lie
-// in 0–1, and they know only the five flags.
+// in 0–1, they know only the five flags, and what they lived they know.
 func beliefs(w *world.World) error {
 	b := w.Beliefs
 	if b == nil {
@@ -72,6 +72,9 @@ func beliefs(w *world.World) error {
 		}
 		if k := b.Known[id]; k >= 1<<world.NumFlags {
 			return fmt.Errorf("person %d: knows flags %b, beyond the %d facts", id, k, world.NumFlags)
+		}
+		if extra := b.Lived[id] &^ b.Known[id]; extra != 0 {
+			return fmt.Errorf("person %d: flags %b lived but not known", id, extra)
 		}
 	}
 	return nil

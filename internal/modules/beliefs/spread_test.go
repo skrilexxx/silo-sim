@@ -22,6 +22,8 @@ type still struct {
 	cfg  *config.Scenario
 	days []func(*world.World, *rng.Stream) error
 	rs   []*rng.Stream
+
+	beliefs *Module
 }
 
 // newStill builds it with pass chance π; with noPorters, every porter
@@ -38,7 +40,8 @@ func newStill(t testing.TB, seed uint64, pass float64, noPorters bool) *still {
 		t.Fatal(err)
 	}
 	s := &still{t: t, w: w, cfg: cfg}
-	for _, m := range []engine.Module{work.New(), space.New(), network.New(), New()} {
+	s.beliefs = New()
+	for _, m := range []engine.Module{work.New(), space.New(), network.New(), s.beliefs} {
 		mr, _ := rng.New(seed, m.Name())
 		if err := m.Init(w, cfg, mr); err != nil {
 			t.Fatal(err)
@@ -104,7 +107,7 @@ func (s *still) seedIn(z world.Zone) world.PersonID {
 	for _, id := range s.w.Alive {
 		p := &s.w.People[id]
 		if p.Stage == world.Worker && p.Department != porters && s.w.Floors[s.w.Households[p.Household].Floor-1].Zone == z {
-			s.w.Beliefs.Learn(id, world.FlagHistory)
+			s.w.Beliefs.Learn(id, world.FlagHistory, false)
 			return id
 		}
 	}

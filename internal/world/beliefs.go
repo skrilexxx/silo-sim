@@ -28,6 +28,7 @@ func (f Flags) Count() int      { return bits.OnesCount8(uint8(f)) }
 type Beliefs struct {
 	Base  []float64 // 0–1: legitimacy from upbringing, fixed at worker age
 	Known []Flags   // facts known (hidden ones not included)
+	Lived []Flags   // of those, the ones known from the person's own experience; the rest were heard
 	Risk  []float64 // risk aversion R, 0–1, fixed at birth (ODD §6.14)
 	Cost  float64   // δ: legitimacy lost per known flag
 
@@ -36,10 +37,14 @@ type Beliefs struct {
 	Knowers []PersonID
 }
 
-// Learn makes the person know the flag (ODD §6.12). Every module that
-// teaches a flag uses it, so the beliefs step finds the new knower. It
+// Learn makes the person know the flag (ODD §6.12), as lived or as heard.
+// Every module that teaches a flag uses it, so the beliefs step finds the
+// new knower. Living through what one had only heard makes it lived. It
 // reports whether the flag is new to them.
-func (b *Beliefs) Learn(id PersonID, f Flag) bool {
+func (b *Beliefs) Learn(id PersonID, f Flag, lived bool) bool {
+	if lived {
+		b.Lived[id] |= 1 << f
+	}
 	k := b.Known[id]
 	if k.Has(f) {
 		return false
@@ -49,6 +54,12 @@ func (b *Beliefs) Learn(id PersonID, f Flag) bool {
 	}
 	b.Known[id] = k | 1<<f
 	return true
+}
+
+// Forget makes the person lose the flag for good (ODD §6.12, Forgetting).
+func (b *Beliefs) Forget(id PersonID, f Flag) {
+	b.Known[id] &^= 1 << f
+	b.Lived[id] &^= 1 << f
 }
 
 // L is the person's legitimacy: their base minus δ per known flag.

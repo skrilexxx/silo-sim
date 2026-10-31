@@ -109,7 +109,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
   - *Done when:* with nothing to learn, L stays steady in every zone for 200 years (no drift from the rule itself).
 - [x] **T10.2 Information spread.** (2026-10-31) Telling and believing in daily contacts; the chance to believe falls with the listener's L.
   - *Done when:* one seeded "knower" gives an S-shaped spread curve; spread through Porters crosses zones faster than without them (test).
-- [ ] **T10.3 Memory and forgetting.** A forgetting rate per flag (lived experience fades slower than hearsay); generational turnover.
+- [x] **T10.3 Memory and forgetting.** (2026-10-31; C4 fails without a regime: 80% still know after 40 years, calibration log) A forgetting rate per flag (lived experience fades slower than hearsay); generational turnover.
   - *Done when:* knowledge half-life matches the parameter (statistical test); pattern C4 measured on a scripted crushed rebellion.
 - [ ] **T10.4 Relics.** Relics hidden in floors, found by digging and clearing flats, held and shared, confiscated later by Judicial (M11). Holding one raises the chance of learning the true history. A relic also **cues memory** after Vitamin D+, as the Pez dispenser and the watch did for Juliette.
 - [ ] **T10.5 Flamekeepers.** A small secret group that keeps the true history alive. It recruits trusted, low-L contacts and loses members to arrests and deaths.

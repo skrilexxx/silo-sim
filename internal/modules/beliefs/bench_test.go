@@ -38,7 +38,7 @@ func BenchmarkConverseHalfKnow(b *testing.B) {
 	s := newStill(b, 1, 0, false) // π = 0: nobody learns, so every day costs the same
 	for i, id := range s.w.Alive {
 		if i%2 == 0 {
-			s.w.Beliefs.Learn(id, world.FlagHistory)
+			s.w.Beliefs.Learn(id, world.FlagHistory, false)
 		}
 	}
 	s.day()
@@ -47,5 +47,22 @@ func BenchmarkConverseHalfKnow(b *testing.B) {
 	r, _ := rng.New(1, "beliefs")
 	for b.Loop() {
 		m.converse(s.w, r)
+	}
+}
+
+// A whole beliefs step when 80% of the silo knows the history, as after a
+// reveal with no regime (T10.3: it settles near 80%), at the default π.
+func BenchmarkStepMostKnow(b *testing.B) {
+	s := newStill(b, 1, 0.002, false)
+	for i, id := range s.w.Alive {
+		if i%5 != 0 {
+			s.w.Beliefs.Learn(id, world.FlagHistory, true)
+		}
+	}
+	s.day()
+	m := s.beliefs
+	r, _ := rng.New(1, "beliefs")
+	for b.Loop() {
+		m.step(s.w, r)
 	}
 }

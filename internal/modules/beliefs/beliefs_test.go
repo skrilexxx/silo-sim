@@ -15,10 +15,11 @@ const year = engine.DaysPerYear
 
 // tiny is a one-floor world; people are added with add, then start runs Init.
 type tiny struct {
-	t *testing.T
-	w *world.World
-	m *Module
-	r *rng.Stream
+	t   *testing.T
+	cfg *config.Scenario
+	w   *world.World
+	m   *Module
+	r   *rng.Stream
 }
 
 func newTiny(t *testing.T) *tiny {
@@ -31,7 +32,11 @@ func newTiny(t *testing.T) *tiny {
 	w := &world.World{Day: 1200*engine.DaysPerMonth - 1, Floors: []world.Floor{{Number: 1, Homes: 9}},
 		Space: &world.Space{}, Network: n}
 	r, _ := rng.New(1, "beliefs")
-	return &tiny{t: t, w: w, m: New(), r: r}
+	cfg := &config.Scenario{}
+	cfg.Work.ShadowAge, cfg.Work.WorkerAge = 14, 18
+	cfg.Beliefs.TaughtLegitimacy, cfg.Beliefs.EducationWeight, cfg.Beliefs.LegitimacyCostPerFlag = 0.8, 0.5, 0.15
+	cfg.Beliefs.HalfLifeHeardYears, cfg.Beliefs.HalfLifeLivedYears = 5, 20
+	return &tiny{t: t, cfg: cfg, w: w, m: New(), r: r}
 }
 
 // add puts a person of the given age in years and stage in their own
@@ -65,11 +70,8 @@ func (s *tiny) startWith(pass float64) {
 	s.t.Helper()
 	n := s.w.Network
 	n.Weak, n.Children = make([][]world.Tie, len(s.w.People)), make([][]world.PersonID, len(s.w.People))
-	cfg := &config.Scenario{}
-	cfg.Work.WorkerAge = 18
-	cfg.Beliefs.TaughtLegitimacy, cfg.Beliefs.EducationWeight, cfg.Beliefs.LegitimacyCostPerFlag = 0.8, 0.5, 0.15
-	cfg.Beliefs.PassChance = pass
-	if err := s.m.Init(s.w, cfg, s.r); err != nil {
+	s.cfg.Beliefs.PassChance = pass
+	if err := s.m.Init(s.w, s.cfg, s.r); err != nil {
 		s.t.Fatal(err)
 	}
 }
@@ -165,25 +167,32 @@ func TestLegitimacyNeverBelowZero(t *testing.T) {
 }
 
 // ODD §6.12, State: risk aversion is drawn once per person, in ID order,
-// from the module's stream, and newborns get theirs at the next step.
+// from the module's stream, first thing in the step: day-1 people get the
+// stream's first draws, and a newborn gets one at its first step, kept for
+// life.
 func TestRiskDrawnOnceInIDOrder(t *testing.T) {
 	s := newTiny(t)
 	s.add(30, world.Worker)
 	s.add(3, world.Child)
 	s.start()
+	r, _ := rng.New(1, "beliefs")
+	b := s.w.Beliefs
+	for id := range 2 {
+		if want := r.Float64(); b.Risk[id] != want {
+			t.Errorf("person %d: R %v, want %v", id, b.Risk[id], want)
+		}
+	}
 	s.w.People = append(s.w.People, world.Person{ID: 2, Alive: true, BirthDay: s.w.Day + 1, Household: 0,
 		Mother: world.None, Father: world.None, Master: world.None, Partner: world.None, BabyFather: world.None})
 	s.w.Alive = append(s.w.Alive, 2)
 	s.step()
-	s.step()
-	r, _ := rng.New(1, "beliefs")
-	for id, got := range s.w.Beliefs.Risk {
-		if want := r.Float64(); got != want {
-			t.Errorf("person %d: R %v, want %v", id, got, want)
-		}
+	if len(b.Risk) != 3 || b.Risk[2] < 0 || b.Risk[2] >= 1 || b.Risk[2] == b.Risk[1] {
+		t.Fatalf("risk values %v", b.Risk)
 	}
-	if len(s.w.Beliefs.Risk) != 3 {
-		t.Errorf("%d risk values, want 3", len(s.w.Beliefs.Risk))
+	newborn := b.Risk[2]
+	s.step()
+	if b.Risk[2] != newborn {
+		t.Errorf("newborn's R changed from %v to %v", newborn, b.Risk[2])
 	}
 }
 
@@ -215,8 +224,8 @@ func TestPassChanceFallsWithListenersL(t *testing.T) {
 	for _, id := range groupB {
 		bl.Base[id] = 0.65
 	}
-	bl.Learn(tellA, world.FlagHistory)
-	bl.Learn(tellB, world.FlagHistory)
+	bl.Learn(tellA, world.FlagHistory, false)
+	bl.Learn(tellB, world.FlagHistory, false)
 	s.step()
 	for _, g := range []struct {
 		who  []world.PersonID
@@ -249,7 +258,7 @@ func TestPassedOnFromTomorrow(t *testing.T) {
 	for _, id := range []world.PersonID{a, b, c} {
 		bl.Base[id] = 0 // believes nothing, so always convinced
 	}
-	bl.Learn(a, world.FlagSilos)
+	bl.Learn(a, world.FlagSilos, false)
 	s.step()
 	if !bl.Known[b].Has(world.FlagSilos) || bl.Known[c] != 0 {
 		t.Fatalf("day 1: b knows %b, c knows %b; want b to know, c not yet", bl.Known[b], bl.Known[c])
@@ -266,7 +275,7 @@ func TestPassedOnFromTomorrow(t *testing.T) {
 	s.startWith(1)
 	bl = s.w.Beliefs
 	bl.Base[b], bl.Base[c] = 0, 0
-	bl.Learn(a, world.FlagOutside)
+	bl.Learn(a, world.FlagOutside, false)
 	s.w.Network.Chance[world.TieHousehold] = 0
 	s.step()
 	s.w.Network.Chance[world.TieHousehold] = 1
@@ -277,5 +286,126 @@ func TestPassedOnFromTomorrow(t *testing.T) {
 	}
 	if len(bl.Knowers) != 0 {
 		t.Errorf("knowers %v, want the dead one dropped", bl.Knowers)
+	}
+}
+
+// ODD §6.12, Forgetting: a flag known as heard is lost with a half-life of
+// T_heard, one known as lived with T_lived; L comes back with it. Here 1
+// and 2 years, 4,000 people each, nobody tied to anybody.
+func TestHalfLives(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Beliefs.HalfLifeHeardYears, s.cfg.Beliefs.HalfLifeLivedYears = 1, 2
+	const each = 4000
+	var heard, lived []world.PersonID
+	for range each {
+		heard, lived = append(heard, s.add(30, world.Worker)), append(lived, s.add(30, world.Worker))
+	}
+	s.start()
+	b := s.w.Beliefs
+	for i := range each {
+		b.Learn(heard[i], world.FlagScreen, false)
+		b.Learn(lived[i], world.FlagScreen, true)
+	}
+	kept := func(group []world.PersonID) float64 {
+		n := 0
+		for _, id := range group {
+			if b.Known[id].Has(world.FlagScreen) {
+				n++
+			} else if b.L(id) != b.Base[id] || b.Lived[id] != 0 {
+				t.Fatalf("person %d forgot, but L %v (base %v), lived %b", id, b.L(id), b.Base[id], b.Lived[id])
+			}
+		}
+		return float64(n) / each
+	}
+	for _, c := range []struct {
+		years                int
+		wantHeard, wantLived float64
+	}{{1, 0.5, math.Sqrt(0.5)}, {2, 0.25, 0.5}} {
+		for s.w.Day < 1200*engine.DaysPerMonth-1+world.Tick(c.years*year) {
+			s.step()
+		}
+		for _, g := range []struct {
+			name  string
+			group []world.PersonID
+			want  float64
+		}{{"heard", heard, c.wantHeard}, {"lived", lived, c.wantLived}} {
+			got, sd := kept(g.group), math.Sqrt(g.want*(1-g.want)/each)
+			t.Logf("after %d years, %s kept by %.4f (want %.4f)", c.years, g.name, got, g.want)
+			if math.Abs(got-g.want) > 5*sd {
+				t.Errorf("after %d years, %s kept by %.4f, want %.4f ± %.4f", c.years, g.name, got, g.want, 5*sd)
+			}
+		}
+	}
+	if n := len(b.Knowers); n != int(math.Round((kept(heard)+kept(lived))*each)) {
+		t.Errorf("%d knowers listed, but %v know", n, (kept(heard)+kept(lived))*each)
+	}
+}
+
+// ODD §6.12, Scripted events: revealHistory teaches everyone alive aged 14
+// or more the history as lived, makes lived what was only heard, and
+// passes on from the next day.
+func TestRevealHistory(t *testing.T) {
+	s := newTiny(t)
+	adult, teen, child, dead, heard := s.add(30, world.Worker), s.add(14, world.Shadow), s.add(10, world.Child), s.add(50, world.Worker), s.add(40, world.Worker)
+	s.join(child, s.w.People[adult].Household)
+	s.w.People[dead].Alive = false
+	s.w.Alive = slices.DeleteFunc(s.w.Alive, func(id world.PersonID) bool { return id == dead })
+	s.startWith(1)
+	b := s.w.Beliefs
+	b.Learn(heard, world.FlagHistory, false)
+
+	types := s.m.EventTypes()
+	if len(types) != 1 || types[0].Name != "revealHistory" || types[0].Phase != engine.PhaseBeliefs {
+		t.Fatalf("event types %+v", types)
+	}
+	s.w.Day++
+	if err := types[0].Fire(s.w, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.m.step(s.w, s.r); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []world.PersonID{adult, teen, heard} {
+		if !b.Known[id].Has(world.FlagHistory) || !b.Lived[id].Has(world.FlagHistory) {
+			t.Errorf("person %d: known %b, lived %b; want the history, lived", id, b.Known[id], b.Lived[id])
+		}
+	}
+	if b.Known[child] != 0 || b.Known[dead] != 0 {
+		t.Errorf("child knows %b, the dead %b; want nothing, not even from a conversation today", b.Known[child], b.Known[dead])
+	}
+	b.Base[child] = 0 // convinced by anything (after today's recompute)
+	s.step()
+	if !b.Known[child].Has(world.FlagHistory) || b.Lived[child] != 0 {
+		t.Errorf("next day the child knows %b (lived %b); want the history, heard", b.Known[child], b.Lived[child])
+	}
+}
+
+// skip lands each item with chance p, independently: the share landing
+// and the share of landings right after one match p.
+func TestSkip(t *testing.T) {
+	r, _ := rng.New(1, "beliefs")
+	const n = 1_000_000
+	for _, p := range []float64{0, 0.0005, 0.01, 0.3, 1} {
+		sk := newSkip(r, p)
+		landed, pairs, prev := 0, 0, false
+		for range n {
+			l := sk.land(r)
+			if l {
+				landed++
+				if prev {
+					pairs++
+				}
+			}
+			prev = l
+		}
+		share, sd := float64(landed)/n, math.Sqrt(p*(1-p)/n)
+		if math.Abs(share-p) > 5*sd+1e-12 {
+			t.Errorf("p = %v: %.6f landed, want ± %.6f", p, share, 5*sd)
+		}
+		if landed > 0 && p < 1 {
+			if after, sd2 := float64(pairs)/float64(landed), math.Sqrt(p*(1-p)/float64(landed)); math.Abs(after-p) > 5*sd2+1e-12 {
+				t.Errorf("p = %v: %.4f of landings followed one, want %v", p, after, p)
+			}
+		}
 	}
 }
