@@ -34,8 +34,8 @@ Each one is settled in the spec task named. Decided ones point to the spec; for 
 | D1 | What counts as a rebellion | T7.1 | **Decided 2026-10-30:** ≥ 5% of adults active for 7 days **and** a collective action; endings suppressed, regime change, split, collapse (ODD §1.2) |
 | D2 | What counts as silo death | T7.1 | **Decided 2026-10-30:** collapse = air or water below 0.2 for 30 days, a Safeguard, or population below a *measured* point of no return P_min (T12.6); extinction logged separately (ODD §1.2) |
 | D3 | Location: continuous walking or home and work floors | T8.0 | **Decided 2026-10-30:** home floor + work floor, one day location per person per day; trips as multi-day events, no step-by-step walking; a broken segment strands workers cut off from their department (ODD §6.10) |
-| D4 | Beliefs: one number or several | T10.0 | [legitimacy (0–1) plus five knowledge flags; no free-text beliefs] |
-| D5 | Vitamin D+ in the water: can memories come back? | T10.0 | [yes, when the dosing stops and a relic or a trusted contact cues them, as with Juliette] |
+| D4 | Beliefs: one number or several | T10.0 | **Decided 2026-10-31:** legitimacy L (0–1) = an upbringing base minus a cost per known flag; five knowledge flags; no free-text beliefs; hardship enters grievance, not L (ODD §6.12) |
+| D5 | Vitamin D+ in the water: can memories come back? | T10.0 | **Decided 2026-10-31:** dosing hides flags; after it stops, a hidden flag comes back with a chance per cue (a held relic, or a conversation with someone who knows it); hidden flags never fade on their own (ODD §6.12) |
 | D6 | How rebels and Judicial fight | T12.0 | [force ratio decides casualties (simple Lanchester rule); no individual combat] |
 | D7 | Regime behaviour | T13.0 | [fixed response strategy per scenario (an experimental factor), not a learning regime] |
 | D8 | Silo 1 as agents or as a rule set | T14.0 | [a rule set with three settings: `off`, `watch`, `full`; no second simulated population] |
@@ -99,7 +99,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
 
 > **About vitamin D.** In the show, "Vitamin D+" isn't nutrition. It's Silo 1's memory suppressant, disguised as vitamins (S3). Modelling vitamin D as a vitamin would add a health parameter that changes none of the four answers. Modelling it as the memory drug gives the regime its strongest lever. This plan does the second.
 
-- [ ] **T10.0 Spec: beliefs and memory (ODD §6.12).** Decisions D4–D5. Per person:
+- [x] **T10.0 Spec: beliefs and memory (ODD §6.12).** (2026-10-31, approved) Decisions D4–D5. Per person:
   - **legitimacy L** (0–1): how much they believe the Pact and the leaders are right
   - **knowledge flags:** the outside may be survivable; the cleaning view is a lie; the true history; other silos exist; the lottery is rigged
   - **risk aversion R** (a fixed trait)
@@ -114,7 +114,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
 - [ ] **T10.4 Relics.** Relics hidden in floors, found by digging and clearing flats, held and shared, confiscated later by Judicial (M11). Holding one raises the chance of learning the true history. A relic also **cues memory** after Vitamin D+, as the Pez dispenser and the watch did for Juliette.
 - [ ] **T10.5 Flamekeepers.** A small secret group that keeps the true history alive. It recruits trusted, low-L contacts and loses members to arrests and deaths.
   - *Done when:* without any regime, the group survives generations; with arrests on (M11), it can die out.
-- [ ] **T10.6 Vitamin D+.** Two forms: a **targeted dose** for named people, and **water dosing** for everyone, for a set period. While dosed, people lose knowledge flags at a daily rate, and their L is pulled toward the regime's target. After dosing stops, flags can return when cued by a relic or a contact who still knows. Triggered only by scripted events for now; the regime uses it in M13 and Silo 1 orders it in M14.
+- [ ] **T10.6 Vitamin D+.** Two forms: a **targeted dose** for named people, and **water dosing** for everyone, for a set period. While dosed, people's knowledge flags are hidden at a daily rate, so their L climbs back to their upbringing base. After dosing stops, flags can return when cued by a relic or a contact who still knows. Triggered only by scripted events for now; the regime uses it in M13 and Silo 1 orders it in M14.
   - *Done when:* a scripted year of water dosing removes ≥ 90% of a flag; memory comes back after dosing only with cues (test with and without relics).
 
 ## Milestone 11: Regime control

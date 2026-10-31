@@ -7,7 +7,7 @@ How the ODD spec (`docs/odd-spec.md`) becomes Go code. The spec says *what* the 
 1. **Reproducible.** Same scenario file + same seed → byte-identical output on the same machine.
 2. **Modular.** The baseline is five modules. Later experiments (beliefs, dissent, cleaning, rebellion, Silo 1) are new modules switched on in a scenario file, without touching the core.
 3. **Checkable.** Invariants and a golden test catch silent bugs, because a broken simulation still produces plausible numbers.
-4. **Fast enough.** 250 simulated years (50 warm-up + 200 measured) of ~10,000 people in under a minute on a laptop, so 100-seed batches are practical. With every part-2 module on, 350 years (50 + 300) in under 3 minutes.
+4. **Fast enough.** 250 simulated years (50 warm-up + 200 measured) of ~10,000 people in under a minute on a laptop, so 100-seed batches are practical. With every part-2 module on, 350 years (50 + 300) in under 4 minutes (5 at most, if the full model needs it).
 5. **Boring dependencies.** Go standard library + `gopkg.in/yaml.v3`. Nothing else without asking.
 6. **Baseline frozen.** With every part-2 module off, `scenarios/baseline.yaml` writes `daily.csv`, `yearly.csv` and `events.jsonl` byte-identical to tag `baseline-v1`. `run.json` is not compared: it holds the runtime and the resolved scenario, which gains part-2 sections.
 
@@ -264,4 +264,4 @@ Rough cost: 10,000 people × 91,250 ticks ≈ 0.9 billion person-days, each with
 - Department output and coverage computed once per tick, not per person.
 - Profile with `go test -bench` and `pprof` before optimising anything.
 
-**Part 2: ≤ 3 minutes** for a full run (50 + 300 years) with every module on. The final experiments use 1,000 seeds per scenario (ODD §1.2): at 3 minutes a run on 8 workers that is about 6 hours per scenario, which is what T15.5 plans with. The likely hot spot is daily contacts (M9): each person samples k contacts from their own ties; nothing scans all pairs of people. The same rules apply as above: no allocation per person per tick, module slices grown on birth and not rebuilt, and per-floor or per-department totals computed once per tick.
+**Part 2: ≤ 4 minutes** for a full run (50 + 300 years) with every module on; 5 minutes is the hard ceiling if the full model can't fit in 4. Raised from 3 minutes on 2026-10-31: the baseline plus space and network already took 177 s (T9.2). The final experiments use 1,000 seeds per scenario (ODD §1.2): at 4 minutes a run on 8 workers that is about 8 hours per scenario (10 at 5 minutes), which is what T15.5 plans with. The hot spot is conversations: they are drawn per tie only when a module asks (ODD §6.11), and modules ask only for the people with something to pass on; nothing scans all ties or all pairs of people each day. The same rules apply as above: no allocation per person per tick, module slices grown on birth and not rebuilt, and per-floor or per-department totals computed once per tick.

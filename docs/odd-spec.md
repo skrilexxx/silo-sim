@@ -179,6 +179,7 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 9. **Life stages** — child → shadow at 14, shadow → worker at 18, worker ↔ sick leave, worker → retired (6.5)
 10. **Partnering** — unpartnered adults may pair up (6.3)
 10.5. **Network** *(part 2, draft)* — weak ties ended and drawn again; the connected runs of floors for the day's conversations (6.11)
+10.7. **Beliefs** *(part 2, draft)* — upbringing, forgetting, Vitamin D+, relics, the day's conversations that pass knowledge on, Flamekeepers (6.12)
 11. **Logging** — daily metrics written (8)
 
 ### Every 30 days
@@ -214,7 +215,7 @@ The baseline is deliberately simple: people follow fixed rules, and only populat
 | Imposed by rules | Life stages, lottery, staffing targets, ration shares |
 | Adaptation | Minimal: departments attract shadows when understaffed; the lottery issues more permits when population falls |
 | Objectives | None at the person level yet; the regime's implicit goal is a steady 10,000 |
-| Learning | Skill grows with work experience; nothing else is learned |
+| Learning | Skill grows with work experience; nothing else is learned. *Part 2:* people learn, forget and recall five facts, which set their legitimacy (§6.12) |
 | Prediction | None |
 | Sensing | People know their partner, household, master and department; nothing more |
 | Interaction | Partnering, shadowing, shared rations within a zone, competition for lottery permits and homes |
@@ -525,6 +526,128 @@ There is no distance weight. Distance acts through who a person's ties are (neig
 **Off and null.** With the module off, nothing of this exists. With it on, the network changes no baseline state and draws only from its own stream, so `daily.csv` and `events.jsonl` are byte-identical to a run without it; `yearly.csv` keeps its baseline columns and gains the network's.
 
 **Parameters:** weak ties per kind k, strong tie daily chance p\_s and weak tie strength w\_weak, in §7 (M9 done, 2026-10-31).
+
+### 6.12 Beliefs, knowledge and memory (draft)
+
+*Answers Q1 and Q3.* Legitimacy is the core of the rebellion model (§6.14): what people know lowers it, and what they forget lets it recover. Knowledge passes in conversations (§6.11), fades, and dies with the people who hold it. Relics and the Flamekeepers keep the true history alive; Vitamin D+, Silo 1's memory drug disguised as vitamins (lore reference, Season 3), hides it. The module needs the network (§6.11), and through it the space module.
+
+**State** (owned by this module; §2 is unchanged). For each person:
+
+| Variable | Meaning |
+| --- | --- |
+| base | 0–1: the legitimacy they were raised with (upbringing, below) |
+| flags | For each of five facts: unknown, known (heard or lived), or hidden by Vitamin D+ |
+| dosedUntil | Last day of their Vitamin D+ dose, or none |
+| risk aversion R | 0–1, drawn uniformly at birth (on day 1 for the starting population) and never changed; used by activation (§6.14), as in Epstein (2002) |
+| member | Whether they are a Flamekeeper |
+
+And for each relic: the floor it is hidden on, or the person holding it.
+
+**The five facts** (decision D4: one number and five flags, no free-text beliefs):
+
+| Flag | The person knows that … | Sources besides conversations |
+| --- | --- | --- |
+| outside | the outside may be survivable | a cleaning failure (§6.13) |
+| screen | the view of the outside on the screen is a lie | a cleaning failure (§6.13) |
+| history | the true history: the world before the silo and the rebellions the regime erased | Flamekeepers and relics (below); the scripted event `revealHistory` |
+| silos | other silos exist | contact with other silos (§6.16) |
+| lottery | the lottery is rigged | covert lottery denial (§6.13) |
+
+Every flag spreads in conversations. With this module alone, only history has a source; the other flags get theirs from M11 and M14, and tests seed them by hand.
+
+**Legitimacy.** L, 0–1, is how much a person believes the Pact and the leaders are right:
+
+```latex
+L = \max\left(0,\; base - \delta \times \text{flags known}\right)
+```
+
+Hidden flags don't count. Learning a flag lowers L by δ at once; forgetting it, or having it hidden, gives the δ back.
+
+*Upbringing.* Until worker age (18, §6.5), a person's base is recomputed every day from Education and from the adults who raise them:
+
+```latex
+base = \varepsilon \times L_{edu} + (1 - \varepsilon) \times \text{mean } L \text{ of their living parents and, for a shadow, their master}
+```
+
+with base = L\_edu when none of them is alive. At worker age the base is fixed for life. L\_edu is the legitimacy the regime teaches, in Education and on Freedom Day: its propaganda level, a policy lever (§6.15). Everyone alive on day 1 starts with base = L\_edu, so with nothing known, L = L\_edu for everyone, for ever; the rule itself never drifts. Doubt runs in families: a child whose parents know something grows up with a lower base before learning anything, and the effect shrinks by the share ε with each generation that learns nothing.
+
+Hardship is not part of L. It enters grievance, G = H × (1 − L) (§6.14), so it isn't counted twice. Later modules may add silo-wide shifts to L, such as a cleaning (§6.13) or a Pact rewrite (§6.15), and say so in their own sections.
+
+**Telling and believing.** In a conversation (§6.11), each flag the teller knows and the listener doesn't passes to the listener, who knows it from then on as *heard*, with chance
+
+```latex
+\pi \times (1 - L_{listener})
+```
+
+Either of the two can be the teller, so a tie between two knowers works both ways. The chance is the same for every flag and every tie kind: kin and households pass things on faster only because strong ties talk more often (§6.11). People who believe the regime are hard to convince, and once someone doubts, the next fact is easier to believe, because every flag they learn lowers their L. A dosed listener learns nothing; a listener with the flag hidden may recall it instead (Vitamin D+, below). A flag learned today is passed on from the next day.
+
+Only conversations that involve a knower are drawn (§6.11): the step visits the people who know at least one flag, in an order shuffled each day, and asks for each of their ties whether it is used today. The cost follows the knowers, not the population.
+
+**Forgetting.** A known flag is lost for good with a daily chance set by how it was learned:
+
+```latex
+P(\text{lost today}) = 1 - 2^{-1/(365\,T)}, \qquad T = T_{heard} \text{ or } T_{lived}
+```
+
+*Lived* knowledge comes from the person's own experience: a relic, an event they saw (`revealHistory`; later the cleaning failure), or being a Flamekeeper on day 1. It fades more slowly than *heard* knowledge. A lost flag is unknown again and can be learned again like any other. Flamekeepers never forget the history. All of a person's knowledge dies with them.
+
+**Vitamin D+** (decision D5). While dosed, each day each known flag becomes *hidden* with chance d, and the person can't learn a flag or recall a hidden one. Their base is unchanged, so their L climbs back toward the base as flags are hidden. Two forms:
+
+- *Water dosing:* the scripted event `waterDosing` doses everyone alive, and everyone born while it lasts, for D\_water days from the event's day. A second event while one runs extends it to D\_water days from the later event.
+- *Targeted:* another module (§6.13, §6.15, §6.16) doses named people until a day it sets. Scripted events can't name people, so this form has no event type.
+
+A hidden flag never fades on its own. Once the dose has ended, it comes back, known again as heard or lived as before, with chance ρ per *cue*:
+
+- each day the person holds a relic (one draw per hidden flag);
+- each conversation with someone who knows that flag, in place of the π × (1 − L) chance: it is the person's own memory, so their L doesn't block it.
+
+This is how Juliette's memory came back (S3).
+
+**Relics.** On day 1, N\_relic relics are hidden, each on a floor drawn uniformly from all 144. Each day each hidden relic is found with chance f\_find, by a person drawn uniformly from those aged 14 or more (shadowing age, §6.5) whose day location (§6.10) is its floor; with nobody there it stays hidden. The finder holds it. Each day, for a holder who isn't dosed, the relic works like a cue: each hidden flag comes back with chance ρ, and if they don't know the history, they learn it as lived with chance ρ. When a holder dies, the relic goes to a living member of their household aged 14 or more, drawn uniformly; with none, it is hidden again on the household's floor, to be found when the flat is cleared. Relics are not traded, lost or destroyed in this module. The regime can find and take them through Judicial searches and raids (§6.13) and destroy them as part of a memory wipe (§6.15); a relic taken leaves the silo's stock for good.
+
+**Flamekeepers.** A secret group of N\_F seats that keeps the true history alive. On day 1, N\_F adults drawn uniformly take the seats and know the history as lived. Members never forget it, and tell what they know like anyone else. Each day, each empty seat goes to an adult who knows the history, isn't a member, and talks today (§6.11) with a member over a strong tie; one is drawn uniformly from all such people. With nobody who qualifies, the seat stays empty. A member who dies leaves a seat, and so does one whose history flag is hidden by Vitamin D+; later modules may remove members too (arrests, §6.13). With no members left, the group is gone for good.
+
+**Step.** The beliefs step (§3 step 10.7) runs after the network has drawn the day's ties, in this order:
+
+1. newcomers get R and a base; the bases of people under worker age are recomputed, and fixed on the day they reach it;
+2. relics held by people who died today pass on;
+3. forgetting, then dosing hides flags;
+4. hidden relics are found, and relics work on their holders;
+5. conversations: telling, believing and cued recall;
+6. empty Flamekeeper seats are filled.
+
+**Scripted events** (§5):
+
+- `revealHistory`: everyone alive aged 14 or more and not dosed learns the history as lived. It stands in for a crushed rebellion that everyone saw, so pattern C4 can be measured before the rebellion modules exist (T10.3).
+- `waterDosing`: water dosing, above.
+
+**Outputs** (only when the module is on):
+
+- *yearly.csv:* mean L of adults (18+), overall and by zone of their home; the share of adults who know each flag; the share of adults with at least one hidden flag; people dosed; relics hidden and held; Flamekeepers.
+- *frames.csv.gz:* per floor, the mean L of adults and the share of adults who know the history.
+
+**Invariants** (§8): a flag is never both known and hidden; every Flamekeeper is a living adult who knows the history; every relic is hidden on a real floor or held by a living person, and there are N\_relic of them, less those taken by the regime (§6.13, §6.15); base and L lie in 0–1.
+
+**Off and null.** With the module off, nothing of this exists. With it on, it changes no baseline state and draws only from its own stream, so `daily.csv` and `events.jsonl` are byte-identical to a run without it, whatever its settings; `yearly.csv` keeps its baseline columns and gains the module's. In the null setting (no Flamekeepers, no relics, no events) nobody ever knows anything and L = L\_edu for everyone.
+
+**Parameters** (draft; they move into §7 when M10 is done):
+
+| Parameter | Default | Basis |
+| --- | --- | --- |
+| Taught legitimacy L\_edu | 0.8 | Guess: most people believe the Pact |
+| Education weight ε | 0.5 | Guess: school and home count equally |
+| Legitimacy cost per flag δ | 0.15 | Guess: all five flags take L from 0.8 to 0.05 |
+| Pass chance π | 0.002 per flag and conversation, × (1 − L) | Guess; calibrated against C4 (§1.2) in T12.8, together with p\_s (§6.11) |
+| Half-life of heard knowledge T\_heard | 5 years | Guess |
+| Half-life of lived knowledge T\_lived | 20 years | Guess: most witnesses keep it for decades, few for life |
+| Hiding while dosed d | 0.01 per flag and day | Guess: a year of water dosing hides 97% of a flag, past the 90% T10.6 asks for |
+| Water dosing length D\_water | 365 days | Guess |
+| Cue chance ρ | 0.05 per cue | Guess: a held relic brings a memory back within two weeks half the time |
+| Relics N\_relic | 100 | Guess: rare; banned "down to a Pez dispenser" (lore reference) |
+| Relic find chance f\_find | 1 / 7,300 a day (hidden 20 years on average) | Guess |
+| Flamekeeper seats N\_F | 15 | Guess: "a small secret group" (lore reference) |
+
+Risk aversion R is uniform on 0–1, as in Epstein (2002); it adds no parameter. Ranges checked at load: L\_edu, ε, δ, π, d, ρ and f\_find in [0, 1]; both half-lives strictly greater than 0; D\_water an integer ≥ 1; N\_relic and N\_F integers ≥ 0. That N\_F is no more than the day-1 adults is checked when the module starts.
 
 ## 7. Parameters
 
