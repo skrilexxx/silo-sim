@@ -741,25 +741,7 @@ People in custody or detained have no conversations (§6.11) and can't use their
 
 **Off and null.** With the module off, nothing of this exists and the lottery is fair. With it on, σ = 0, no raids and no scripted events, nobody is seen, arrested, flagged or cleaned. The only changes are the Head of IT, who knows all five flags, and the IT shadow a Head takes on as successor. That shadow's new master shifts the work module's later draws (§6.5: free masters are drawn), so the run's files differ from a run without the module by chance, though nobody is charged and no rule of the baseline acts differently (T11.1).
 
-**Parameters** (move to §7 when M11 is done). The Pact table's weights, penalties and visibilities are in §6.9.
-
-| Parameter | Default | Basis |
-| --- | --- | --- |
-| Surveillance σ | 0.05 | Guess. A plausibility check in T12.8: about 0–2 cleanings a year on `canon.yaml` (lore reference, "years can pass between cleanings") |
-| Arrests per officer a | 0.05 a day | Guess: about 20 a day with about 400 officers, more than peacetime needs; it binds only in a rebellion |
-| Raids R\_raid | 4 a year | Guess |
-| Find chance p\_find | 0.2 per held relic and search | Guess: relics are hard to find (Adam, T10.4) |
-| Naming p\_name | 0.3 per arrested member | Guess |
-| Mines floor | 144 | Lore: the mines lie below Mechanical, at the bottom \[Likely\] |
-| Failed cleaning p\_fail | 0.05 | Guess; experiments script the C2 shock instead |
-| Cleaning lift λ | 0.05 × visibility | Guess |
-| Lift half-life T\_S | 1 year | Guess |
-| Fear per trial φ | 0.01 × visibility | Guess: 100 trials a year at visibility 0.3 hold F near 0.43 (0.3 a year added, ln 2 / T\_F a year lost) |
-| Fear half-life T\_F | 1 year | Guess |
-| Implant doctors N\_doc | 2 | Show: one or two doctors do the implants |
-| Tries before giving up N\_try | 3 denied wins | Guess: "after 3–4 tries they stop" (Adam, 2026-10-31) |
-
-In the scenario file:
+**Parameters:** surveillance σ, arrests per officer a, raids R\_raid, find chance p\_find, naming p\_name, the mines floor, failed cleaning p\_fail, cleaning lift λ and its half-life T\_S, fear per trial φ and its half-life T\_F, implant doctors N\_doc and tries N\_try, in §7 (M11 done, 2026-10-31); the Pact table's weights, penalties and visibilities are in §6.9. In the scenario file they are the `control:` section:
 
 ```yaml
 control:                          # ODD §6.13; used only when `control` is in modules
@@ -786,7 +768,7 @@ Every number the model uses, in one place. Each one becomes a field in the scena
 
 The table below is the frozen baseline set. Part-2 parameters are listed in their draft sections (6.9 onward) and move into this table when their milestone is done.
 
-**Ranges checked at load.** No parameter may be negative. These must lie in [0, 1]: every daily chance and percentage; α, ρ, f₀ and the air recovery share (so the updates in 6.5 and 6.6 cannot overshoot); every amount subtracted from, or compared with, a 0–1 variable (injury and illness cost, condition drop, wear, start skill, master skill, sick-leave health); hunger and air damage; recovery; the open-window weight; the shadow output factor; the retraining threshold. Also maternalDeathBase ≤ 0.5 and injuryChance × the largest injury factor ≤ 1, so every derived daily probability stays ≤ 1. These must be strictly greater than 0, because they are divisors or define quantities that must exist: Gompertz A and B (so the day-1 age table ends), floors per zone, the coverage need factor, every department share, adult kcal, the age-gap scale, power demand per person, the capacity margin, kcal per farm unit, target and starting population, window, pregnancy and minimum outage length, and the invariant and frame intervals. invariantEvery and frameEvery are integers ≥ 1. Ages are ordered (shadow < worker < retire, mother min < max, partnering min age ≤ day-1 pairing age), outage min ≤ max, farm and Mechanical floors each fewer than the floors per zone (every zone keeps a residential floor), the home capacity margin is at least 1, and zone splits and department shares each sum to 1. Part 2: both walking hours are strictly greater than 0; every department with office floors lists at least one floor inside the silo, and Farms, Mechanical, General services and Porters list none. That each office floor is a residential floor (not a farm or Mechanical floor) in the department's zone is checked when the space module starts, once the floors exist. The weak ties per kind k is an integer ≥ 0; p\_s and w\_weak are in [0, 1]. L\_edu, ε, δ, π, d and κ are in [0, 1]; both half-lives, T\_find and T\_keep are strictly greater than 0; D\_water is an integer ≥ 1; N\_relic and N\_F are integers ≥ 0. That N\_F is no more than the day-1 adults is checked when the beliefs module starts.
+**Ranges checked at load.** No parameter may be negative. These must lie in [0, 1]: every daily chance and percentage; α, ρ, f₀ and the air recovery share (so the updates in 6.5 and 6.6 cannot overshoot); every amount subtracted from, or compared with, a 0–1 variable (injury and illness cost, condition drop, wear, start skill, master skill, sick-leave health); hunger and air damage; recovery; the open-window weight; the shadow output factor; the retraining threshold. Also maternalDeathBase ≤ 0.5 and injuryChance × the largest injury factor ≤ 1, so every derived daily probability stays ≤ 1. These must be strictly greater than 0, because they are divisors or define quantities that must exist: Gompertz A and B (so the day-1 age table ends), floors per zone, the coverage need factor, every department share, adult kcal, the age-gap scale, power demand per person, the capacity margin, kcal per farm unit, target and starting population, window, pregnancy and minimum outage length, and the invariant and frame intervals. invariantEvery and frameEvery are integers ≥ 1. Ages are ordered (shadow < worker < retire, mother min < max, partnering min age ≤ day-1 pairing age), outage min ≤ max, farm and Mechanical floors each fewer than the floors per zone (every zone keeps a residential floor), the home capacity margin is at least 1, and zone splits and department shares each sum to 1. Part 2: both walking hours are strictly greater than 0; every department with office floors lists at least one floor inside the silo, and Farms, Mechanical, General services and Porters list none. That each office floor is a residential floor (not a farm or Mechanical floor) in the department's zone is checked when the space module starts, once the floors exist. The weak ties per kind k is an integer ≥ 0; p\_s and w\_weak are in [0, 1]. L\_edu, ε, δ, π, d and κ are in [0, 1]; both half-lives, T\_find and T\_keep are strictly greater than 0; D\_water is an integer ≥ 1; N\_relic and N\_F are integers ≥ 0. That N\_F is no more than the day-1 adults is checked when the beliefs module starts. σ, a, p\_find, p\_name, p\_fail, λ and φ are in [0, 1]; R\_raid is in [0, 365]; T\_S and T\_F are strictly greater than 0; N\_try is an integer ≥ 1 and N\_doc ≥ 0; the mines floor is in the silo, and the Pact passes the checks of §6.9. That the mines floor is Down Deep and that Judicial has office floors is checked when the control module starts.
 
 | Parameter | Default | Basis | Used in |
 | --- | --- | --- | --- |
@@ -862,6 +844,19 @@ The table below is the frozen baseline set. Part-2 parameters are listed in thei
 | Relic hiding time T\_find | 50 years on average (1 / 18,250 a day) | Guess: rare finds, about 2 a year silo-wide at the start (Adam, 2026-10-31) | 6.12 |
 | Relic keeping time T\_keep | 10 years on average (1 / 3,650 a day) | Guess | 6.12 |
 | Flamekeeper seats N\_F | 15 | Guess: "a small secret group" (lore reference) | 6.12 |
+| Surveillance σ | 0.05 | Guess. A plausibility check in T12.8: about 0–2 cleanings a year on `canon.yaml` (lore reference, "years can pass between cleanings") | 6.13 |
+| Arrests per officer a | 0.05 a day | Guess: about 20 a day with about 400 officers, more than peacetime needs; it binds only in a rebellion | 6.13 |
+| Raids R\_raid | 4 a year | Guess | 6.13 |
+| Find chance p\_find | 0.2 per held relic and search | Guess: relics are hard to find (Adam, T10.4) | 6.13 |
+| Naming p\_name | 0.3 per arrested member | Guess | 6.13 |
+| Mines floor | 144 | Lore: the mines lie below Mechanical, at the bottom \[Likely\] | 6.13 |
+| Failed cleaning p\_fail | 0.05 | Guess; experiments script the C2 shock instead | 6.13 |
+| Cleaning lift λ | 0.05 × visibility | Guess | 6.13 |
+| Lift half-life T\_S | 1 year | Guess | 6.13 |
+| Fear per trial φ | 0.01 × visibility | Guess: 100 trials a year at visibility 0.3 hold F near 0.43 (0.3 a year added, ln 2 / T\_F a year lost) | 6.13 |
+| Fear half-life T\_F | 1 year | Guess | 6.13 |
+| Implant doctors N\_doc | 2 | Show: one or two doctors do the implants | 6.13 |
+| Tries before giving up N\_try | 3 denied wins | Guess: "after 3–4 tries they stop" (Adam, 2026-10-31) | 6.13 |
 
 ## 8. Outputs, tests and validation
 
