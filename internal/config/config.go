@@ -42,6 +42,7 @@ type Scenario struct {
 	Beliefs     Beliefs    `yaml:"beliefs"`
 	Control     Control    `yaml:"control"`
 	Pact        []Rule     `yaml:"pact"`
+	Rebellion   Rebellion  `yaml:"rebellion"`
 	Events      []Event    `yaml:"events,omitempty"`
 }
 
@@ -238,6 +239,13 @@ type Control struct {
 	FearHalfLifeYears  float64 `yaml:"fearHalfLifeYears"`
 	ImplantDoctors     int     `yaml:"implantDoctors"`
 	DeniedTries        int     `yaml:"deniedTries"`
+}
+
+// Rebellion is the grievance and rebellion module (ODD §6.14).
+type Rebellion struct {
+	LossHardship      float64 `yaml:"lossHardship"`
+	LossHalfLifeYears float64 `yaml:"lossHalfLifeYears"`
+	ScapegoatHardship float64 `yaml:"scapegoatHardship"`
 }
 
 // Rule is one row of the Pact (ODD §6.9).

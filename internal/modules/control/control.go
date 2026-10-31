@@ -110,6 +110,7 @@ func (m *Module) Steps() []engine.Step {
 
 // ODD §6.13 / §3 step 10.8.
 func (m *Module) step(w *world.World, r *rng.Stream) error {
+	w.Control.Cleaned, w.Control.DeniedToday = w.Control.Cleaned[:0], w.Control.DeniedToday[:0]
 	m.newcomers(w)
 	m.drop(w)
 	m.headOfIT(w)
@@ -156,6 +157,7 @@ func (m *Module) cleanings(w *world.World, r *rng.Stream) {
 			w.Beliefs.Lift += m.lift * v
 		}
 		c.Tally.Cleanings++
+		c.Cleaned = append(c.Cleaned, cl.id)
 		w.Events = append(w.Events, world.CleaningEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "cleaning"},
 			Person: cl.id, Rule: m.rules[cl.rule].ID, Failed: failed})
 	}
@@ -608,5 +610,6 @@ func (m *Module) teachDoctors(w *world.World) {
 			}
 		}
 	}
+	c.DeniedToday = append(c.DeniedToday, c.Denied...)
 	c.Denied = c.Denied[:0]
 }

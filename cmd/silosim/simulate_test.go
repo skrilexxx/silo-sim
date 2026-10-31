@@ -535,6 +535,31 @@ func TestCleaningFailureShock(t *testing.T) {
 	}
 }
 
+// T12.1: hardship and grievance in a 1,000-person silo over 30 years,
+// with invariants (H and G in 0–1) every 30 days. Down Deep hardship stays
+// above Up Top's (the scapegoat term), and a cleaning failure in year 20,
+// which takes about 2δ = 0.3 off everyone's L, more than doubles mean G.
+func TestGrievanceRuns(t *testing.T) {
+	golden := loadInto(t, goldenScenario)
+	cfg := loadInto(t, "../../scenarios/baseline.yaml")
+	cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, 0, 30, golden.Population
+	cfg.Lottery.TargetPopulation = cfg.Population
+	cfg.Output.InvariantEvery = 30
+	cfg.Modules = append(cfg.Modules, "space", "network", "beliefs", "control", "rebellion")
+	cfg.Events = []config.Event{{Day: 20*365 + 100, Type: "cleaningFailure"}}
+	dir := mustSimulate(t, cfg)
+	top, deep, g := floats(t, dir, "meanHUpTop"), floats(t, dir, "meanHDownDeep"), floats(t, dir, "meanG")
+	t.Logf("year 20: H Up Top %.3f, Down Deep %.3f; mean G %.4f → %.4f after the shock", top[19], deep[19], g[19], g[20])
+	for y := range top {
+		if deep[y] <= top[y] {
+			t.Errorf("year %d: Down Deep H %.3f not above Up Top %.3f", y+1, deep[y], top[y])
+		}
+	}
+	if g[20] < 2*g[19] {
+		t.Errorf("mean G %.4f → %.4f after the shock, want it more than doubled", g[19], g[20])
+	}
+}
+
 // T11.4 done-when: flagged couples never conceive, so their share of the
 // births falls far below their share of the silo; logged as an outcome,
 // not tuned. 100 years of a 1,000-person silo with σ = 0.1, so couples

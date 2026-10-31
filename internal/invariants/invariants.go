@@ -53,7 +53,24 @@ func Check(w *world.World, cfg *config.Scenario) error {
 	if err := beliefs(w, cfg.Beliefs.Relics); err != nil {
 		return err
 	}
-	return control(w, len(cfg.Pact))
+	if err := control(w, len(cfg.Pact)); err != nil {
+		return err
+	}
+	return rebellion(w)
+}
+
+// ODD §6.14 (draft): H and G lie in 0–1.
+func rebellion(w *world.World) error {
+	b := w.Rebellion
+	if b == nil {
+		return nil
+	}
+	for _, id := range w.Alive {
+		if h, g := b.H[id], b.G[id]; h < 0 || h > 1 || g < 0 || g > 1 {
+			return fmt.Errorf("day %d: person %d has H = %v, G = %v, outside 0–1", w.Day, id, h, g)
+		}
+	}
+	return nil
 }
 
 // ODD §6.13 (draft): the Head of IT, if any, is alive, of IT (at any

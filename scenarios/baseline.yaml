@@ -238,6 +238,11 @@ pact:
     enforcer: judicial
     visibility: 0.7
 
+rebellion:                        # ODD §6.14 (part 2, draft); used only when `rebellion` is in modules
+  lossHardship: 0.5               # ℓ: hardship from a loss in the family (a relative cleaned, a denied lottery win), on its day; guess
+  lossHalfLifeYears: 2            # T_loss: the loss's hardship halves in this time; guess
+  scapegoatHardship: 0.2          # s_DD: hardship of living Down Deep; guess (lore: Mechanical is blamed when trouble rises, S2)
+
 governance:                       # ODD §6.8
   mode: appointment               # or: election
   term: 5y                        # or: life

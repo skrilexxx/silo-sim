@@ -87,6 +87,11 @@ type Control struct {
 	Denied      []PersonID
 	Doctors     []PersonID
 	Tries       int
+
+	// Losses for grievance (ODD §6.14), reset at every control step: the
+	// cleaners who went out at today's step, and the women whose denied
+	// wins it handled.
+	Cleaned, DeniedToday []PersonID
 }
 
 // Deny records a flagged couple's win (ODD §6.13): no window opens, and

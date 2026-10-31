@@ -55,3 +55,8 @@ pact:                     # M11, off: everything is a cleaning
     first: { cleaning: true, confiscate: true, flagFamily: true }
     enforcer: judicial
     visibility: 1
+
+rebellion:                # M12, off
+  lossHardship: 1
+  lossHalfLifeYears: 10
+  scapegoatHardship: 1

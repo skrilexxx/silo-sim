@@ -78,6 +78,8 @@ func (s *Scenario) Validate() error {
 		{"control.cleaningFailChance", s.Control.CleaningFailChance},
 		{"control.cleaningLift", s.Control.CleaningLift},
 		{"control.fearPerTrial", s.Control.FearPerTrial},
+		{"rebellion.lossHardship", s.Rebellion.LossHardship},
+		{"rebellion.scapegoatHardship", s.Rebellion.ScapegoatHardship},
 	}
 	for _, u := range unit {
 		if u.v < 0 || u.v > 1 {
@@ -128,6 +130,7 @@ func (s *Scenario) Validate() error {
 		{"control.liftHalfLifeYears", s.Control.LiftHalfLifeYears},
 		{"control.fearHalfLifeYears", s.Control.FearHalfLifeYears},
 		{"control.deniedTries", float64(s.Control.DeniedTries)},
+		{"rebellion.lossHalfLifeYears", s.Rebellion.LossHalfLifeYears},
 	}
 	for i, d := range s.Work.Departments {
 		positive = append(positive, struct {

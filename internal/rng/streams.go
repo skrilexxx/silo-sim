@@ -36,6 +36,8 @@ func streamID(name string) (uint64, bool) {
 		return 13, true
 	case "control":
 		return 14, true
+	case "rebellion":
+		return 15, true
 	}
 	return 0, false
 }

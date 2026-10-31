@@ -152,6 +152,9 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 	if w.Control != nil {
 		h = append(h, ",actsSeen,arrests,warnings,prison,mines,cleanings,failedCleanings,relicsTaken,raids,deniedWins,flaggedBirths,held,flagged,openCases,lift,fear"...)
 	}
+	if w.Rebellion != nil {
+		h = append(h, ",meanH,meanHUpTop,meanHMids,meanHDownDeep,meanG,meanGUpTop,meanGMids,meanGDownDeep"...)
+	}
 	h = append(h, '\n')
 	if _, err := o.yearly.Write(h); err != nil {
 		return err
@@ -393,6 +396,9 @@ func (o *Writer) logYearly(w *world.World, _ *rng.Stream) error {
 	if w.Control != nil {
 		b = o.appendControl(w, b)
 	}
+	if w.Rebellion != nil {
+		b = o.appendRebellion(w, b)
+	}
 	o.row = append(b, '\n')
 	_, err := o.yearly.Write(o.row)
 	return err
@@ -533,6 +539,33 @@ func (o *Writer) appendControl(w *world.World, b []byte) []byte {
 	}
 	b = appendF(b, w.Beliefs.Lift, 4)
 	return appendF(b, c.Fear, 4)
+}
+
+// appendRebellion writes the rebellion columns (ODD §6.14, Outputs): the
+// mean hardship H and grievance G of adults, overall and by home zone.
+func (o *Writer) appendRebellion(w *world.World, b []byte) []byte {
+	var h, g [world.NumZones + 1]float64 // the last one is everyone
+	var n [world.NumZones + 1]int
+	for _, id := range w.Alive {
+		if w.Day-w.People[id].BirthDay < o.adultAge {
+			continue
+		}
+		for _, z := range [...]int{int(zoneOf(w, id)), world.NumZones} {
+			h[z] += w.Rebellion.H[id]
+			g[z] += w.Rebellion.G[id]
+			n[z]++
+		}
+	}
+	for _, x := range [...]*[world.NumZones + 1]float64{&h, &g} {
+		for _, z := range [...]int{world.NumZones, int(world.UpTop), int(world.Mids), int(world.DownDeep)} {
+			mean := 0.0
+			if n[z] > 0 {
+				mean = x[z] / float64(n[z])
+			}
+			b = appendF(b, mean, 4)
+		}
+	}
+	return b
 }
 
 // checkDepartments logs a department whose workers fall below

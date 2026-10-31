@@ -586,6 +586,9 @@ func TestCleaningLiftsL(t *testing.T) {
 	if ev.Person != a || ev.Rule != "goingOut" || ev.Failed || c.Tally.Cleanings != 1 || c.Held(a) {
 		t.Errorf("event %+v, %d cleanings, still held %v", ev, c.Tally.Cleanings, c.Held(a))
 	}
+	if !slices.Equal(c.Cleaned, []world.PersonID{a}) { // ODD §6.14: their family grieves
+		t.Errorf("cleaned today %v, want %v", c.Cleaned, []world.PersonID{a})
+	}
 	if want := 0.1 * 0.5 * s.m.liftKeep; math.Abs(b.Lift-want) > 1e-12 {
 		t.Errorf("lift %v, want λ × v = 0.05, a day decayed: %v", b.Lift, want)
 	}
@@ -670,6 +673,9 @@ func TestImplantDoctors(t *testing.T) {
 	if bl.Known[b] != 1<<world.FlagLottery || bl.Lived[b] != 1<<world.FlagLottery || bl.Known[d] != 0 || c.Tally.Denied != 1 || len(c.Denied) != 0 {
 		t.Errorf("doctor knows %05b (lived %05b), dosed doctor %05b, %d denied", bl.Known[b], bl.Lived[b], bl.Known[d], c.Tally.Denied)
 	}
+	if !slices.Equal(c.DeniedToday, []world.PersonID{mother}) { // ODD §6.14: a loss for the couple
+		t.Errorf("denied today %v, want %v", c.DeniedToday, []world.PersonID{mother})
+	}
 
 	c.Flagged[mother] = true
 	for _, mum := range []world.PersonID{mother, b} {
@@ -677,6 +683,9 @@ func TestImplantDoctors(t *testing.T) {
 		s.w.People[kid].Mother = mum
 	}
 	s.step()
+	if len(c.DeniedToday) != 0 {
+		t.Errorf("denied today %v the next day, want none", c.DeniedToday)
+	}
 	if c.Tally.FlaggedBirths != 1 {
 		t.Errorf("%d births to flagged parents, want 1", c.Tally.FlaggedBirths)
 	}

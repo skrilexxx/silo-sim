@@ -780,7 +780,7 @@ H = 1 - (1 - h_{food})(1 - h_{health})(1 - h_{loss})(1 - h_{DD})
 - *Loss:* h\_loss = ℓ × 2^(−t / T\_loss), with t the years since their last loss, and 0 if they never had one. A loss is a family member (partner, household or kin, the first three tie kinds of §6.11) cleaned (§6.13, failed or not) or killed in a fight (below), or, for both partners, a denied lottery win (§6.13). The couple puts the denial down to infertility, but a child that never comes is a loss whatever its cause. A new loss starts the clock again; losses don't add up.
 - *Scapegoat:* h\_DD = s\_DD if their home is in the Down Deep, else 0. The regime blames the lowest class when trouble rises, as Mechanical learns in S2 (lore reference).
 
-In a fed, healthy silo H is about 0.05 Up Top and in the Mids and about 0.25 Down Deep.
+In a fed, healthy silo H is near 0 Up Top and in the Mids, where health is near 1, and about s\_DD = 0.2 Down Deep (T12.1: 0.005 and 0.200 in a 1,000-person silo).
 
 **Grievance.** G = H × (1 − L), with L the person's legitimacy (§6.12), as in Epstein (2002). Hardship alone breeds no revolt among people who believe the regime is right: at L\_edu = 0.8 even H = 1 gives G = 0.2.
 
