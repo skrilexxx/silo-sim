@@ -12,6 +12,7 @@ import (
 	"github.com/skrilexxx/silo-sim/internal/engine"
 	"github.com/skrilexxx/silo-sim/internal/initpop"
 	"github.com/skrilexxx/silo-sim/internal/modules/beliefs"
+	"github.com/skrilexxx/silo-sim/internal/modules/control"
 	"github.com/skrilexxx/silo-sim/internal/modules/demography"
 	"github.com/skrilexxx/silo-sim/internal/modules/governance"
 	"github.com/skrilexxx/silo-sim/internal/modules/health"
@@ -114,6 +115,8 @@ func newModule(name string) (engine.Module, error) {
 		return network.New(), nil
 	case "beliefs":
 		return beliefs.New(), nil
+	case "control":
+		return control.New(), nil
 	}
 	return nil, fmt.Errorf("module %q is not implemented yet", name)
 }

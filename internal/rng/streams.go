@@ -34,6 +34,8 @@ func streamID(name string) (uint64, bool) {
 		return 12, true // keyed: whether a tie is used on a day (ODD §6.11)
 	case "beliefs":
 		return 13, true
+	case "control":
+		return 14, true
 	}
 	return 0, false
 }

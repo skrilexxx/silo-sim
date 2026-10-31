@@ -58,6 +58,7 @@ type Writer struct {
 	// Counts at the previous row.
 	births, deaths, permits int
 	zoneMoves               int // at the previous yearly row
+	seen                    int // acts seen (control), at the previous yearly row
 }
 
 // ODD §8: the age pyramid uses 5-year bands, the last open-ended.
@@ -147,6 +148,9 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 			h = append(h, ",know"+strings.ToUpper(name[:1])+name[1:]...)
 		}
 		h = append(h, ",hiddenAny,dosed,relicsHidden,relicsHeld,flamekeepers"...)
+	}
+	if w.Control != nil {
+		h = append(h, ",actsSeen,openCases"...)
 	}
 	h = append(h, '\n')
 	if _, err := o.yearly.Write(h); err != nil {
@@ -385,6 +389,13 @@ func (o *Writer) logYearly(w *world.World, _ *rng.Stream) error {
 	}
 	if w.Beliefs != nil {
 		b = o.appendBeliefs(w, b)
+	}
+	if c := w.Control; c != nil { // ODD §6.13, Outputs: acts seen over the year, open cases now
+		b = append(b, ',')
+		b = strconv.AppendInt(b, int64(c.Seen-o.seen), 10)
+		o.seen = c.Seen
+		b = append(b, ',')
+		b = strconv.AppendInt(b, int64(len(c.Cases)), 10)
 	}
 	o.row = append(b, '\n')
 	_, err := o.yearly.Write(o.row)

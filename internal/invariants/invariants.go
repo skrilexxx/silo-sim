@@ -50,7 +50,52 @@ func Check(w *world.World, cfg *config.Scenario) error {
 	if err := network(w, cfg.Network.WeakTiesPerKind); err != nil {
 		return err
 	}
-	return beliefs(w, cfg.Beliefs.Relics)
+	if err := beliefs(w, cfg.Beliefs.Relics); err != nil {
+		return err
+	}
+	return control(w, len(cfg.Pact))
+}
+
+// ODD §6.13 (draft): the Head of IT, if any, is a living IT worker (on
+// sick leave or not) who knows all five flags and holds no Flamekeeper
+// seat; the successor is alive; every open case is against a living
+// person, listed once, with charges only under rules of the Pact.
+func control(w *world.World, rules int) error {
+	c := w.Control
+	if c == nil {
+		return nil
+	}
+	if h := c.Head; h != world.None {
+		p := &w.People[h]
+		all := world.Flags(1<<world.NumFlags - 1)
+		if !p.Alive || w.Depts[p.Department].Name != "it" || p.Stage != world.Worker && p.Stage != world.SickLeave {
+			return fmt.Errorf("day %d: Head of IT %d is not a living IT worker", w.Day, h)
+		}
+		if w.Beliefs.Known[h] != all || w.Beliefs.IsMember[h] {
+			return fmt.Errorf("day %d: Head of IT %d knows %05b or holds a Flamekeeper seat", w.Day, h, w.Beliefs.Known[h])
+		}
+	}
+	if s := c.Successor; s != world.None && !w.People[s].Alive {
+		return fmt.Errorf("day %d: successor %d is dead", w.Day, s)
+	}
+	open := 0
+	for id, ch := range c.Charges {
+		if ch>>rules != 0 {
+			return fmt.Errorf("day %d: person %d charged under a rule beyond the Pact's %d", w.Day, id, rules)
+		}
+		if ch != 0 {
+			open++
+		}
+	}
+	if open != len(c.Cases) {
+		return fmt.Errorf("day %d: %d people charged, %d open cases", w.Day, open, len(c.Cases))
+	}
+	for _, id := range c.Cases {
+		if c.Charges[id] == 0 || !w.People[id].Alive {
+			return fmt.Errorf("day %d: open case of %d, who is dead or charged with nothing", w.Day, id)
+		}
+	}
+	return nil
 }
 
 // ODD §6.12 (draft): every living person's base, L and risk aversion lie

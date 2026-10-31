@@ -163,6 +163,79 @@ beliefs:                          # ODD §6.12 (part 2, draft); used only when `
   doseHideChance: 0.01            # d: daily chance a known flag is hidden while on Vitamin D+; guess (a year hides 97%)
   waterDosingDays: 365            # D_water: days the scripted event waterDosing lasts; guess
 
+control:                          # ODD §6.13 (part 2, draft); used only when `control` is in modules
+  surveillance: 0.05              # σ: chance an act is seen at full IT coverage and detection weight 1; guess, checked against 0–2 cleanings a year in T12.8
+  arrestsPerOfficer: 0.05         # a: arrests a day per Judicial or Sheriff worker; guess
+  raidsPerYear: 4                 # R_raid: Judicial raids on a floor, searching every flat; guess
+  findChance: 0.2                 # p_find: a search finds a held relic; guess (relics are hidden well)
+  nameChance: 0.3                 # p_name: an arrested Flamekeeper names each other member; guess
+  minesFloor: 144                 # where mines sentences are served; lore: the mines lie at the bottom [Likely]
+  cleaningFailChance: 0.05        # p_fail: a cleaner refuses and walks out of sight; guess
+  cleaningLift: 0.05              # λ: lift of everyone's L from a cleaning seen by all (× the rule's visibility); guess
+  liftHalfLifeYears: 1            # T_S: the lift halves in this time; guess
+  implantDoctors: 2               # N_doc: Medical workers who do every implant removal; show ("one or two doctors")
+  deniedTries: 3                  # N_try: denied lottery wins before a flagged couple stops entering; guess (Adam: 3–4)
+
+# The Pact (ODD §6.9): the canon rule table; used only when `control` is in modules.
+# A penalty maps prison and mines (days) and cleaning, confiscate, flagFamily (true); {} is
+# a warning. repeat, if left out, is the same as first. Weights, penalties and visibilities
+# are guesses, for the sensitivity analysis (T15.3).
+pact:
+  - id: noRelics                  # owning or trading objects from before the silo
+    active: true
+    offences: [holdRelic, tradeRelic]
+    detection: 1.0
+    first:  { confiscate: true, prison: 90 }
+    repeat: { confiscate: true, prison: 365 }
+    enforcer: judicial
+    visibility: 0.5
+  - id: noForbiddenTalk           # speaking about the outside, the time before, or other silos
+    active: true
+    offences: [speakForbidden]
+    detection: 0.5
+    first:  { flagFamily: true }  # a warning, and the household quietly flagged
+    repeat: { prison: 180, flagFamily: true }
+    enforcer: judicial
+    visibility: 0.3
+  - id: goingOut                  # saying "I want to go out"
+    active: true
+    offences: [askToGoOut]
+    detection: 1.0
+    first:  { cleaning: true }
+    enforcer: sheriff
+    visibility: 1.0
+  - id: lottery                   # conceiving without a permit or removing one's own implant
+    active: true
+    offences: [unpermittedConception]
+    detection: 0.8
+    first:  { prison: 180, flagFamily: true }
+    repeat: { cleaning: true }
+    enforcer: judicial
+    visibility: 0.6
+  - id: noContact                 # radio contact, digging toward other silos, opening the doors below
+    active: true
+    offences: [contactAttempt]
+    detection: 0.7
+    first:  { cleaning: true }
+    enforcer: judicial
+    visibility: 0.2
+  - id: noViolence                # attacking officers or damaging the silo's systems
+    active: true
+    offences: [violence, sabotage]
+    detection: 1.0
+    first:  { mines: 730 }
+    repeat: { cleaning: true }
+    enforcer: judicial
+    visibility: 0.8
+  - id: noOrganising              # unauthorised gatherings and strikes
+    active: true
+    offences: [organise]
+    detection: 0.6
+    first:  { prison: 90 }
+    repeat: { mines: 365 }
+    enforcer: judicial
+    visibility: 0.7
+
 governance:                       # ODD §6.8
   mode: appointment               # or: election
   term: 5y                        # or: life

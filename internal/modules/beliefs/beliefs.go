@@ -237,6 +237,9 @@ func (m *Module) relics(w *world.World, r *rng.Stream) {
 				}
 			}
 			if to := m.pick(r); to != world.None {
+				if w.Control != nil { // ODD §6.13: a handover is an act by both
+					w.Control.Report(world.Act{Person: rel.Holder, Other: to, Offence: world.TradeRelic})
+				}
 				rel.Holder = to
 			}
 		}
@@ -295,11 +298,12 @@ func (m *Module) warned(w *world.World) bool {
 }
 
 // insider reports whether a person works in IT or Medical, as a worker or
-// shadow: the few who know what Vitamin D+ is.
+// shadow: the few who know what Vitamin D+ is. The Head of IT never warns
+// (ODD §6.13).
 func (m *Module) insider(w *world.World, id world.PersonID) bool {
 	p := &w.People[id]
 	d := p.Department
-	return (p.Stage == world.Worker || p.Stage == world.Shadow) && d != world.None && (d == m.it || d == m.medical)
+	return (p.Stage == world.Worker || p.Stage == world.Shadow) && d != world.None && (d == m.it || d == m.medical) && !w.Control.IsHead(id)
 }
 
 // ODD §6.12, Flamekeepers: on day 1, N_F adults drawn uniformly take the
@@ -345,7 +349,7 @@ func (m *Module) seat(w *world.World, r *rng.Stream) {
 	for _, mem := range b.Members {
 		for _, t := range n.TiesOf(w, mem) {
 			c := t.Other
-			if t.Kind.Weak() || b.IsMember[c] || !b.Known[c].Has(world.FlagHistory) ||
+			if t.Kind.Weak() || b.IsMember[c] || !b.Known[c].Has(world.FlagHistory) || w.Control.IsHead(c) ||
 				w.Day-w.People[c].BirthDay < m.adultAge || slices.Contains(m.candidates, c) || !n.Talk(w, mem, c, t.Kind) {
 				continue
 			}
@@ -411,6 +415,10 @@ func (m *Module) forget(w *world.World, r *rng.Stream) {
 		if !w.People[id].Alive {
 			continue
 		}
+		if w.Control.IsHead(id) { // ODD §6.13: never forgets, never dosed
+			keep = append(keep, id)
+			continue
+		}
 		for known := b.Known[id]; known != 0; known &= known - 1 {
 			f := world.Flag(bits.TrailingZeros8(uint8(known)))
 			if f == world.FlagHistory && b.IsMember[id] || !sk.land(r) { // Flamekeepers never forget it
@@ -444,7 +452,10 @@ func (m *Module) forget(w *world.World, r *rng.Stream) {
 // passes with chance π × (1 − L of the listener), whose L drops as they
 // learn. A dosed listener learns nothing, and one who has the flag hidden
 // may recall it instead (recall). Only knowers are visited, so the cost
-// follows them, not the population.
+// follows them, not the population. With the control module on, each
+// telling (the slot lands, the listener doesn't know the flag, and the two
+// talk) is reported as an act, believed or not (ODD §6.13), and the Head of
+// IT tells nothing.
 //
 // The draws are made in the cheapest order, with the same chances. Every
 // pair of a teller's tie and a flag they tell is a slot; a slot is a real
@@ -458,6 +469,9 @@ func (m *Module) forget(w *world.World, r *rng.Stream) {
 func (m *Module) converse(w *world.World, r *rng.Stream) {
 	b, n := w.Beliefs, w.Network
 	m.tellers = append(m.tellers[:0], b.Knowers...)
+	if c := w.Control; c != nil { // ODD §6.13: the Head of IT never tells
+		m.tellers = slices.DeleteFunc(m.tellers, c.IsHead)
+	}
 	r.Shuffle(len(m.tellers), func(i, j int) { m.tellers[i], m.tellers[j] = m.tellers[j], m.tellers[i] })
 
 	sk := newSkip(r, m.pass)
@@ -469,10 +483,19 @@ func (m *Module) converse(w *world.World, r *rng.Stream) {
 		for s := sk.next(r, slots); s >= 0; s = next(r, &sk, s, slots) {
 			t, f := ties[s/len(fl)], fl[s%len(fl)]
 			j := t.Other
-			if (b.Known[j] | b.Hidden[j]).Has(f) || b.Dosed(w, j) || r.Float64() >= 1-b.L(j) || !n.Talk(w, k, j, t.Kind) {
+			if b.Known[j].Has(f) {
 				continue
 			}
-			m.learn(b, j, f)
+			pass := !b.Hidden[j].Has(f) && !b.Dosed(w, j) && r.Float64() < 1-b.L(j)
+			if !pass && w.Control == nil || !n.Talk(w, k, j, t.Kind) {
+				continue
+			}
+			if w.Control != nil { // ODD §6.13: a telling is an act, believed or not
+				w.Control.Report(world.Act{Person: k, Other: world.None, Offence: world.SpeakForbidden})
+			}
+			if pass {
+				m.learn(b, j, f)
+			}
 		}
 	}
 	m.recall(w, r)
@@ -501,7 +524,7 @@ func (m *Module) recall(w *world.World, r *rng.Stream) {
 		slots := len(fl) * len(ties)
 		for s := sk.next(r, slots); s >= 0; s = next(r, &sk, s, slots) {
 			t, f := ties[s/len(fl)], fl[s%len(fl)]
-			if !b.Hidden[h].Has(f) || !(b.Known[t.Other] &^ m.fresh[t.Other]).Has(f) || !n.Talk(w, h, t.Other, t.Kind) {
+			if !b.Hidden[h].Has(f) || !(b.Known[t.Other] &^ m.fresh[t.Other]).Has(f) || w.Control.IsHead(t.Other) || !n.Talk(w, h, t.Other, t.Kind) {
 				continue
 			}
 			m.teach(b, h, f, false)

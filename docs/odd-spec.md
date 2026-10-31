@@ -737,7 +737,7 @@ People in custody or detained have no conversations (§6.11) and can't use their
 
 **Invariants** (§8): the Head of IT, if any, is a living IT worker who knows all five flags and holds no Flamekeeper seat; every implant doctor is a living Medical worker; everyone in custody or detained is alive and holds no seat; every open case is against a living person; relics hidden, held and taken add up to N\_relic; S ≥ 0.
 
-**Off and null.** With the module off, nothing of this exists and the lottery is fair. With it on, σ = 0, no raids and no scripted events, nobody is seen, arrested, flagged or cleaned. The only change is the Head of IT, who knows all five flags: `daily.csv` is byte-identical to a run without the module, `events.jsonl` gains only `headOfIT` lines, and the beliefs columns of `yearly.csv` differ by one knower and, through the Head's L, their children's upbringing.
+**Off and null.** With the module off, nothing of this exists and the lottery is fair. With it on, σ = 0, no raids and no scripted events, nobody is seen, arrested, flagged or cleaned. The only changes are the Head of IT, who knows all five flags, and the IT shadow a Head takes on as successor. That shadow's new master shifts the work module's later draws (§6.5: free masters are drawn), so the run's files differ from a run without the module by chance, though nobody is charged and no rule of the baseline acts differently (T11.1).
 
 **Parameters** (move to §7 when M11 is done). The Pact table's weights, penalties and visibilities are in §6.9.
 

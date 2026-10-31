@@ -71,6 +71,12 @@ func (s *Scenario) Validate() error {
 		{"beliefs.passChance", s.Beliefs.PassChance},
 		{"beliefs.cueChance", s.Beliefs.CueChance},
 		{"beliefs.doseHideChance", s.Beliefs.DoseHideChance},
+		{"control.surveillance", s.Control.Surveillance},
+		{"control.arrestsPerOfficer", s.Control.ArrestsPerOfficer},
+		{"control.findChance", s.Control.FindChance},
+		{"control.nameChance", s.Control.NameChance},
+		{"control.cleaningFailChance", s.Control.CleaningFailChance},
+		{"control.cleaningLift", s.Control.CleaningLift},
 	}
 	for _, u := range unit {
 		if u.v < 0 || u.v > 1 {
@@ -118,6 +124,8 @@ func (s *Scenario) Validate() error {
 		{"beliefs.relicHiddenYears", s.Beliefs.RelicHiddenYears},
 		{"beliefs.relicKeptYears", s.Beliefs.RelicKeptYears},
 		{"beliefs.waterDosingDays", float64(s.Beliefs.WaterDosingDays)},
+		{"control.liftHalfLifeYears", s.Control.LiftHalfLifeYears},
+		{"control.deniedTries", float64(s.Control.DeniedTries)},
 	}
 	for i, d := range s.Work.Departments {
 		positive = append(positive, struct {
@@ -216,6 +224,15 @@ func (s *Scenario) Validate() error {
 		}
 	}
 
+	// ODD §6.13: a raid is a daily chance, R_raid / 365.
+	if s.Control.RaidsPerYear > daysPerYear {
+		add("control.raidsPerYear = %v, must be at most %d", s.Control.RaidsPerYear, daysPerYear)
+	}
+	if f := s.Control.MinesFloor; f < 1 || f > floors {
+		add("control.minesFloor = %d, must be 1 to %d", f, floors)
+	}
+	errs = append(errs, s.validatePact()...)
+
 	// Fewer homes than households would leave people homeless on day 1.
 	if s.Init.HomeCapacityMargin < 1 {
 		add("init.homeCapacityMargin = %v, must be at least 1", s.Init.HomeCapacityMargin)
@@ -263,6 +280,68 @@ func negatives(v reflect.Value, path string) []error {
 	case reflect.Float64:
 		if v.Float() < 0 {
 			errs = append(errs, fmt.Errorf("%s = %v, must not be negative", path, v.Float()))
+		}
+	}
+	return errs
+}
+
+// validatePact checks the Pact table (ODD §6.9).
+func (s *Scenario) validatePact() []error {
+	var errs []error
+	add := func(format string, args ...any) { errs = append(errs, fmt.Errorf(format, args...)) }
+	if len(s.Pact) > MaxRules {
+		add("pact has %d rules, at most %d allowed", len(s.Pact), MaxRules)
+	}
+	ids := map[string]bool{}
+	activeFor := map[string]string{} // offence → the active rule listing it
+	for i, r := range s.Pact {
+		key := fmt.Sprintf("pact[%d]", i)
+		if r.ID == "" || ids[r.ID] {
+			add("%s.id = %q, must be unique and not empty", key, r.ID)
+		}
+		ids[r.ID] = true
+		if len(r.Offences) == 0 {
+			add("%s.offences is empty", key)
+		}
+		for _, o := range r.Offences {
+			if !slices.Contains(Offences, o) {
+				add("%s.offences: %q, must be one of %s", key, o, strings.Join(Offences, ", "))
+			}
+			if other, ok := activeFor[o]; ok && r.Active {
+				add("%s.offences: %q is also listed by active rule %s", key, o, other)
+			}
+			if r.Active {
+				activeFor[o] = r.ID
+			}
+		}
+		pens := []struct {
+			key string
+			p   *Penalty
+		}{{key + ".first", &r.First}, {key + ".repeat", r.Repeat}}
+		for _, pen := range pens {
+			if pen.p == nil {
+				continue
+			}
+			if pen.p.Prison < 0 || pen.p.Mines < 0 {
+				add("%s: prison and mines days must not be negative", pen.key)
+			}
+			n := 0
+			for _, on := range []bool{pen.p.Prison > 0, pen.p.Mines > 0, pen.p.Cleaning} {
+				if on {
+					n++
+				}
+			}
+			if n > 1 {
+				add("%s: at most one of prison, mines and cleaning", pen.key)
+			}
+		}
+		if r.Visibility > 1 {
+			add("%s.visibility = %v, must be between 0 and 1", key, r.Visibility)
+		}
+		switch r.Enforcer {
+		case "judicial", "sheriff", "silo1":
+		default:
+			add("%s.enforcer = %q, must be judicial, sheriff or silo1", key, r.Enforcer)
 		}
 	}
 	return errs

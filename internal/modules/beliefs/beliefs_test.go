@@ -966,3 +966,99 @@ func TestFlamekeepersWarned(t *testing.T) {
 		}
 	}
 }
+
+// ODD §6.12, The Head of IT, and §6.13: while in office the Head never
+// tells, forgets or is dosed, can't take a Flamekeeper seat and never
+// warns the Flamekeepers.
+func TestHeadOfITKeepsEverything(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Beliefs.HalfLifeHeardYears, s.cfg.Beliefs.HalfLifeLivedYears = 1e-6, 1e-6 // anyone else forgets at once
+	s.cfg.Beliefs.DoseHideChance = 1
+	head, mate, member := s.add(50, world.Worker), s.add(40, world.Worker), s.add(40, world.Worker)
+	s.w.People[head].Department = itDept
+	s.join(mate, s.w.People[head].Household)
+	s.join(member, s.w.People[head].Household)
+	s.w.Control = &world.Control{Head: head, Successor: world.None}
+	s.startWith(1)
+	b := s.w.Beliefs
+	b.Base[mate] = 0 // always convinced
+	s.m.seats = 2    // after the start, so no founders are drawn
+	all := world.Flags(1<<world.NumFlags - 1)
+	for f := range world.NumFlags {
+		b.Learn(head, f, true)
+	}
+	s.m.join(s.w, member)
+	b.Learn(member, world.FlagHistory, true)
+	s.w.Day++
+	s.fire("waterDosing")
+	if b.Warned {
+		t.Error("warned by the Head of IT, a loyal insider")
+	}
+	if err := s.m.step(s.w, s.r); err != nil {
+		t.Fatal(err)
+	}
+	for range 30 {
+		s.step()
+	}
+	if b.Known[head] != all || b.Dosed(s.w, head) {
+		t.Errorf("Head knows %05b, dosed %v; want all five, never dosed", b.Known[head], b.Dosed(s.w, head))
+	}
+	if b.Known[mate] != 0 {
+		t.Errorf("housemate knows %05b; the Head tells nothing", b.Known[mate])
+	}
+	if b.IsMember[head] {
+		t.Error("the Head took a Flamekeeper seat")
+	}
+	for _, a := range s.w.Control.Acts {
+		if a.Person == head {
+			t.Errorf("an act by the Head: %+v", a)
+		}
+	}
+}
+
+// ODD §6.13, Offences: with the control module on, each telling is an act
+// by the teller, believed or not; telling someone who knows is not; a
+// handover is one act by both.
+func TestActsReported(t *testing.T) {
+	s := newTiny(t)
+	teller, convinced, loyal, knows := s.add(40, world.Worker), s.add(40, world.Worker), s.add(40, world.Worker), s.add(40, world.Worker)
+	for _, id := range []world.PersonID{convinced, loyal, knows} {
+		s.join(id, s.w.People[teller].Household)
+	}
+	s.w.Control = &world.Control{Head: world.None, Successor: world.None}
+	s.startWith(1)
+	b := s.w.Beliefs
+	b.Base[convinced], b.Base[loyal] = 0, 1 // always and never convinced
+	b.Learn(teller, world.FlagScreen, false)
+	s.m.teach(b, knows, world.FlagScreen, false) // learned today: not passed on before tomorrow
+	s.step()
+	tellings := 0
+	for _, a := range s.w.Control.Acts {
+		if a.Offence != world.SpeakForbidden || a.Other != world.None {
+			t.Errorf("unexpected act %+v", a)
+		}
+		if a.Person == teller {
+			tellings++
+		}
+	}
+	// The teller tells convinced and loyal, not knows.
+	if tellings != 2 || len(s.w.Control.Acts) != 2 {
+		t.Errorf("%d tellings by the teller, %d acts; want 2 and 2: %+v", tellings, len(s.w.Control.Acts), s.w.Control.Acts)
+	}
+	if !b.Known[convinced].Has(world.FlagScreen) || b.Known[loyal] != 0 {
+		t.Errorf("convinced knows %05b, loyal %05b", b.Known[convinced], b.Known[loyal])
+	}
+
+	s = newTiny(t)
+	s.cfg.Beliefs.RelicKeptYears = everyDay
+	holder, other := s.add(30, world.Worker), s.add(30, world.Worker)
+	s.join(other, s.w.People[holder].Household)
+	s.w.Control = &world.Control{Head: world.None, Successor: world.None}
+	s.start()
+	s.w.Beliefs.Relics = []world.Relic{{Floor: 1, Holder: holder}}
+	s.step()
+	want := []world.Act{{Person: holder, Other: other, Offence: world.TradeRelic}}
+	if !slices.Equal(s.w.Control.Acts, want) {
+		t.Errorf("acts %+v, want %+v", s.w.Control.Acts, want)
+	}
+}

@@ -79,8 +79,12 @@ func (b *Beliefs) Learn(id PersonID, f Flag, lived bool) bool {
 
 // Dosed reports whether the person is on Vitamin D+ today: by a targeted
 // dose, or by the water unless the Flamekeepers were warned and shield
-// them (ODD §6.12, Warning the Flamekeepers).
+// them (ODD §6.12, Warning the Flamekeepers). The Head of IT never is
+// (ODD §6.13).
 func (b *Beliefs) Dosed(w *World, id PersonID) bool {
+	if w.Control.IsHead(id) {
+		return false
+	}
 	if b.DosedUntil[id] >= w.Day {
 		return true
 	}

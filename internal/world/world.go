@@ -194,6 +194,7 @@ type World struct {
 	Space   *Space
 	Network *Network
 	Beliefs *Beliefs
+	Control *Control
 }
 
 // Counts are running totals since day 0 that no state variable holds.
@@ -238,6 +239,13 @@ type GeneratorEvent struct {
 type RationingEvent struct {
 	EventHeader
 	FoodStockDays float64 `json:"foodStockDays"`
+}
+
+// HeadOfITEvent: type "headOfIT", a new Head of IT (ODD §6.13).
+type HeadOfITEvent struct {
+	EventHeader
+	Head      PersonID `json:"head"`
+	Successor bool     `json:"successor"` // they were the previous Head's successor
 }
 
 // ScriptedEvent: type "scripted", a shock from the scenario's events: list

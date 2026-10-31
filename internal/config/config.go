@@ -40,6 +40,8 @@ type Scenario struct {
 	Space       Space      `yaml:"space"`
 	Network     Network    `yaml:"network"`
 	Beliefs     Beliefs    `yaml:"beliefs"`
+	Control     Control    `yaml:"control"`
+	Pact        []Rule     `yaml:"pact"`
 	Events      []Event    `yaml:"events,omitempty"`
 }
 
@@ -220,6 +222,51 @@ type Beliefs struct {
 	DoseHideChance        float64 `yaml:"doseHideChance"`
 	WaterDosingDays       int     `yaml:"waterDosingDays"`
 }
+
+// Control is the regime control module (ODD §6.13).
+type Control struct {
+	Surveillance       float64 `yaml:"surveillance"`
+	ArrestsPerOfficer  float64 `yaml:"arrestsPerOfficer"`
+	RaidsPerYear       float64 `yaml:"raidsPerYear"`
+	FindChance         float64 `yaml:"findChance"`
+	NameChance         float64 `yaml:"nameChance"`
+	MinesFloor         int     `yaml:"minesFloor"`
+	CleaningFailChance float64 `yaml:"cleaningFailChance"`
+	CleaningLift       float64 `yaml:"cleaningLift"`
+	LiftHalfLifeYears  float64 `yaml:"liftHalfLifeYears"`
+	ImplantDoctors     int     `yaml:"implantDoctors"`
+	DeniedTries        int     `yaml:"deniedTries"`
+}
+
+// Rule is one row of the Pact (ODD §6.9).
+type Rule struct {
+	ID         string   `yaml:"id"`
+	Active     bool     `yaml:"active"`
+	Offences   []string `yaml:"offences"`
+	Detection  float64  `yaml:"detection"`
+	First      Penalty  `yaml:"first"`
+	Repeat     *Penalty `yaml:"repeat,omitempty"` // nil: the same as First
+	Enforcer   string   `yaml:"enforcer"`
+	Visibility float64  `yaml:"visibility"`
+}
+
+// Penalty is what a conviction brings (ODD §6.9); the zero value is a
+// warning. Prison and Mines are days.
+type Penalty struct {
+	Prison     int  `yaml:"prison,omitempty"`
+	Mines      int  `yaml:"mines,omitempty"`
+	Cleaning   bool `yaml:"cleaning,omitempty"`
+	Confiscate bool `yaml:"confiscate,omitempty"`
+	FlagFamily bool `yaml:"flagFamily,omitempty"`
+}
+
+// Offences are the offence types modules can report (ODD §6.9), in the
+// order of world.Offence.
+var Offences = []string{"holdRelic", "tradeRelic", "speakForbidden", "askToGoOut", "unpermittedConception",
+	"contactAttempt", "organise", "violence", "sabotage"}
+
+// MaxRules bounds the Pact: a person's charges are one bit per rule.
+const MaxRules = 32
 
 // HasOffices reports whether a department works on office floors: every
 // department but Farms and Mechanical (pure work floors) and the

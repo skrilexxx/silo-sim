@@ -405,3 +405,43 @@ func TestBeliefsSteadyWithNothingToLearn(t *testing.T) {
 		}
 	}
 }
+
+// T11.1: 200 years of a 1,000-person silo with the control module on and
+// invariants checked every 30 days. There is always a Head of IT, acts
+// are seen, and with no arrests yet cases close only when people die.
+func TestControlDetects(t *testing.T) {
+	on := runSmallCentury(t, false, "space", "network", "beliefs", "control")
+	rows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(on, "yearly.csv")))), "\n")
+	if !strings.HasSuffix(rows[0], ",flamekeepers,actsSeen,openCases") {
+		t.Fatalf("header %q", rows[0])
+	}
+	seen, open := 0, 0
+	for _, row := range rows[1:] {
+		cols := strings.Split(row, ",")
+		seen, open = seen+atoi(t, cols[len(cols)-2]), atoi(t, cols[len(cols)-1])
+	}
+	heads := strings.Count(string(readFile(t, filepath.Join(on, "events.jsonl"))), `"type":"headOfIT"`)
+	t.Logf("200 years: %d acts seen, %d cases open at the end, %d Heads of IT", seen, open, heads)
+	if seen == 0 || open == 0 || heads < 2 {
+		t.Errorf("%d acts seen, %d open cases, %d Heads of IT; want some of each", seen, open, heads)
+	}
+}
+
+// ODD §6.13, Off and null: with σ = 0 and no raids nobody is ever
+// charged. The files are not byte-identical to a run without the module:
+// the Head of IT taking a shadow shifts the work module's draws.
+func TestControlNull(t *testing.T) {
+	golden := loadInto(t, goldenScenario)
+	cfg := loadInto(t, "../../scenarios/baseline.yaml")
+	cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, 0, 100, golden.Population
+	cfg.Lottery.TargetPopulation = cfg.Population
+	cfg.Control.Surveillance, cfg.Control.RaidsPerYear = 0, 0
+	cfg.Output.InvariantEvery = 30
+	cfg.Modules = append(cfg.Modules, "space", "network", "beliefs", "control")
+	rows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(mustSimulate(t, cfg), "yearly.csv")))), "\n")
+	for i, row := range rows[1:] {
+		if !strings.HasSuffix(row, ",0,0") {
+			t.Fatalf("year %d: %q, want no acts seen and no cases", i+1, row)
+		}
+	}
+}

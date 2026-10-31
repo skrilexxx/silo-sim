@@ -255,3 +255,38 @@ func TestOfficeFloors(t *testing.T) {
 		}
 	}
 }
+
+// ODD §6.9, §6.13: the control section and the Pact table.
+func TestControlAndPact(t *testing.T) {
+	base := readBaseline(t)
+	for _, c := range []struct{ old, new, want string }{
+		{"surveillance: 0.05", "surveillance: 1.5", "control.surveillance = 1.5, must be between 0 and 1"},
+		{"raidsPerYear: 4 ", "raidsPerYear: 400 ", "control.raidsPerYear = 400, must be at most 365"},
+		{"minesFloor: 144", "minesFloor: 145", "control.minesFloor = 145, must be 1 to 144"},
+		{"liftHalfLifeYears: 1 ", "liftHalfLifeYears: 0 ", "control.liftHalfLifeYears = 0, must be greater than 0"},
+		{"deniedTries: 3 ", "deniedTries: 0 ", "control.deniedTries = 0, must be greater than 0"},
+		{"implantDoctors: 2 ", "implantDoctors: -1 ", "control.implantDoctors = -1, must not be negative"},
+		{"id: noContact ", "id: noRelics ", `pact[4].id = "noRelics", must be unique`},
+		{"offences: [organise]", "offences: [organize]", `pact[6].offences: "organize", must be one of`},
+		{"offences: [organise]", "offences: [organise, violence]", `pact[6].offences: "violence" is also listed by active rule noViolence`},
+		{"offences: [organise]", "offences: []", "pact[6].offences is empty"},
+		{"first:  { mines: 730 }", "first:  { mines: 730, cleaning: true }", "pact[5].first: at most one of prison, mines and cleaning"},
+		{"repeat: { mines: 365 }", "repeat: { prison: -3 }", "pact[6].repeat: prison and mines days must not be negative"},
+		{"visibility: 0.7", "visibility: 1.7", "pact[6].visibility = 1.7, must be between 0 and 1"},
+		{"enforcer: sheriff", "enforcer: mayor", `pact[2].enforcer = "mayor", must be judicial, sheriff or silo1`},
+		{"    detection: 0.6", "    detection: -1", "pact[6].detection = -1, must not be negative"},
+		{"    detection: 0.6\n", "", "missing key pact[6].detection"},
+	} {
+		got := loadErr(t, edit(t, base, c.old, c.new))
+		if !strings.Contains(got, c.want) {
+			t.Errorf("%q: got %q, want %q", c.new, got, c.want)
+		}
+	}
+	// An inactive rule may list an offence an active one lists.
+	cfgOff := edit(t, base, "offences: [organise]", "offences: [organise, violence]")
+	cfgOff = edit(t, cfgOff, "id: noOrganising              # unauthorised gatherings and strikes\n    active: true", "id: noOrganising\n    active: false")
+	dir := t.TempDir()
+	if _, err := Load(write(t, dir, "s.yaml", cfgOff)); err != nil {
+		t.Errorf("inactive rule sharing an offence: %v", err)
+	}
+}

@@ -136,7 +136,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
   - **Judicial and Sheriff:** capacity from coverage; arrests are trips (M8), so a Down Deep arrest takes days.
   - **Sentences:** warning, prison, the mines (forced labour), cleaning.
   - **Covert lottery denial:** flagged people "win" the lottery but their implant stays in.
-- [ ] **T11.1 Pact table, Head of IT, surveillance and detection.** The `pact:` and `control:` sections; the Head of IT and successor; acts reported by beliefs (tellings, handovers) and seen at σ × c\_IT × w.
+- [x] **T11.1 Pact table, Head of IT, surveillance and detection.** (2026-10-31; the Head taking a shadow shifts the work module's draws, so the null setting is not byte-identical, ODD §6.13) The `pact:` and `control:` sections; the Head of IT and successor; acts reported by beliefs (tellings, handovers) and seen at σ × c\_IT × w.
 - [ ] **T11.2 Arrests, trials and sentences.** Prison and the mines take people out of work and out of contact. Arrest capacity, trips to the court, searches and raids, confiscation, Flamekeepers naming each other.
   - *Done when:* with arrests on, the Flamekeepers can die out (T10.5); with σ = 0 and no raids nobody is arrested.
 - [ ] **T11.3 Cleaning.** Sentenced cleanings ("I want to go out" is said under M12's rules). A cleaning slightly raises everyone's L for a while (the lift S); the fear it causes is read by activation in M12. A cleaner who refuses and walks out of sight is the **cleaning-failure shock**: everyone watching learns that the outside may be survivable and the screen lies, and L drops as they tell others. It is also a scripted event type for experiments (pattern C2).

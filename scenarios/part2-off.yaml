@@ -31,3 +31,25 @@ beliefs:                  # M10, off
   flamekeeperSeats: 40
   doseHideChance: 0.5
   waterDosingDays: 30
+
+control:                  # M11, off
+  surveillance: 1
+  arrestsPerOfficer: 1
+  raidsPerYear: 365
+  findChance: 1
+  nameChance: 1
+  minesFloor: 100
+  cleaningFailChance: 1
+  cleaningLift: 1
+  liftHalfLifeYears: 10
+  implantDoctors: 50
+  deniedTries: 1
+
+pact:                     # M11, off: everything is a cleaning
+  - id: everything
+    active: true
+    offences: [holdRelic, tradeRelic, speakForbidden, askToGoOut, unpermittedConception, contactAttempt, organise, violence, sabotage]
+    detection: 1
+    first: { cleaning: true, confiscate: true, flagFamily: true }
+    enforcer: judicial
+    visibility: 1
