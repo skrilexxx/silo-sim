@@ -31,3 +31,21 @@ func BenchmarkStep(b *testing.B) {
 		m.step(w, r)
 	}
 }
+
+// The conversations alone when half the silo knows the history, the
+// costliest point of a spread: every knower has ties to people who don't.
+func BenchmarkConverseHalfKnow(b *testing.B) {
+	s := newStill(b, 1, 0, false) // π = 0: nobody learns, so every day costs the same
+	for i, id := range s.w.Alive {
+		if i%2 == 0 {
+			s.w.Beliefs.Learn(id, world.FlagHistory)
+		}
+	}
+	s.day()
+	m := New()
+	*m = Module{pass: 0, fresh: make([]world.Flags, len(s.w.People))}
+	r, _ := rng.New(1, "beliefs")
+	for b.Loop() {
+		m.converse(s.w, r)
+	}
+}

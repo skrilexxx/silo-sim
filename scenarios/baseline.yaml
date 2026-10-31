@@ -152,6 +152,7 @@ beliefs:                          # ODD §6.12 (part 2, draft); used only when `
   taughtLegitimacy: 0.8           # L_edu: the legitimacy Education teaches; everyone's base on day 1; guess
   educationWeight: 0.5            # ε: Education's share of a young person's base, the rest from parents (and master); guess
   legitimacyCostPerFlag: 0.15     # δ: legitimacy lost per known flag; guess
+  passChance: 0.002               # π: chance a flag passes in a conversation, × (1 − L of the listener); guess, calibrated against C4 in T12.8
 
 governance:                       # ODD §6.8
   mode: appointment               # or: election

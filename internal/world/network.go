@@ -98,10 +98,11 @@ func (n *Network) Reachable(w *World, a, b PersonID) bool {
 
 // Talk reports whether a and b, tied by a tie of kind, talk today (ODD
 // §6.11): they can reach each other, and the day's draw for the pair is
-// below the kind's chance. Either may pass something to the other.
+// below the kind's chance. Either may pass something to the other. The
+// draw comes first: it needs no memory, and most draws fail (T10.2).
 func (n *Network) Talk(w *World, a, b PersonID, kind TieKind) bool {
 	lo, hi := min(a, b), max(a, b)
-	return n.Reachable(w, a, b) && n.Talks.Float64(uint64(w.Day), uint64(lo), uint64(hi)) < n.Chance[kind]
+	return n.Talks.Float64(uint64(w.Day), uint64(lo), uint64(hi)) < n.Chance[kind] && n.Reachable(w, a, b)
 }
 
 // Ties appends every tie of a living person to out and returns it: one per

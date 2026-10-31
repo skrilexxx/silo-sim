@@ -68,6 +68,7 @@ func (s *Scenario) Validate() error {
 		{"beliefs.taughtLegitimacy", s.Beliefs.TaughtLegitimacy},
 		{"beliefs.educationWeight", s.Beliefs.EducationWeight},
 		{"beliefs.legitimacyCostPerFlag", s.Beliefs.LegitimacyCostPerFlag},
+		{"beliefs.passChance", s.Beliefs.PassChance},
 	}
 	for _, u := range unit {
 		if u.v < 0 || u.v > 1 {

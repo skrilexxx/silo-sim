@@ -142,6 +142,10 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 	}
 	if w.Beliefs != nil {
 		h = append(h, ",meanL,meanLUpTop,meanLMids,meanLDownDeep"...)
+		for f := range world.NumFlags {
+			name := f.String()
+			h = append(h, ",know"+strings.ToUpper(name[:1])+name[1:]...)
+		}
 	}
 	h = append(h, '\n')
 	if _, err := o.yearly.Write(h); err != nil {
@@ -432,10 +436,12 @@ func (o *Writer) appendTies(w *world.World, b []byte) []byte {
 }
 
 // appendBeliefs writes the beliefs columns (ODD §6.12, Outputs): the mean
-// L of adults, overall and by the zone of their home (0 with no adults).
+// L of adults, overall and by the zone of their home, then the share of
+// adults who know each flag (0 with no adults).
 func (o *Writer) appendBeliefs(w *world.World, b []byte) []byte {
 	var sum [world.NumZones + 1]float64 // the last one is everyone
 	var n [world.NumZones + 1]int
+	var know [world.NumFlags]float64
 	for _, id := range w.Alive {
 		if w.Day-w.People[id].BirthDay < o.adultAge {
 			continue
@@ -445,13 +451,23 @@ func (o *Writer) appendBeliefs(w *world.World, b []byte) []byte {
 		n[z]++
 		sum[world.NumZones] += l
 		n[world.NumZones]++
+		for f := range world.NumFlags {
+			if w.Beliefs.Known[id].Has(f) {
+				know[f]++
+			}
+		}
+	}
+	mean := func(x float64, n int) float64 {
+		if n == 0 {
+			return 0
+		}
+		return x / float64(n)
 	}
 	for _, z := range [...]int{world.NumZones, int(world.UpTop), int(world.Mids), int(world.DownDeep)} {
-		mean := 0.0
-		if n[z] > 0 {
-			mean = sum[z] / float64(n[z])
-		}
-		b = appendF(b, mean, 4)
+		b = appendF(b, mean(sum[z], n[z]), 4)
+	}
+	for _, k := range know {
+		b = appendF(b, mean(k, n[world.NumZones]), 4)
 	}
 	return b
 }

@@ -209,6 +209,7 @@ type Beliefs struct {
 	TaughtLegitimacy      float64 `yaml:"taughtLegitimacy"`
 	EducationWeight       float64 `yaml:"educationWeight"`
 	LegitimacyCostPerFlag float64 `yaml:"legitimacyCostPerFlag"`
+	PassChance            float64 `yaml:"passChance"`
 }
 
 // HasOffices reports whether a department works on office floors: every

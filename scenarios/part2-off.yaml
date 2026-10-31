@@ -21,3 +21,4 @@ beliefs:                  # M10, off
   taughtLegitimacy: 0.3
   educationWeight: 0.9
   legitimacyCostPerFlag: 0.5
+  passChance: 0.5

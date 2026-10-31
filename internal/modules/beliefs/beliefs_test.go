@@ -2,6 +2,7 @@ package beliefs
 
 import (
 	"math"
+	"slices"
 	"testing"
 
 	"github.com/skrilexxx/silo-sim/internal/config"
@@ -22,7 +23,13 @@ type tiny struct {
 
 func newTiny(t *testing.T) *tiny {
 	// The first step is a recompute day (ODD §6.12, Upbringing).
-	w := &world.World{Day: 1200*engine.DaysPerMonth - 1, Floors: []world.Floor{{Number: 1, Homes: 9}}, Network: &world.Network{}}
+	talks, _ := rng.NewKeyed(1, "talk")
+	n := &world.Network{Part: []int{0}, Talks: talks}
+	for k := range world.NumTieKinds {
+		n.Chance[k] = 1 // every tie is used every day, unless a test says otherwise
+	}
+	w := &world.World{Day: 1200*engine.DaysPerMonth - 1, Floors: []world.Floor{{Number: 1, Homes: 9}},
+		Space: &world.Space{}, Network: n}
 	r, _ := rng.New(1, "beliefs")
 	return &tiny{t: t, w: w, m: New(), r: r}
 }
@@ -39,11 +46,29 @@ func (s *tiny) add(ageYears int, stage world.Stage) world.PersonID {
 	return id
 }
 
+// join moves person id into household hh.
+func (s *tiny) join(id world.PersonID, hh world.HouseholdID) {
+	w := s.w
+	old := w.People[id].Household
+	w.Households[old].Members = slices.DeleteFunc(w.Households[old].Members, func(o world.PersonID) bool { return o == id })
+	w.People[id].Household = hh
+	w.Households[hh].Members = append(w.Households[hh].Members, id)
+}
+
 func (s *tiny) start() {
+	s.startWith(0.5)
+}
+
+// startWith starts the module with pass chance π; the network's indexes
+// are sized to the people added so far.
+func (s *tiny) startWith(pass float64) {
 	s.t.Helper()
+	n := s.w.Network
+	n.Weak, n.Children = make([][]world.Tie, len(s.w.People)), make([][]world.PersonID, len(s.w.People))
 	cfg := &config.Scenario{}
 	cfg.Work.WorkerAge = 18
 	cfg.Beliefs.TaughtLegitimacy, cfg.Beliefs.EducationWeight, cfg.Beliefs.LegitimacyCostPerFlag = 0.8, 0.5, 0.15
+	cfg.Beliefs.PassChance = pass
 	if err := s.m.Init(s.w, cfg, s.r); err != nil {
 		s.t.Fatal(err)
 	}
@@ -167,5 +192,90 @@ func TestNeedsNetwork(t *testing.T) {
 	s.w.Network = nil
 	if err := s.m.Init(s.w, &config.Scenario{}, s.r); err == nil {
 		t.Error("started without the network")
+	}
+}
+
+// ODD §6.12, Telling and believing: a flag passes in a conversation with
+// chance π × (1 − L of the listener). With π = 0.5, a listener who knows
+// nothing (L 0.8) learns on a day with chance 0.1; one with L 0.65 (as if
+// they knew a flag), with chance 0.175. 2,000 listeners in each group.
+func TestPassChanceFallsWithListenersL(t *testing.T) {
+	s := newTiny(t)
+	const each = 2000
+	tellA, tellB := s.add(40, world.Worker), s.add(40, world.Worker)
+	var groupA, groupB []world.PersonID
+	for range each {
+		a, b := s.add(30, world.Worker), s.add(30, world.Worker)
+		s.join(a, s.w.People[tellA].Household)
+		s.join(b, s.w.People[tellB].Household)
+		groupA, groupB = append(groupA, a), append(groupB, b)
+	}
+	s.start()
+	bl := s.w.Beliefs
+	for _, id := range groupB {
+		bl.Base[id] = 0.65
+	}
+	bl.Learn(tellA, world.FlagHistory)
+	bl.Learn(tellB, world.FlagHistory)
+	s.step()
+	for _, g := range []struct {
+		who  []world.PersonID
+		want float64
+	}{{groupA, 0.1}, {groupB, 0.175}} {
+		got := 0
+		for _, id := range g.who {
+			if bl.Known[id].Has(world.FlagHistory) {
+				got++
+			}
+		}
+		share, sd := float64(got)/each, math.Sqrt(g.want*(1-g.want)/each)
+		if math.Abs(share-g.want) > 5*sd {
+			t.Errorf("%.4f learned in a day, want %.3f ± %.4f", share, g.want, 5*sd)
+		}
+		t.Logf("learned in a day: %.4f (want %.3f)", share, g.want)
+	}
+}
+
+// ODD §6.12: a flag learned today is passed on from tomorrow; nothing
+// passes on a tie not used today, nor from the dead.
+func TestPassedOnFromTomorrow(t *testing.T) {
+	s := newTiny(t)
+	a, b, c := s.add(40, world.Worker), s.add(40, world.Worker), s.add(20, world.Worker)
+	s.join(b, s.w.People[a].Household)
+	s.w.People[c].Mother = b // kin, living apart
+	s.startWith(1)
+	s.w.Network.Children[b] = []world.PersonID{c}
+	bl := s.w.Beliefs
+	for _, id := range []world.PersonID{a, b, c} {
+		bl.Base[id] = 0 // believes nothing, so always convinced
+	}
+	bl.Learn(a, world.FlagSilos)
+	s.step()
+	if !bl.Known[b].Has(world.FlagSilos) || bl.Known[c] != 0 {
+		t.Fatalf("day 1: b knows %b, c knows %b; want b to know, c not yet", bl.Known[b], bl.Known[c])
+	}
+	s.step()
+	if !bl.Known[c].Has(world.FlagSilos) {
+		t.Fatalf("day 2: c knows %b, want silos", bl.Known[c])
+	}
+
+	s = newTiny(t)
+	a, b, c = s.add(40, world.Worker), s.add(40, world.Worker), s.add(40, world.Worker)
+	s.join(b, s.w.People[a].Household)
+	s.join(c, s.w.People[a].Household)
+	s.startWith(1)
+	bl = s.w.Beliefs
+	bl.Base[b], bl.Base[c] = 0, 0
+	bl.Learn(a, world.FlagOutside)
+	s.w.Network.Chance[world.TieHousehold] = 0
+	s.step()
+	s.w.Network.Chance[world.TieHousehold] = 1
+	s.w.People[a].Alive = false
+	s.step()
+	if bl.Known[b] != 0 || bl.Known[c] != 0 {
+		t.Errorf("b knows %b, c %b; want nothing, with no talk and then a dead teller", bl.Known[b], bl.Known[c])
+	}
+	if len(bl.Knowers) != 0 {
+		t.Errorf("knowers %v, want the dead one dropped", bl.Knowers)
 	}
 }

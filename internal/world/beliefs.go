@@ -14,6 +14,10 @@ const (
 	NumFlags
 )
 
+func (f Flag) String() string {
+	return [...]string{"outside", "screen", "history", "silos", "lottery"}[f]
+}
+
 // Flags is a set of facts, one bit per Flag.
 type Flags uint8
 
@@ -26,6 +30,25 @@ type Beliefs struct {
 	Known []Flags   // facts known (hidden ones not included)
 	Risk  []float64 // risk aversion R, 0–1, fixed at birth (ODD §6.14)
 	Cost  float64   // δ: legitimacy lost per known flag
+
+	// Everyone who knows a flag, and possibly some who have died or
+	// forgotten since; the beliefs step drops those. Learn keeps it.
+	Knowers []PersonID
+}
+
+// Learn makes the person know the flag (ODD §6.12). Every module that
+// teaches a flag uses it, so the beliefs step finds the new knower. It
+// reports whether the flag is new to them.
+func (b *Beliefs) Learn(id PersonID, f Flag) bool {
+	k := b.Known[id]
+	if k.Has(f) {
+		return false
+	}
+	if k == 0 {
+		b.Knowers = append(b.Knowers, id)
+	}
+	b.Known[id] = k | 1<<f
+	return true
 }
 
 // L is the person's legitimacy: their base minus δ per known flag.
