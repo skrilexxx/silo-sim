@@ -453,9 +453,11 @@ func (m *Module) arrests(w *world.World, r *rng.Stream) {
 	}
 }
 
-// unseat: an arrested Flamekeeper loses their seat and names each other
-// member with chance p_name; a named member is charged with
-// speakForbidden, if an active rule lists it.
+// unseat: an arrested Flamekeeper loses their seat and, with chance
+// p_name, names one other member, drawn uniformly, who is charged with
+// speakForbidden if an active rule lists it. Naming every member with
+// chance p_name wiped out the group in the first year of every run
+// (T11.2).
 func (m *Module) unseat(w *world.World, r *rng.Stream, id world.PersonID) {
 	b := w.Beliefs
 	if !b.IsMember[id] {
@@ -464,14 +466,10 @@ func (m *Module) unseat(w *world.World, r *rng.Stream, id world.PersonID) {
 	b.IsMember[id] = false
 	b.Members = slices.DeleteFunc(b.Members, func(x world.PersonID) bool { return x == id })
 	rule := m.ruleOf[world.SpeakForbidden]
-	if rule == world.None {
+	if rule == world.None || len(b.Members) == 0 || r.Float64() >= m.name {
 		return
 	}
-	for _, o := range b.Members {
-		if r.Float64() < m.name {
-			m.charge(w.Control, o, rule)
-		}
-	}
+	m.charge(w.Control, b.Members[r.IntRange(0, len(b.Members)-1)], rule)
 }
 
 // court is the Judicial office floor nearest to floor f among those

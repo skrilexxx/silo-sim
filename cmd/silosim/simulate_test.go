@@ -432,22 +432,36 @@ func sum(xs []int) int {
 
 // T11.1–T11.2: 200 years of a 1,000-person silo at the canon settings,
 // with the control module on and invariants checked every 30 days. There
-// is always a Head of IT; acts are seen, people arrested and tried. T11.2
-// done-when: with arrests on, the Flamekeepers can die out; here they do.
+// is always a Head of IT; acts are seen, people arrested and tried.
 func TestControlRuns(t *testing.T) {
 	on := runSmallCentury(t, false, "space", "network", "beliefs", "control")
 	heads := strings.Count(string(readFile(t, filepath.Join(on, "events.jsonl"))), `"type":"headOfIT"`)
 	keepers := column(t, on, "flamekeepers")
-	gone := slices.Index(keepers, 0)
 	t.Logf("200 years: %d acts seen, %d arrests, %d warnings, %d prison, %d mines, %d relics taken, %d raids, %d Heads of IT",
 		sum(column(t, on, "actsSeen")), sum(column(t, on, "arrests")), sum(column(t, on, "warnings")), sum(column(t, on, "prison")),
 		sum(column(t, on, "mines")), sum(column(t, on, "relicsTaken")), sum(column(t, on, "raids")), heads)
-	t.Logf("Flamekeepers every 10 years: %v; gone in year %d", everyNth(keepers, 10), gone+1)
+	t.Logf("Flamekeepers every 20 years: %v", everyNth(keepers, 20))
 	if sum(column(t, on, "arrests")) == 0 || heads < 2 {
 		t.Errorf("no arrests or fewer than 2 Heads of IT")
 	}
+}
+
+// T11.2 done-when: with arrests on, the Flamekeepers can die out. With
+// every telling seen (σ = 1) and every arrested member naming another
+// (p_name = 1), they are rolled up within 30 years.
+func TestFlamekeepersCanDieOut(t *testing.T) {
+	golden := loadInto(t, goldenScenario)
+	cfg := loadInto(t, "../../scenarios/baseline.yaml")
+	cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, 0, 30, golden.Population
+	cfg.Lottery.TargetPopulation = cfg.Population
+	cfg.Control.Surveillance, cfg.Control.NameChance = 1, 1
+	cfg.Output.InvariantEvery = 30
+	cfg.Modules = append(cfg.Modules, "space", "network", "beliefs", "control")
+	keepers := column(t, mustSimulate(t, cfg), "flamekeepers")
+	gone := slices.Index(keepers, 0)
+	t.Logf("Flamekeepers each year: %v; gone in year %d", keepers, gone+1)
 	if gone < 0 {
-		t.Error("the Flamekeepers survived 200 years of arrests")
+		t.Error("the Flamekeepers survived")
 	}
 }
 

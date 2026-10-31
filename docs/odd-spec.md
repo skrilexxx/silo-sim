@@ -692,7 +692,7 @@ where σ is the surveillance level (a policy lever, §6.15), c\_IT is IT's cover
 **Arrests.** Each day Judicial arrests up to ⌊a × officers⌋ people, where officers are the workers of Judicial and the Sheriff who are not off work (§6.10). Open cases are taken oldest first, in the order they were opened. An arrest starts a trip (§6.10) to the *court*: the Judicial office floor nearest to where the person is, among those connected to it (lower on a tie). If the trip can't start (they are on the stairs, or no court floor is connected), the case waits and uses no capacity. From the arrest to the trial the person is *in custody*. On arrest:
 
 - their flat is searched (below);
-- a Flamekeeper loses their seat and names each other member with chance p\_name; a named member is charged with `speakForbidden`, with no detection draw, if a rule listing it is active. Named members name others when they are arrested in turn, which is how arrests can destroy the group (T10.5).
+- a Flamekeeper loses their seat and, with chance p\_name, names one other member, drawn uniformly; the named member is charged with `speakForbidden`, with no detection draw, if a rule listing it is active. A named member may name another when arrested in turn, so arrests can roll the group up one by one (T10.5), but the chain often stops. Naming each member with chance p\_name wiped out all 15 in the first year of every run (T11.2: about 4 named per arrest).
 
 **Trial.** On the day they reach the court. For each rule in the case the penalty is the first-offence one if they were never convicted under that rule, the repeat one otherwise; every rule in the case counts as convicted from then on. They serve the most severe detention among those penalties (cleaning, then mines, then prison, then none; the longer of the same kind), and every confiscation and family flag among them.
 
@@ -747,7 +747,7 @@ People in custody or detained have no conversations (§6.11) and can't use their
 | Arrests per officer a | 0.05 a day | Guess: about 20 a day with about 400 officers, more than peacetime needs; it binds only in a rebellion |
 | Raids R\_raid | 4 a year | Guess |
 | Find chance p\_find | 0.2 per held relic and search | Guess: relics are hard to find (Adam, T10.4) |
-| Naming p\_name | 0.3 per other member | Guess |
+| Naming p\_name | 0.3 per arrested member | Guess |
 | Mines floor | 144 | Lore: the mines lie below Mechanical, at the bottom \[Likely\] |
 | Failed cleaning p\_fail | 0.05 | Guess; experiments script the C2 shock instead |
 | Cleaning lift λ | 0.05 × visibility | Guess |
@@ -763,7 +763,7 @@ control:                          # ODD §6.13; used only when `control` is in m
   arrestsPerOfficer: 0.05         # a: arrests a day per Judicial or Sheriff worker
   raidsPerYear: 4                 # R_raid
   findChance: 0.2                 # p_find: per held relic and search
-  nameChance: 0.3                 # p_name: an arrested Flamekeeper names each other member
+  nameChance: 0.3                 # p_name: an arrested Flamekeeper names one other member
   minesFloor: 144
   cleaningFailChance: 0.05        # p_fail
   cleaningLift: 0.05              # λ: lift of L from a cleaning seen by all (× visibility)

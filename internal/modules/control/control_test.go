@@ -507,8 +507,8 @@ func TestSearches(t *testing.T) {
 }
 
 // ODD §6.13, Arrests: an arrested Flamekeeper loses their seat and names
-// the others (p_name = 1 here), who are arrested in turn: arrests can
-// destroy the group (T10.5).
+// one other member (p_name = 1 here), who is arrested in turn and names
+// another: the group is rolled up one by one (T10.5).
 func TestFlamekeepersNamed(t *testing.T) {
 	s := newTiny(t)
 	members := []world.PersonID{s.on(1), s.on(3), s.on(1), s.on(3)}
