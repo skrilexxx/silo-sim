@@ -195,19 +195,19 @@ func (m *Module) drop(w *world.World) {
 	m.homeward = slices.DeleteFunc(m.homeward, dead)
 }
 
-// headOfIT: ODD §6.13, Head of IT. A Head who died, retired or was
-// arrested leaves office; an empty post goes to the successor if they are a worker,
-// otherwise to the most skilled IT worker (ties to the lower ID). Then a
-// Head without a successor names one.
+// headOfIT: ODD §6.13, Head of IT. The post ends only with death. An
+// empty post goes to the successor, whatever their stage, otherwise to
+// the most skilled IT worker (ties to the lower ID). Then a Head without
+// a successor names one.
 func (m *Module) headOfIT(w *world.World) {
 	c := w.Control
-	if h := c.Head; h != world.None && (!w.People[h].Alive || w.People[h].Stage == world.Retired || c.Held(h)) {
+	if h := c.Head; h != world.None && !w.People[h].Alive {
 		c.Head = world.None
 	}
 	if c.Head == world.None {
 		s := c.Successor
 		c.Successor = world.None // a new Head starts without one
-		if s != world.None && w.People[s].Alive && w.People[s].Stage == world.Worker {
+		if s != world.None && w.People[s].Alive && !c.Held(s) {
 			m.takeOffice(w, s, true)
 		} else if h := m.mostSkilled(w); h != world.None {
 			m.takeOffice(w, h, false)
@@ -324,8 +324,11 @@ func (m *Module) offender(w *world.World, id world.PersonID) bool {
 
 // charge adds a rule to the person's case, opening one if they have none;
 // a charge against someone in custody joins the case they will be tried
-// for.
+// for. The Head of IT is never charged (ODD §6.13, Leaving office).
 func (m *Module) charge(c *world.Control, id world.PersonID, rule int) {
+	if c.IsHead(id) { // the Head of IT is above the Pact
+		return
+	}
 	if c.Charges[id] == 0 && c.Hold[id] != world.Custody {
 		c.Cases = append(c.Cases, id)
 	}

@@ -56,9 +56,9 @@ func Check(w *world.World, cfg *config.Scenario) error {
 	return control(w, len(cfg.Pact))
 }
 
-// ODD §6.13 (draft): the Head of IT, if any, is a living IT worker (on
-// sick leave or not) who knows all five flags and holds no Flamekeeper
-// seat; the successor is alive; every open case is against a living
+// ODD §6.13 (draft): the Head of IT, if any, is alive, of IT (at any
+// stage: the post is for life), free, knows all five flags and holds no
+// Flamekeeper seat; the successor is alive; every open case is against a living
 // person not in custody, with charges only under rules of the Pact; the
 // people in custody are charged; everyone held is alive and holds no
 // seat, and a detention has a last day.
@@ -70,8 +70,8 @@ func control(w *world.World, rules int) error {
 	if h := c.Head; h != world.None {
 		p := &w.People[h]
 		all := world.Flags(1<<world.NumFlags - 1)
-		if !p.Alive || w.Depts[p.Department].Name != "it" || p.Stage != world.Worker && p.Stage != world.SickLeave {
-			return fmt.Errorf("day %d: Head of IT %d is not a living IT worker", w.Day, h)
+		if !p.Alive || w.Depts[p.Department].Name != "it" || c.Held(h) {
+			return fmt.Errorf("day %d: Head of IT %d is not a free, living member of IT", w.Day, h)
 		}
 		if w.Beliefs.Known[h] != all || w.Beliefs.IsMember[h] {
 			return fmt.Errorf("day %d: Head of IT %d knows %05b or holds a Flamekeeper seat", w.Day, h, w.Beliefs.Known[h])

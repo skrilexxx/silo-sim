@@ -220,52 +220,45 @@ func TestSuccessorIsTheHeadsShadow(t *testing.T) {
 	}
 }
 
-// ODD §6.13, Leaving office: a Head who dies is followed by their
-// successor if a worker, otherwise by the most skilled IT worker; a Head
-// on sick leave keeps the post; one who retires leaves it.
+// ODD §6.13, Leaving office: the post ends only with death. The Head
+// keeps it on sick leave and in retirement and can't be charged; at
+// their death the successor takes it even as a shadow; with no successor
+// the most skilled IT worker does; with no IT worker it stays empty.
 func TestSuccession(t *testing.T) {
 	s := newTiny(t)
 	head := s.add(60, world.Worker, it, 0.9)
 	best := s.add(50, world.Worker, it, 0.8)
-	shadow := s.add(17, world.Shadow, it, 0.3)
+	shadow := s.add(15, world.Shadow, it, 0.3)
 	s.w.People[shadow].Master = head
 	s.start()
-
-	s.w.People[head].Stage = world.SickLeave
-	s.step()
-	if c := s.w.Control; c.Head != head || c.Successor != shadow {
-		t.Fatalf("on sick leave: Head %d, successor %d; want %d, %d", c.Head, c.Successor, head, shadow)
+	c := s.w.Control
+	for _, stage := range []world.Stage{world.SickLeave, world.Retired} {
+		s.w.People[head].Stage = stage
+		s.offend(head, world.TradeRelic)
+		s.step()
+		if c.Head != head || c.Successor != shadow || c.Charges[head] != 0 || c.Held(head) {
+			t.Fatalf("stage %d: Head %d, successor %d, charges %b; want %d, %d, never charged", stage, c.Head, c.Successor, c.Charges[head], head, shadow)
+		}
 	}
-	s.w.People[head].Stage = world.Worker
 
-	// The successor is still a shadow: the most skilled worker takes over,
-	// and the role lapses.
 	s.kill(head)
 	s.step()
-	if c := s.w.Control; c.Head != best || c.Successor == shadow && s.w.People[shadow].Master != best {
-		t.Fatalf("Head %d, successor %d; want %d and a successor of their own", c.Head, c.Successor, best)
+	if c.Head != shadow || c.Successor != world.None {
+		t.Fatalf("Head %d, successor %d; want the shadow %d, with none of their own yet", c.Head, c.Successor, shadow)
 	}
-
-	// The new Head names the shadow (now theirs), who grows up and follows
-	// them on retirement.
-	if s.w.Control.Successor != shadow {
-		t.Fatalf("successor %d, want %d", s.w.Control.Successor, shadow)
-	}
-	s.w.People[shadow].Stage = world.Worker
-	s.w.People[best].Stage = world.Retired
-	s.step()
-	if c := s.w.Control; c.Head != shadow || c.Successor != world.None {
-		t.Errorf("Head %d, successor %d; want %d, none", c.Head, c.Successor, shadow)
-	}
-	h := s.heads()
-	if len(h) != 3 || h[1].Successor || !h[2].Successor {
-		t.Errorf("events %+v, want three, the last by succession", h)
-	}
-
-	// With no IT worker left the post stays empty.
 	s.kill(shadow)
 	s.step()
-	if c := s.w.Control; c.Head != world.None {
+	if c.Head != best {
+		t.Fatalf("Head %d, want the most skilled IT worker %d", c.Head, best)
+	}
+	h := s.heads()
+	if len(h) != 3 || h[0].Successor || !h[1].Successor || h[2].Successor {
+		t.Errorf("events %+v, want three, the second by succession", h)
+	}
+
+	s.kill(best)
+	s.step()
+	if c.Head != world.None {
 		t.Errorf("Head %d, want none", c.Head)
 	}
 }
