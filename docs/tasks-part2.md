@@ -43,6 +43,15 @@ Each one is settled in the spec task named. Decided ones point to the spec; for 
 | D10 | The Pact: prose or rules | T7.1 | **Decided 2026-10-30:** a rule table in the scenario file, no prose (ODD §6.9) |
 | D11 | Run length and seeds for part 2 | T7.1 | **Decided 2026-10-30:** 50 + 300 years; 100 seeds for calibration, 1,000 for the final experiments (ODD §1.2) |
 | D12 | Viewer technology | T16.0 | [`silosim serve`: Go's standard HTTP server with the page embedded in the binary, plus one vendored JavaScript chart library; read-only] |
+| D13 | The Head of IT as a role | T11.0 (role, succession), T13.0 (decisions), T14.0 (Silo 1's link) | [Open; raised by Adam 2026-10-31, see below] |
+
+**D13, the Head of IT (raised by Adam, 2026-10-31).** The Head of IT is the most powerful person in the silo, not the Mayor: they know almost everything about it, and Silo 1 speaks to them, and only them, through the Algorithm in the vault on the IT floors, which nobody else can enter (lore reference, Season 3). The model has no such role yet: the baseline has a Mayor (§6.8) and an IT department, nothing more. Before it is built, the specs must settle:
+
+- **Who holds it, and who follows.** One IT worker, with a successor (in the show, a shadow the Head trains). How they are chosen and replaced (death, removal, regime change).
+- **What they know.** All five flags, and Vitamin D+ (§6.12); whether they keep it, or can be dosed.
+- **What they decide.** Surveillance, Pact rewrites, cleanings and dosing are the Head of IT's levers (M11, M13), with the Mayor as a figurehead.
+- **Silo 1's link.** In `watch` and `full`, Silo 1's orders reach the silo only through them, and they comply with some probability (T14.0, T14.1); the vault is where that happens, and only they can use it.
+- **The vault and IT as targets.** Rebels who take the IT floors already end the regime (§1.2, regime change); whether they also gain the vault, and with it the link to Silo 1.
 
 ---
 
@@ -121,7 +130,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
 
 *Answers Q1 and Q3.* The deterrence half of the rebellion model: how likely being caught is, and what follows.
 
-- [ ] **T11.0 Spec: surveillance, Judicial, punishment, cleaning (ODD §6.13).** Offences and penalties come from the Pact table (ODD §6.9); this task fixes its exact YAML keys.
+- [ ] **T11.0 Spec: surveillance, Judicial, punishment, cleaning (ODD §6.13).** Offences and penalties come from the Pact table (ODD §6.9); this task fixes its exact YAML keys. Decision D13: the Head of IT as a role (who holds it, succession, what they know).
   - **Offences:** holding a relic, spreading forbidden knowledge, organising, violence, contact attempts.
   - **Detection:** a chance per offence that rises with IT coverage and the surveillance level (a policy lever).
   - **Judicial and Sheriff:** capacity from coverage; arrests are trips (M8), so a Down Deep arrest takes days.
@@ -181,7 +190,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
   - `full` — adds the Directive and the Safeguard
 
   Contact attempts are rebel actions: radio (needs someone who knows how), digging toward another silo (months of progress in the mines), and walking out. If threat > threshold, Silo 1 triggers the **Safeguard** (gas through a pipe) after a delay. Capping the pipe defeats it, if someone knows about it and Mechanical acts in time. **Drones** kill anyone outside. After a defeated Safeguard, Silo 1 offers the **deal** from S3E10: no contact, no Safeguard.
-- [ ] **T14.1 Algorithm and Head of IT.** Silo 1's view and orders through the Head of IT.
+- [ ] **T14.1 Algorithm and Head of IT.** Silo 1's view and orders through the Head of IT, in the IT vault only they can enter (D13).
 - [ ] **T14.2 Contact attempts.** Radio, digging, escape.
 - [ ] **T14.3 Safeguard, capping and drones.** A Safeguard death counts as silo death (D2) with its own cause.
 - [ ] **T14.4 The deal.** The offer, the silo's answer (decided by its leaders' L and knowledge), and breaking it.
