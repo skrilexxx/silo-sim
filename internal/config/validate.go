@@ -69,6 +69,7 @@ func (s *Scenario) Validate() error {
 		{"beliefs.educationWeight", s.Beliefs.EducationWeight},
 		{"beliefs.legitimacyCostPerFlag", s.Beliefs.LegitimacyCostPerFlag},
 		{"beliefs.passChance", s.Beliefs.PassChance},
+		{"beliefs.cueChance", s.Beliefs.CueChance},
 	}
 	for _, u := range unit {
 		if u.v < 0 || u.v > 1 {
@@ -113,6 +114,8 @@ func (s *Scenario) Validate() error {
 		{"space.walkingHoursPerDay", s.Space.WalkingHoursPerDay},
 		{"beliefs.halfLifeHeardYears", s.Beliefs.HalfLifeHeardYears},
 		{"beliefs.halfLifeLivedYears", s.Beliefs.HalfLifeLivedYears},
+		{"beliefs.relicHiddenYears", s.Beliefs.RelicHiddenYears},
+		{"beliefs.relicKeptYears", s.Beliefs.RelicKeptYears},
 	}
 	for i, d := range s.Work.Departments {
 		positive = append(positive, struct {

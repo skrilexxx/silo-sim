@@ -13,7 +13,7 @@ import (
 
 const year = engine.DaysPerYear
 
-// tiny is a one-floor world; people are added with add, then start runs Init.
+// tiny is a two-floor world (everyone lives on floor 1); people are added with add, then start runs Init.
 type tiny struct {
 	t   *testing.T
 	cfg *config.Scenario
@@ -25,17 +25,18 @@ type tiny struct {
 func newTiny(t *testing.T) *tiny {
 	// The first step is a recompute day (ODD §6.12, Upbringing).
 	talks, _ := rng.NewKeyed(1, "talk")
-	n := &world.Network{Part: []int{0}, Talks: talks}
+	n := &world.Network{Part: []int{0, 0}, Talks: talks}
 	for k := range world.NumTieKinds {
 		n.Chance[k] = 1 // every tie is used every day, unless a test says otherwise
 	}
-	w := &world.World{Day: 1200*engine.DaysPerMonth - 1, Floors: []world.Floor{{Number: 1, Homes: 9}},
+	w := &world.World{Day: 1200*engine.DaysPerMonth - 1, Floors: []world.Floor{{Number: 1, Homes: 9}, {Number: 2, Homes: 9}},
 		Space: &world.Space{}, Network: n}
 	r, _ := rng.New(1, "beliefs")
 	cfg := &config.Scenario{}
 	cfg.Work.ShadowAge, cfg.Work.WorkerAge = 14, 18
 	cfg.Beliefs.TaughtLegitimacy, cfg.Beliefs.EducationWeight, cfg.Beliefs.LegitimacyCostPerFlag = 0.8, 0.5, 0.15
 	cfg.Beliefs.HalfLifeHeardYears, cfg.Beliefs.HalfLifeLivedYears = 5, 20
+	cfg.Beliefs.RelicHiddenYears, cfg.Beliefs.RelicKeptYears, cfg.Beliefs.CueChance = 50, 10, 0.05
 	return &tiny{t: t, cfg: cfg, w: w, m: New(), r: r}
 }
 
@@ -407,5 +408,170 @@ func TestSkip(t *testing.T) {
 				t.Errorf("p = %v: %.4f of landings followed one, want %v", p, after, p)
 			}
 		}
+	}
+}
+
+// everyDay is the years that make a daily chance 1/(365 × years) equal 1.
+const everyDay = 1.0 / year
+
+// ODD §6.12, Relics: a hidden relic is found by someone aged 14 or more
+// whose day location is its floor, who holds it and, as the relic works
+// on them, learns the history as lived; with nobody there it stays hidden.
+func TestRelicFound(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Beliefs.RelicHiddenYears, s.cfg.Beliefs.CueChance = everyDay, 1
+	child, adult := s.add(10, world.Child), s.add(30, world.Worker)
+	s.start()
+	b := s.w.Beliefs
+	b.Relics = []world.Relic{{Floor: 2, Holder: world.None}, {Floor: 1, Holder: world.None}}
+	s.step()
+	if got := b.Relics[0]; got.Holder != world.None || got.Floor != 2 {
+		t.Errorf("relic on an empty floor: %+v, want it still hidden", got)
+	}
+	if got := b.Relics[1]; got.Holder != adult || got.Floor != 1 {
+		t.Errorf("relic on floor 1: %+v, want held by the adult %d, not the child %d", got, adult, child)
+	}
+	if !b.Lived[adult].Has(world.FlagHistory) {
+		t.Errorf("finder knows %b (lived %b), want the history, lived", b.Known[adult], b.Lived[adult])
+	}
+}
+
+// ODD §6.12, Relics: a hidden relic is found with daily chance 1/(365 ×
+// T_find): with T_find = 1 year, 1 − (1 − 1/365)^365 = 63.3% within a
+// year. 2,000 relics.
+func TestRelicFindRate(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Beliefs.RelicHiddenYears, s.cfg.Beliefs.RelicKeptYears = 1, 1e9
+	s.add(30, world.Worker)
+	s.start()
+	b := s.w.Beliefs
+	for range 2000 {
+		b.Relics = append(b.Relics, world.Relic{Floor: 1, Holder: world.None})
+	}
+	for range year {
+		s.step()
+	}
+	found := 0
+	for _, r := range b.Relics {
+		if r.Holder != world.None {
+			found++
+		}
+	}
+	want := 1 - math.Pow(1-1.0/year, year)
+	got, sd := float64(found)/2000, math.Sqrt(want*(1-want)/2000)
+	t.Logf("found within a year: %.4f (want %.4f)", got, want)
+	if math.Abs(got-want) > 5*sd {
+		t.Errorf("found within a year: %.4f, want %.4f ± %.4f", got, want, 5*sd)
+	}
+}
+
+// ODD §6.12, Relics: a holder hands each relic over with daily chance
+// 1/(365 × T_keep), to someone aged 14 or more they talk with today; with
+// T_keep = 1 year, 2,000 relics between two partners who talk daily change
+// hands on 1/365 of the relic-days. Never to a child, nor to someone not
+// talked with.
+func TestRelicHandOver(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Beliefs.RelicKeptYears = 1
+	a, b := s.add(30, world.Worker), s.add(30, world.Worker)
+	s.join(b, s.w.People[a].Household)
+	s.start()
+	bl := s.w.Beliefs
+	for range 2000 {
+		bl.Relics = append(bl.Relics, world.Relic{Floor: 1, Holder: a})
+	}
+	moves := 0
+	for range year {
+		before := slices.Clone(bl.Relics)
+		s.step()
+		for i := range before {
+			if before[i].Holder != bl.Relics[i].Holder {
+				moves++
+			}
+		}
+	}
+	want := 1.0 / year
+	got, sd := float64(moves)/(2000*year), math.Sqrt(want*(1-want)/(2000*year))
+	t.Logf("handed over on %.5f of relic-days (want %.5f)", got, want)
+	if math.Abs(got-want) > 5*sd {
+		t.Errorf("handed over on %.5f of relic-days, want %.5f ± %.5f", got, want, 5*sd)
+	}
+
+	s = newTiny(t)
+	s.cfg.Beliefs.RelicKeptYears = everyDay
+	holder, child, partner := s.add(30, world.Worker), s.add(10, world.Child), s.add(30, world.Worker)
+	s.join(child, s.w.People[holder].Household)
+	s.join(partner, s.w.People[holder].Household)
+	s.start()
+	bl = s.w.Beliefs
+	bl.Relics = []world.Relic{{Floor: 1, Holder: holder}}
+	s.w.Network.Chance[world.TieHousehold] = 0 // nobody talks
+	s.step()
+	if bl.Relics[0].Holder != holder {
+		t.Errorf("handed to %d without a conversation", bl.Relics[0].Holder)
+	}
+	s.w.Network.Chance[world.TieHousehold] = 1
+	for range 20 {
+		s.step()
+		if h := bl.Relics[0].Holder; h == child {
+			t.Fatal("handed to a child")
+		}
+	}
+}
+
+// ODD §6.12, Relics: when a holder dies, a relic goes to a household
+// member aged 14 or more; with none, it stays hidden in the flat.
+func TestRelicInherited(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Beliefs.RelicKeptYears = 1e9
+	old, heir, lone, child := s.add(70, world.Retired), s.add(40, world.Worker), s.add(70, world.Retired), s.add(10, world.Child)
+	s.join(heir, s.w.People[old].Household)
+	s.join(child, s.w.People[lone].Household)
+	s.start()
+	b := s.w.Beliefs
+	b.Relics = []world.Relic{{Floor: 1, Holder: old}, {Floor: 1, Holder: lone}}
+	for _, id := range []world.PersonID{old, lone} {
+		s.w.People[id].Alive = false
+		hh := &s.w.Households[s.w.People[id].Household]
+		hh.Members = slices.DeleteFunc(hh.Members, func(o world.PersonID) bool { return o == id })
+	}
+	s.w.Alive = []world.PersonID{heir, child}
+	s.step()
+	if got := b.Relics[0]; got.Holder != heir {
+		t.Errorf("relic of the dead: %+v, want held by the heir %d", got, heir)
+	}
+	if got := b.Relics[1]; got.Holder != world.None || got.Floor != 1 {
+		t.Errorf("relic of the dead with only a child at home: %+v, want hidden on floor 1", got)
+	}
+}
+
+// ODD §6.12, Relics: holding several relics gives no more draws than one:
+// 2,000 holders of 3 relics each learn the history on a day with chance
+// ρ = 0.05, not 1 − 0.95³ = 0.14.
+func TestRelicsWorkOncePerDay(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Beliefs.RelicKeptYears = 1e9
+	var holders []world.PersonID
+	for range 2000 {
+		holders = append(holders, s.add(30, world.Worker))
+	}
+	s.start()
+	b := s.w.Beliefs
+	for _, h := range holders {
+		for range 3 {
+			b.Relics = append(b.Relics, world.Relic{Floor: 1, Holder: h})
+		}
+	}
+	s.step()
+	learned := 0
+	for _, h := range holders {
+		if b.Known[h].Has(world.FlagHistory) {
+			learned++
+		}
+	}
+	got, sd := float64(learned)/2000, math.Sqrt(0.05*0.95/2000)
+	t.Logf("learned from relics in a day: %.4f (want 0.05)", got)
+	if math.Abs(got-0.05) > 5*sd {
+		t.Errorf("learned in a day: %.4f, want 0.05 ± %.4f", got, 5*sd)
 	}
 }

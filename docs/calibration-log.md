@@ -364,3 +364,20 @@ Every other pattern passes in 10/10.
 **What it means:** in this model, forgetting alone doesn't erase a rebellion; it takes the regime (arrests and the speech rule, M11; dosing and confiscation, M13) or a much smaller π. C4 is the target for π and p_s together in T12.8, with the regime on. Nothing was tuned here.
 
 **Cost:** 80% of the silo knowing a flag adds about 150 µs a day to a run (about 19 s over 350 years), after drawing the rare passing events first (T10.3); asking every tie whether it was used had cost 1 ms a day.
+
+## 2026-10-31 — Relics alone, no regime (T10.4)
+
+**Code:** T10.4 (relics found, held hidden, handed over, inherited), on top of `39ac777`.
+**Setup:** `scenarios/baseline.yaml` plus `space, network, beliefs` at their defaults (100 relics, T_find 50 years, T_keep 10 years, ρ 0.05, π 0.002); 5 warm-up years, 150 measured; no scripted events, no regime. Seed 1.
+
+| Measured year | Relics hidden / held | Adults who know the history | Mean L of adults |
+| ---: | --- | ---: | ---: |
+| 1 | 93 / 7 | 0.003 | 0.800 |
+| 11 | 78 / 22 | 0.031 | 0.795 |
+| 21 | 60 / 40 | 0.234 | 0.763 |
+| 31 | 54 / 46 | 0.632 | 0.696 |
+| 51 | 44 / 56 | 0.752 | 0.651 |
+| 101 | 30 / 70 | 0.807 | 0.585 |
+| 150 | 31 / 69 | 0.824 | 0.560 |
+
+**What it means:** a few found relics are enough to start the history spreading; with nothing to stop it, it is endemic within about 30 years (as after a reveal, T10.3) and settles near 80%. Relics settle at about two thirds held: finds (2 a year at first) against relics left in empty flats at death. Mean L keeps falling for a century, as each generation is raised by doubting parents: the base converges to about 0.8 − 0.15 × (flags its parents know). Nothing was tuned; the regime (M11, M13) is what should hold this down.

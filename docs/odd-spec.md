@@ -541,7 +541,7 @@ There is no distance weight. Distance acts through who a person's ties are (neig
 | risk aversion R | 0–1, drawn uniformly at birth (on day 1 for the starting population) and never changed; used by activation (§6.14), as in Epstein (2002) |
 | member | Whether they are a Flamekeeper |
 
-And for each relic: the floor it is hidden on, or the person holding it.
+And for each relic: the floor it is hidden on, and the person holding it, if anyone does.
 
 **The five facts** (decision D4: one number and five flags, no free-text beliefs):
 
@@ -603,7 +603,15 @@ A hidden flag never fades on its own. Once the dose has ended, it comes back, kn
 
 This is how Juliette's memory came back (S3).
 
-**Relics.** On day 1, N\_relic relics are hidden, each on a floor drawn uniformly from all 144. Each day each hidden relic is found with chance f\_find, by a person drawn uniformly from those aged 14 or more (shadowing age, §6.5) whose day location (§6.10) is its floor; with nobody there it stays hidden. The finder holds it. Each day, for a holder who isn't dosed, the relic works like a cue: each hidden flag comes back with chance ρ, and if they don't know the history, they learn it as lived with chance ρ. When a holder dies, the relic goes to a living member of their household aged 14 or more, drawn uniformly; with none, it is hidden again on the household's floor, to be found when the flat is cleared. Relics are not traded, lost or destroyed in this module. The regime can find and take them through Judicial searches and raids (§6.13) and destroy them as part of a memory wipe (§6.15); a relic taken leaves the silo's stock for good.
+**Relics.** Relics are rare and hard to find, and whoever has one keeps it out of sight.
+
+- *Hidden:* on day 1, N\_relic relics are hidden, each on a floor drawn uniformly from all 144. Each day each hidden relic is found with chance 1 / (365 × T\_find), so it stays hidden T\_find years on average, by a person drawn uniformly from those aged 14 or more (shadowing age, §6.5) whose day location (§6.10) is its floor; with nobody there it stays hidden. The finder holds it.
+- *Held:* a holder keeps the relic hidden in their flat, so it lies on their home floor. They can use it every day, and nobody else sees it: the regime finds it only by searching or by catching it change hands (§6.13). A person can hold several.
+- *Used:* each day, for a holder who isn't dosed, their relics work like a cue: each hidden flag comes back with chance ρ, and if they don't know the history, they learn it as lived with chance ρ. Holding several relics gives no more draws than holding one.
+- *Handed over:* each day a holder hands each relic, with chance 1 / (365 × T\_keep), to someone aged 14 or more they talk with that day (§6.11), drawn uniformly from them; with nobody to talk to, they keep it. A relic is kept T\_keep years on average, and travels along the network, so the best-connected people, Porters among them, become the dealers. Selling and giving are the same act, since the model has no money, and both are the Pact's `tradeRelic` offence (§6.9).
+- *Inherited:* when a holder dies, each relic goes to a living member of their household aged 14 or more, drawn uniformly; with none, it stays hidden in the flat, on its floor, to be found when the flat is cleared.
+
+Relics are not lost or destroyed in this module. The regime can find and take them through Judicial searches and raids (§6.13) and destroy them as part of a memory wipe (§6.15); a relic taken leaves the silo's stock for good.
 
 **Flamekeepers.** A secret group of N\_F seats that keeps the true history alive. On day 1, N\_F adults drawn uniformly take the seats and know the history as lived. Members never forget it, and tell what they know like anyone else. Each day, each empty seat goes to an adult who knows the history, isn't a member, and talks today (§6.11) with a member over a strong tie; one is drawn uniformly from all such people. With nobody who qualifies, the seat stays empty. A member who dies leaves a seat, and so does one whose history flag is hidden by Vitamin D+; later modules may remove members too (arrests, §6.13). With no members left, the group is gone for good.
 
@@ -612,7 +620,7 @@ This is how Juliette's memory came back (S3).
 1. newcomers get R and base = L\_edu; every 30 days, the bases of people under worker age are recomputed;
 2. relics held by people who died today pass on;
 3. forgetting, then dosing hides flags;
-4. hidden relics are found, and relics work on their holders;
+4. hidden relics are found, relics are handed over, and they work on their holders;
 5. conversations: telling, believing and cued recall;
 6. empty Flamekeeper seats are filled.
 
@@ -644,10 +652,11 @@ This is how Juliette's memory came back (S3).
 | Water dosing length D\_water | 365 days | Guess |
 | Cue chance ρ | 0.05 per cue | Guess: a held relic brings a memory back within two weeks half the time |
 | Relics N\_relic | 100 | Guess: rare; banned "down to a Pez dispenser" (lore reference) |
-| Relic find chance f\_find | 1 / 7,300 a day (hidden 20 years on average) | Guess |
+| Relic hiding time T\_find | 50 years on average (1 / 18,250 a day) | Guess: rare finds, about 2 a year silo-wide at the start (Adam, 2026-10-31) |
+| Relic keeping time T\_keep | 10 years on average (1 / 3,650 a day) | Guess |
 | Flamekeeper seats N\_F | 15 | Guess: "a small secret group" (lore reference) |
 
-Risk aversion R is uniform on 0–1, as in Epstein (2002); it adds no parameter. Ranges checked at load: L\_edu, ε, δ, π, d, ρ and f\_find in [0, 1]; both half-lives strictly greater than 0; D\_water an integer ≥ 1; N\_relic and N\_F integers ≥ 0. That N\_F is no more than the day-1 adults is checked when the module starts.
+Risk aversion R is uniform on 0–1, as in Epstein (2002); it adds no parameter. Ranges checked at load: L\_edu, ε, δ, π, d and ρ in [0, 1]; both half-lives, T\_find and T\_keep strictly greater than 0; D\_water an integer ≥ 1; N\_relic and N\_F integers ≥ 0. That N\_F is no more than the day-1 adults is checked when the module starts.
 
 ## 7. Parameters
 

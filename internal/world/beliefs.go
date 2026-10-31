@@ -32,9 +32,17 @@ type Beliefs struct {
 	Risk  []float64 // risk aversion R, 0–1, fixed at birth (ODD §6.14)
 	Cost  float64   // δ: legitimacy lost per known flag
 
+	Relics []Relic
+
 	// Everyone who knows a flag, and possibly some who have died or
 	// forgotten since; the beliefs step drops those. Learn keeps it.
 	Knowers []PersonID
+}
+
+// Relic is an object from before the silo (ODD §6.12, Relics).
+type Relic struct {
+	Floor  int      // the floor it lies hidden on: on its own, or in its holder's flat
+	Holder PersonID // or None while nobody has it
 }
 
 // Learn makes the person know the flag (ODD §6.12), as lived or as heard.

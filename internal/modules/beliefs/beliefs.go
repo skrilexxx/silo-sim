@@ -16,10 +16,15 @@ import (
 
 type Module struct {
 	edu, eduWeight float64
-	pass           float64          // π: chance a flag passes in a conversation, × (1 − L of the listener)
-	forgetHeard    float64          // daily chance of losing a flag known as heard
-	forgetLived    float64          // … as lived
-	shadowAge      world.Tick       // in days: who sees a scripted reveal
+	pass           float64      // π: chance a flag passes in a conversation, × (1 − L of the listener)
+	forgetHeard    float64      // daily chance of losing a flag known as heard
+	forgetLived    float64      // … as lived
+	shadowAge      world.Tick   // in days: who sees a scripted reveal
+	findChance     float64      // daily chance a hidden relic is found
+	handChance     float64      // daily chance a holder hands a relic over
+	cue            float64      // ρ: chance a cue works
+	used           []world.Tick // the last day a person's relics worked on them
+	candidates     []world.PersonID
 	adultAge       world.Tick       // worker age in days: the base is fixed from then on
 	young          []world.PersonID // alive and under worker age at the last step, in ID order
 
@@ -47,7 +52,15 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	m.forgetLived = dailyLoss(cfg.Beliefs.HalfLifeLivedYears)
 	m.shadowAge = world.Tick(cfg.Work.ShadowAge * engine.DaysPerYear)
 	m.adultAge = world.Tick(cfg.Work.WorkerAge * engine.DaysPerYear)
+	m.findChance = 1 / (cfg.Beliefs.RelicHiddenYears * engine.DaysPerYear)
+	m.handChance = 1 / (cfg.Beliefs.RelicKeptYears * engine.DaysPerYear)
+	m.cue = cfg.Beliefs.CueChance
 	w.Beliefs = &world.Beliefs{Cost: cfg.Beliefs.LegitimacyCostPerFlag}
+	m.newcomers(w, r)
+	// ODD §6.12, Relics: on day 1, each hidden on a floor drawn uniformly.
+	for range cfg.Beliefs.Relics {
+		w.Beliefs.Relics = append(w.Beliefs.Relics, world.Relic{Floor: r.IntRange(1, len(w.Floors)), Holder: world.None})
+	}
 	return m.step(w, r)
 }
 
@@ -82,7 +95,9 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 	if w.Day%engine.DaysPerMonth == 0 {
 		m.upbringing(w)
 	}
+	m.inherit(w, r)
 	m.forget(w, r)
+	m.relics(w, r)
 	m.converse(w, r)
 	return nil
 }
@@ -98,6 +113,7 @@ func (m *Module) newcomers(w *world.World, r *rng.Stream) {
 		b.Risk = append(b.Risk, r.Float64())
 		m.young = append(m.young, world.PersonID(id))
 		m.fresh = append(m.fresh, 0)
+		m.used = append(m.used, -1)
 	}
 }
 
@@ -134,6 +150,83 @@ func (m *Module) upbringing(w *world.World) {
 		b.Base[id] = m.eduWeight*m.edu + (1-m.eduWeight)*sum/float64(n)
 	}
 	m.young = keep
+}
+
+// ODD §6.12, Relics: when a holder dies, each relic goes to a living
+// member of their household aged 14 or more, drawn uniformly; with none,
+// it stays hidden in the flat, on its floor.
+func (m *Module) inherit(w *world.World, r *rng.Stream) {
+	for i := range w.Beliefs.Relics {
+		rel := &w.Beliefs.Relics[i]
+		if rel.Holder == world.None || w.People[rel.Holder].Alive {
+			continue
+		}
+		m.candidates = m.candidates[:0]
+		for _, o := range w.Households[w.People[rel.Holder].Household].Members {
+			if w.People[o].Alive && m.old(w, o) {
+				m.candidates = append(m.candidates, o)
+			}
+		}
+		rel.Holder = m.pick(r)
+	}
+}
+
+// ODD §6.12, Relics: hidden relics are found by someone on their floor
+// today; holders hand relics over to someone they talk with today; and
+// relics work on their holders, once a day however many they hold. A
+// held relic lies in its holder's flat.
+func (m *Module) relics(w *world.World, r *rng.Stream) {
+	b, n := w.Beliefs, w.Network
+	for i := range b.Relics {
+		rel := &b.Relics[i]
+		switch {
+		case rel.Holder == world.None:
+			if r.Float64() >= m.findChance {
+				continue
+			}
+			m.candidates = m.candidates[:0]
+			for _, id := range w.Alive {
+				if w.Space.Where(w, id) == rel.Floor && m.old(w, id) {
+					m.candidates = append(m.candidates, id)
+				}
+			}
+			rel.Holder = m.pick(r)
+		case r.Float64() < m.handChance:
+			m.candidates = m.candidates[:0]
+			for _, t := range n.TiesOf(w, rel.Holder) {
+				if m.old(w, t.Other) && n.Talk(w, rel.Holder, t.Other, t.Kind) {
+					m.candidates = append(m.candidates, t.Other)
+				}
+			}
+			if to := m.pick(r); to != world.None {
+				rel.Holder = to
+			}
+		}
+		if rel.Holder == world.None {
+			continue
+		}
+		rel.Floor = w.Households[w.People[rel.Holder].Household].Floor
+		if m.used[rel.Holder] == w.Day {
+			continue
+		}
+		m.used[rel.Holder] = w.Day
+		if !b.Known[rel.Holder].Has(world.FlagHistory) && r.Float64() < m.cue {
+			m.teach(b, rel.Holder, world.FlagHistory, true)
+		}
+	}
+}
+
+// old reports whether a person is of shadowing age (14) or more.
+func (m *Module) old(w *world.World, id world.PersonID) bool {
+	return w.Day-w.People[id].BirthDay >= m.shadowAge
+}
+
+// pick draws one of the candidates uniformly, or None if there are none.
+func (m *Module) pick(r *rng.Stream) world.PersonID {
+	if len(m.candidates) == 0 {
+		return world.None
+	}
+	return m.candidates[r.IntRange(0, len(m.candidates)-1)]
 }
 
 // ODD §6.12, Forgetting: each known flag is lost for good with a daily

@@ -146,6 +146,7 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 			name := f.String()
 			h = append(h, ",know"+strings.ToUpper(name[:1])+name[1:]...)
 		}
+		h = append(h, ",relicsHidden,relicsHeld"...)
 	}
 	h = append(h, '\n')
 	if _, err := o.yearly.Write(h); err != nil {
@@ -437,7 +438,8 @@ func (o *Writer) appendTies(w *world.World, b []byte) []byte {
 
 // appendBeliefs writes the beliefs columns (ODD §6.12, Outputs): the mean
 // L of adults, overall and by the zone of their home, then the share of
-// adults who know each flag (0 with no adults).
+// adults who know each flag (0 with no adults), then relics hidden and
+// held.
 func (o *Writer) appendBeliefs(w *world.World, b []byte) []byte {
 	var sum [world.NumZones + 1]float64 // the last one is everyone
 	var n [world.NumZones + 1]int
@@ -469,7 +471,16 @@ func (o *Writer) appendBeliefs(w *world.World, b []byte) []byte {
 	for _, k := range know {
 		b = appendF(b, mean(k, n[world.NumZones]), 4)
 	}
-	return b
+	held := 0
+	for _, r := range w.Beliefs.Relics {
+		if r.Holder != world.None {
+			held++
+		}
+	}
+	b = append(b, ',')
+	b = strconv.AppendInt(b, int64(len(w.Beliefs.Relics)-held), 10)
+	b = append(b, ',')
+	return strconv.AppendInt(b, int64(held), 10)
 }
 
 // checkDepartments logs a department whose workers fall below

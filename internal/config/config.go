@@ -212,6 +212,10 @@ type Beliefs struct {
 	PassChance            float64 `yaml:"passChance"`
 	HalfLifeHeardYears    float64 `yaml:"halfLifeHeardYears"`
 	HalfLifeLivedYears    float64 `yaml:"halfLifeLivedYears"`
+	Relics                int     `yaml:"relics"`
+	RelicHiddenYears      float64 `yaml:"relicHiddenYears"`
+	RelicKeptYears        float64 `yaml:"relicKeptYears"`
+	CueChance             float64 `yaml:"cueChance"`
 }
 
 // HasOffices reports whether a department works on office floors: every

@@ -155,6 +155,10 @@ beliefs:                          # ODD §6.12 (part 2, draft); used only when `
   passChance: 0.002               # π: chance a flag passes in a conversation, × (1 − L of the listener); guess, calibrated against C4 in T12.8
   halfLifeHeardYears: 5           # T_heard: half of what was heard is forgotten in this time; guess
   halfLifeLivedYears: 20          # T_lived: the same for what was lived (seen, found, kept); guess
+  relics: 100                     # N_relic: relics hidden on day 1, each on a random floor; guess
+  relicHiddenYears: 50            # T_find: years a hidden relic stays hidden on average; guess
+  relicKeptYears: 10              # T_keep: years a holder keeps a relic before handing it on, on average; guess
+  cueChance: 0.05                 # ρ: chance a cue (a day holding a relic) works; guess
 
 governance:                       # ODD §6.8
   mode: appointment               # or: election

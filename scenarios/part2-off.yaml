@@ -24,3 +24,7 @@ beliefs:                  # M10, off
   passChance: 0.5
   halfLifeHeardYears: 1
   halfLifeLivedYears: 2
+  relics: 500
+  relicHiddenYears: 1
+  relicKeptYears: 1
+  cueChance: 0.5

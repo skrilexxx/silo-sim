@@ -347,7 +347,7 @@ func TestNetworkNullSetting(t *testing.T) {
 }
 
 // ODD §6.12 / T10.1: the beliefs module on changes nothing in daily.csv or
-// events.jsonl, and with nothing to learn, legitimacy stays at the taught
+// events.jsonl, and with nothing to learn (the null setting), legitimacy stays at the taught
 // level in every zone for 200 years: the rule itself never drifts.
 func TestBeliefsSteadyWithNothingToLearn(t *testing.T) {
 	golden := loadInto(t, goldenScenario)
@@ -356,6 +356,7 @@ func TestBeliefsSteadyWithNothingToLearn(t *testing.T) {
 		// A small silo that stays small: the lottery aims at its own size.
 		cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, 0, 200, golden.Population
 		cfg.Lottery.TargetPopulation = cfg.Population
+		cfg.Beliefs.Relics = 0 // the null setting: no source of knowledge
 		cfg.Output.InvariantEvery = 30
 		cfg.Modules = append(cfg.Modules, extra...)
 		return mustSimulate(t, cfg)
@@ -367,12 +368,12 @@ func TestBeliefsSteadyWithNothingToLearn(t *testing.T) {
 		}
 	}
 	rows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(on, "yearly.csv")))), "\n")
-	const tail = ",meanL,meanLUpTop,meanLMids,meanLDownDeep,knowOutside,knowScreen,knowHistory,knowSilos,knowLottery"
+	const tail = ",meanL,meanLUpTop,meanLMids,meanLDownDeep,knowOutside,knowScreen,knowHistory,knowSilos,knowLottery,relicsHidden,relicsHeld"
 	if !strings.HasSuffix(rows[0], tail) || len(rows) != 201 {
 		t.Fatalf("%d rows, header %q", len(rows), rows[0])
 	}
 	l := strconv.FormatFloat(loadInto(t, "../../scenarios/baseline.yaml").Beliefs.TaughtLegitimacy, 'f', 4, 64)
-	want := strings.Join([]string{l, l, l, l, "0.0000", "0.0000", "0.0000", "0.0000", "0.0000"}, ",")
+	want := strings.Join([]string{l, l, l, l, "0.0000", "0.0000", "0.0000", "0.0000", "0.0000", "0", "0"}, ",")
 	for i, row := range rows[1:] {
 		if !strings.HasSuffix(row, ","+want) {
 			t.Fatalf("year %d: %q, want it to end with mean L %s everywhere and nobody knowing anything", i+1, row, l)

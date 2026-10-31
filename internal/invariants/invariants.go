@@ -50,15 +50,28 @@ func Check(w *world.World, cfg *config.Scenario) error {
 	if err := network(w, cfg.Network.WeakTiesPerKind); err != nil {
 		return err
 	}
-	return beliefs(w)
+	return beliefs(w, cfg.Beliefs.Relics)
 }
 
 // ODD §6.12 (draft): every living person's base, L and risk aversion lie
-// in 0–1, they know only the five flags, and what they lived they know.
-func beliefs(w *world.World) error {
+// in 0–1, they know only the five flags, and what they lived they know;
+// all the relics are there, each on a real floor, held by nobody or by a
+// living person.
+func beliefs(w *world.World, relics int) error {
 	b := w.Beliefs
 	if b == nil {
 		return nil
+	}
+	if len(b.Relics) != relics {
+		return fmt.Errorf("%d relics, want %d", len(b.Relics), relics)
+	}
+	for i, r := range b.Relics {
+		if r.Floor < 1 || r.Floor > len(w.Floors) {
+			return fmt.Errorf("relic %d on floor %d", i, r.Floor)
+		}
+		if r.Holder != world.None && !w.People[r.Holder].Alive {
+			return fmt.Errorf("relic %d held by person %d, who is dead", i, r.Holder)
+		}
 	}
 	for _, id := range w.Alive {
 		if x := b.Base[id]; x < 0 || x > 1 {
