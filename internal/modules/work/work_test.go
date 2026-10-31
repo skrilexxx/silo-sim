@@ -437,3 +437,28 @@ func TestOffWorkDoesNotWork(t *testing.T) {
 		t.Errorf("an off-work General worker was retrained into %s", w.Depts[w.People[g].Department].Name)
 	}
 }
+
+// ODD §6.14, Strikes: a joined or violent worker or shadow gives no
+// output and gains no skill, but still counts as a worker, so the regime
+// doesn't replace them. An active one still works.
+func TestStrikersDoNotWork(t *testing.T) {
+	tw := newTiny(t)
+	w, m := tw.w, tw.m
+	striker := tw.add(world.Worker, 30*year, world.DownDeep, mechanical, 0.5)
+	active := tw.add(world.Worker, 30*year, world.DownDeep, mechanical, 0.5)
+	shadow := tw.add(world.Shadow, 15*year, world.DownDeep, mechanical, 0.5)
+	w.Rebellion = &world.Rebellion{Stage: []world.RebelStage{world.Joined, world.Active, world.Violent}}
+
+	m.output(w, true)
+	if got := w.Depts[mechanical].Output; got != 0.5 {
+		t.Errorf("Mechanical output %v, want 0.5 (only the active worker)", got)
+	}
+	if w.People[striker].Skill != 0.5 || w.People[shadow].Skill != 0.5 || w.People[active].Skill <= 0.5 {
+		t.Errorf("skills %v, %v, %v: only the active worker should grow",
+			w.People[striker].Skill, w.People[active].Skill, w.People[shadow].Skill)
+	}
+	m.recount(w)
+	if got := w.Depts[mechanical].Headcount; got != 2 {
+		t.Errorf("Mechanical headcount %d, want 2: strikers count", got)
+	}
+}

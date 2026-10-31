@@ -23,6 +23,9 @@ type Rebellion struct {
 	// and adults on floors connected to a court (ODD §6.14).
 	Actives, Reach [NumZones]int
 
+	// Per department, its workers on strike today (ODD §6.14, Strikes).
+	Striking []int
+
 	// Unrest and rebellion (ODD §1.2): days in a row with at least the
 	// unrest share of adults active, with at least the rebellion share,
 	// and with less than the unrest share; the last day a collective
@@ -33,6 +36,18 @@ type Rebellion struct {
 	LastAction                  Tick
 	UnrestStart, RebellionStart Tick
 	UnrestSpells, Rebellions    int
+}
+
+// OnStrike reports whether a worker or shadow is on strike today: they
+// were joined or violent at yesterday's rebellion step (ODD §6.14,
+// Strikes). A striker gives no output, gains no skill and has no work
+// injuries, but still counts as a worker. False when the module is off.
+func (r *Rebellion) OnStrike(w *World, id PersonID) bool {
+	if r == nil || int(id) >= len(r.Stage) || r.Stage[id] < Joined {
+		return false
+	}
+	s := w.People[id].Stage
+	return s == Worker || s == Shadow
 }
 
 // UnrestEvent: type "unrest", an unrest spell that ended without becoming

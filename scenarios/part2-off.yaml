@@ -63,6 +63,7 @@ rebellion:                # M12, off
   activeThreshold: 0
   arrestConstant: 0.1
   violentThreshold: 0
+  strikeShare: 0
   unrestShare: 0
   unrestDays: 1
   rebellionShare: 0

@@ -251,3 +251,23 @@ func TestNoInjuryOffWork(t *testing.T) {
 		}
 	}
 }
+
+// ODD §6.14, Strikes: a worker on strike has no work injuries. With a
+// certain injury and no illness, everyone at work is hit and no striker is.
+func TestNoInjuryOnStrike(t *testing.T) {
+	w, m := crowd(t, 100, world.Worker, mechanical, 0)
+	m.c.InjuryChance, m.c.IllnessChance = 0.5, 0 // × Mechanical's 2 = certain
+	w.Rebellion = &world.Rebellion{Stage: make([]world.RebelStage, 100)}
+	for i := range 50 {
+		w.Rebellion.Stage[i] = world.Joined
+	}
+	r, _ := rng.New(1, "health")
+	if err := m.health(w, r); err != nil {
+		t.Fatal(err)
+	}
+	for id, p := range w.People {
+		if hurt, strikes := p.Health < 1, w.Rebellion.Stage[id] == world.Joined; hurt == strikes {
+			t.Fatalf("person %d: on strike %v, injured %v", id, strikes, hurt)
+		}
+	}
+}

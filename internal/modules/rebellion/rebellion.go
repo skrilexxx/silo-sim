@@ -21,6 +21,8 @@ type Module struct {
 
 	threshold, k float64 // T and k (Epstein 2002)
 	violent      float64 // T_v
+	strikeShare  float64 // q_strike
+	critical     []int   // Mechanical, Farms, Supply and Medical (ODD §1.2)
 	prev         []world.RebelStage
 	def          config.Rebellion // the definitions of unrest and rebellion (ODD §1.2)
 	officers     []int            // Judicial's and the Sheriff's department indexes
@@ -44,7 +46,7 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	m.lossDays = cfg.Rebellion.LossHalfLifeYears * engine.DaysPerYear
 	m.adultAge = world.Tick(cfg.Work.WorkerAge * engine.DaysPerYear)
 	m.threshold, m.k, m.violent = cfg.Rebellion.ActiveThreshold, cfg.Rebellion.ArrestConstant, cfg.Rebellion.ViolentThreshold
-	m.def = cfg.Rebellion
+	m.def, m.strikeShare = cfg.Rebellion, cfg.Rebellion.StrikeShare
 	for d, dep := range w.Depts {
 		if dep.Name == "judicial" || dep.Name == "sheriff" {
 			m.officers = append(m.officers, d)
@@ -52,9 +54,13 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 		if dep.Name == "judicial" {
 			m.courts = w.Space.DeptFloors[d] // control checked that there are some
 		}
+		if slices.Contains([]string{"mechanical", "farms", "supply", "medical"}, dep.Name) {
+			m.critical = append(m.critical, d)
+		}
 	}
 	m.reach = make([]bool, len(w.Floors))
-	w.Rebellion = &world.Rebellion{LastAction: world.None, UnrestStart: world.None, RebellionStart: world.None}
+	w.Rebellion = &world.Rebellion{LastAction: world.None, UnrestStart: world.None, RebellionStart: world.None,
+		Striking: make([]int, len(w.Depts))}
 	m.newcomers(w)
 	m.count(w)
 	return nil
@@ -69,6 +75,7 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 	m.newcomers(w)
 	m.losses(w)
 	m.hardship(w)
+	m.strikes(w)
 	m.stages(w)
 	m.track(w, m.activeShare(w), m.action(w))
 	m.count(w)
@@ -109,9 +116,10 @@ func (m *Module) losses(w *world.World) {
 	}
 }
 
-// ODD §6.14, Hardship and Grievance: H combines food, health, loss and
-// the Down Deep like independent chances, so it stays within 0–1 without
-// a clamp; G = H × (1 − L). Children have neither.
+// ODD §6.14, Hardship and Grievance: H combines food, loss and the Down
+// Deep like independent chances, so it stays within 0–1 without a clamp;
+// G = H × (1 − L). Children have neither. Health is left out: with it, a
+// strike that cut air brought out more strikers until the silo died.
 func (m *Module) hardship(w *world.World) {
 	b := w.Rebellion
 	for _, id := range w.Alive {
@@ -121,7 +129,7 @@ func (m *Module) hardship(w *world.World) {
 			continue
 		}
 		zone := w.Floors[w.Households[p.Household].Floor-1].Zone
-		calm := (1 - max(0, 1-w.Silo.Intake[zone])) * p.Health
+		calm := 1 - max(0, 1-w.Silo.Intake[zone])
 		if d := b.LossDay[id]; d != world.None {
 			calm *= 1 - m.loss*math.Exp2(-float64(w.Day-d)/m.lossDays)
 		}
@@ -222,10 +230,29 @@ func (m *Module) activeShare(w *world.World) float64 {
 	return float64(active) / float64(adults)
 }
 
+// strikes counts today's strikers per department, before today's stages
+// replace yesterday's (ODD §6.14, Strikes).
+func (m *Module) strikes(w *world.World) {
+	b := w.Rebellion
+	clear(b.Striking)
+	for _, id := range w.Alive {
+		if p := &w.People[id]; p.Stage == world.Worker && b.OnStrike(w, id) {
+			b.Striking[p.Department]++
+		}
+	}
+}
+
 // action reports whether a collective action is under way today (ODD
-// §6.14): a critical department on strike (T12.4), a fight or a held zone
-// (T12.5). None exist yet.
-func (m *Module) action(w *world.World) bool { return false }
+// §6.14): a critical department on strike, its strikers at least a share
+// q_strike of its workers. Fights and held zones come with T12.5.
+func (m *Module) action(w *world.World) bool {
+	for _, d := range m.critical {
+		if n := w.Rebellion.Striking[d]; n > 0 && float64(n) >= m.strikeShare*float64(w.Depts[d].Headcount) {
+			return true
+		}
+	}
+	return false
+}
 
 // ODD §1.2, Definitions: unrest and rebellion. A rebellion starts on the
 // last of RebellionDays days in a row with at least RebellionShare of

@@ -249,6 +249,7 @@ type Rebellion struct {
 	ActiveThreshold   float64 `yaml:"activeThreshold"`
 	ArrestConstant    float64 `yaml:"arrestConstant"`
 	ViolentThreshold  float64 `yaml:"violentThreshold"`
+	StrikeShare       float64 `yaml:"strikeShare"`
 
 	// Definitions of unrest and rebellion (ODD §1.2, decision D1).
 	UnrestShare    float64 `yaml:"unrestShare"`

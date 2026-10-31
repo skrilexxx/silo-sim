@@ -204,15 +204,15 @@ func (m *Module) work(w *world.World, _ *rng.Stream) error {
 // skill) (ODD §6.5), in the same pass: a person's output already used
 // their skill from before today's growth, so this equals two passes.
 //
-// Part 2 (ODD §6.10): someone stranded, on the stairs or away does not
-// work: no output and no skill growth.
+// Part 2 (ODD §6.10, §6.14): someone stranded, on the stairs, away or on
+// strike does not work: no output and no skill growth.
 func (m *Module) output(w *world.World, grow bool) {
 	for d := range w.Depts {
 		w.Depts[d].Output = 0
 	}
 	for _, id := range w.Alive {
 		p := &w.People[id]
-		if w.Space.Off(id) {
+		if w.Space.Off(id) || w.Rebellion.OnStrike(w, id) {
 			continue
 		}
 		switch p.Stage {

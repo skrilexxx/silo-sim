@@ -769,18 +769,19 @@ Checked at load: σ, a, p\_find, p\_name, p\_fail and λ are in [0, 1]; R\_raid 
 
 **State** (owned by this module; §2 is unchanged): for each person, their stage (below) and the day of their last loss; for each zone, whether rebels hold it and since when; the water pump, running or down until a day; the zone counts of the day before; the open unrest spell and rebellion, if any, with what the log needs (§1.2).
 
-**Hardship.** H, 0–1, is how hard a person's life is. It is recomputed every day for every adult (worker age, 18, §6.5) from four sources, combined like independent chances, so that H stays within 0–1 without a clamp:
+**Hardship.** H, 0–1, is how hard a person's life is. It is recomputed every day for every adult (worker age, 18, §6.5) from three sources, combined like independent chances, so that H stays within 0–1 without a clamp:
 
 ```latex
-H = 1 - (1 - h_{food})(1 - h_{health})(1 - h_{loss})(1 - h_{DD})
+H = 1 - (1 - h_{food})(1 - h_{loss})(1 - h_{DD})
 ```
 
 - *Food:* h\_food = max(0, today's hardship of their home zone) (§6.7): 0 in a fed silo, 0.1 under rationing.
-- *Health:* h\_health = 1 − their health (§6.2).
 - *Loss:* h\_loss = ℓ × 2^(−t / T\_loss), with t the years since their last loss, and 0 if they never had one. A loss is a family member (partner, household or kin, the first three tie kinds of §6.11) cleaned (§6.13, failed or not) or killed in a fight (below), or, for both partners, a denied lottery win (§6.13). The couple puts the denial down to infertility, but a child that never comes is a loss whatever its cause. A new loss starts the clock again; losses don't add up.
 - *Scapegoat:* h\_DD = s\_DD if their home is in the Down Deep, else 0. The regime blames the lowest class when trouble rises, as Mechanical learns in S2 (lore reference).
 
-In a fed, healthy silo H is near 0 Up Top and in the Mids, where health is near 1, and about s\_DD = 0.2 Down Deep (T12.1: 0.005 and 0.200 in a 1,000-person silo).
+In a fed silo with no losses H is 0 Up Top and in the Mids and s\_DD = 0.2 Down Deep.
+
+Health is not a source (Adam, 2026-10-31). H is hardship people blame on the regime, as in Epstein; illness and bad air are physical. With health in H, a strike spiralled: a strike cuts air (§6.6), bad air lowers health, higher H brings out more strikers. At the canon settings an ordinary generator outage, eight years after a cleaning failure, set it off, and every adult in a 1,000-person silo was dead within 100 days (T12.4). Rationing still feeds back, but it adds at most 0.1 and only after the food stock falls below 30 days.
 
 **Grievance.** G = H × (1 − L), with L the person's legitimacy (§6.12), as in Epstein (2002). Hardship alone breeds no revolt among people who believe the regime is right: at L\_edu = 0.8 even H = 1 gives G = 0.2.
 
@@ -806,7 +807,7 @@ with R the person's risk aversion (§6.12). Then:
 
 Every stage is computed from today's G and F and from yesterday's stages and zone counts, so the order people are visited in doesn't matter and the step draws nothing for it. A stage has no memory: a person is active exactly on the days the rule says so. Officers never turn against the regime (no defection), and rebels never march: they act where their day location already puts them.
 
-**Strikes.** From the day after they join, a joined worker or shadow is *on strike*: they stay on their work floor but don't work, as if stranded (§6.10: no output, no skill growth, no work injuries), except that they still count as workers for targets and retraining (§6.5), so the regime doesn't replace them. A Mechanical strike lowers mechanicalCoverage and through the §6.6 loop power, food and air (pattern C3). A department is *on strike* (§1.2) on a day when at least a share q\_strike of its workers are.
+**Strikes.** From the day after they join, a joined worker or shadow is *on strike*: they stay on their work floor but don't work, as if stranded (§6.10: no output, no skill growth, no work injuries), except that they still count as workers for targets and retraining (§6.5), so the regime doesn't replace them. A Mechanical strike lowers mechanicalCoverage and through the §6.6 loop power, food and air (pattern C3). A department is *on strike* (§1.2) on a day when at least a share q\_strike of its workers are. Nothing ends a strike but the strikers' own grievance.
 
 **Fights** (decision D6). Each day, in each zone (Up Top, Mids, Down Deep, in that order) where violent rebels on floors connected to a court, B\_z of them, meet a patrol O\_z > 0, the two sides fight. By Lanchester's square law each side loses in proportion to the other's size:
 

@@ -119,7 +119,7 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 		return err
 	}
 	if w.Rebellion != nil {
-		if _, err := o.daily.WriteString(",active,joined,violent"); err != nil {
+		if _, err := o.daily.WriteString(",active,joined,violent,onStrike"); err != nil {
 			return err
 		}
 	}
@@ -282,12 +282,16 @@ func (o *Writer) writeDaily(w *world.World, births, deaths, permits int) error {
 	}
 	b = appendF(b, coverage(w, "medical"), 4)
 	b = appendF(b, coverage(w, "mechanical"), 4)
-	if r := w.Rebellion; r != nil { // ODD §6.14, Outputs: adults active or beyond, joined or beyond, violent
+	if r := w.Rebellion; r != nil { // ODD §6.14, Outputs: adults active or beyond, joined or beyond, violent; workers on strike
 		var at [world.Violent + 1]int
 		for _, id := range w.Alive {
 			at[r.Stage[id]]++
 		}
-		for _, n := range []int{at[world.Active] + at[world.Joined] + at[world.Violent], at[world.Joined] + at[world.Violent], at[world.Violent]} {
+		strikers := 0
+		for _, n := range r.Striking {
+			strikers += n
+		}
+		for _, n := range []int{at[world.Active] + at[world.Joined] + at[world.Violent], at[world.Joined] + at[world.Violent], at[world.Violent], strikers} {
 			b = append(b, ',')
 			b = strconv.AppendInt(b, int64(n), 10)
 		}

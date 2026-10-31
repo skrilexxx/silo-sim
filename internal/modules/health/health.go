@@ -73,7 +73,7 @@ func (m *Module) health(w *world.World, r *rng.Stream) error {
 		if hungry {
 			h -= hunger[w.Floors[w.Households[p.Household].Floor-1].Zone]
 		}
-		if (p.Stage == world.Worker || p.Stage == world.Shadow) && !w.Space.Off(id) {
+		if (p.Stage == world.Worker || p.Stage == world.Shadow) && !w.Space.Off(id) && !w.Rebellion.OnStrike(w, id) { // ODD §6.10, §6.14
 			factor := m.c.InjuryFactor.Other
 			switch p.Department {
 			case mechanical:

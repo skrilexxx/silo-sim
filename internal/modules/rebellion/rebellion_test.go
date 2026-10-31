@@ -14,8 +14,9 @@ import (
 const year = engine.DaysPerYear
 
 // tiny is a two-floor world: floor 1 Up Top, floor 2 Down Deep, both with
-// homes; the court is on floor 1. Its departments are general, judicial
-// and sheriff, whose Headcount stands for the officers on duty. Everyone
+// homes; the court is on floor 1. Its departments are general, judicial,
+// sheriff and mechanical; Judicial's and the Sheriff's Headcount stands
+// for the officers on duty. Everyone
 // has L = 0.8 until given a flag, and R = 0.5. The network, beliefs,
 // space and control states are sized to the people added; only this
 // module runs, and nobody moves.
@@ -30,14 +31,15 @@ type tiny struct {
 func newTiny(t *testing.T) *tiny {
 	w := &world.World{Day: 100 * year,
 		Floors: []world.Floor{{Number: 1, Homes: 99, Zone: world.UpTop}, {Number: 2, Homes: 99, Zone: world.DownDeep}},
-		Depts:  []world.Department{{Name: "general"}, {Name: "judicial"}, {Name: "sheriff"}},
-		Space:  &world.Space{Broken: make([]bool, 1), DeptFloors: [][]int{nil, {1}, nil}},
+		Depts:  []world.Department{{Name: "general"}, {Name: "judicial"}, {Name: "sheriff"}, {Name: "mechanical"}},
+		Space:  &world.Space{Broken: make([]bool, 1), DeptFloors: [][]int{nil, {1}, nil, nil}},
 		Silo:   world.Silo{Intake: [3]float64{1, 1, 1}}}
 	r, _ := rng.New(1, "rebellion")
 	cfg := &config.Scenario{}
 	cfg.Work.WorkerAge = 18
 	cfg.Rebellion.LossHardship, cfg.Rebellion.LossHalfLifeYears, cfg.Rebellion.ScapegoatHardship = 0.5, 2, 0.2
 	cfg.Rebellion.ActiveThreshold, cfg.Rebellion.ArrestConstant, cfg.Rebellion.ViolentThreshold = 0.1, 2.3, 0.3
+	cfg.Rebellion.StrikeShare = 0.1
 	cfg.Rebellion.UnrestShare, cfg.Rebellion.UnrestDays = 0.01, 3
 	cfg.Rebellion.RebellionShare, cfg.Rebellion.RebellionDays, cfg.Rebellion.QuietDays = 0.05, 7, 30
 	return &tiny{t: t, w: w, m: New(), r: r, cfg: cfg}
@@ -94,32 +96,33 @@ func (s *tiny) step() {
 
 func near(a, b float64) bool { return math.Abs(a-b) < 1e-12 }
 
-// ODD §6.14, Hardship and Grievance: the four sources combine like
-// independent chances; G = H × (1 − L); children have neither.
+// ODD §6.14, Hardship and Grievance: the three sources combine like
+// independent chances; health is not one; G = H × (1 − L); children have
+// neither.
 func TestHardshipAndGrievance(t *testing.T) {
 	s := newTiny(t)
-	deep := s.add(30, 2, 0.9)
-	top := s.add(30, 1, 1)
+	deep := s.add(30, 2, 0.5)
+	top := s.add(30, 1, 0.5)
 	child := s.add(10, 2, 0.5)
-	doubter := s.add(30, 1, 0.5)
+	doubter := s.add(30, 2, 1)
 	s.start()
 	s.w.Silo.Intake[world.DownDeep] = 0.9
 	s.w.Beliefs.Known[doubter] = 1<<world.FlagOutside | 1<<world.FlagScreen // L = 0.8 − 2 × 0.15
 	s.step()
 
 	b := s.w.Rebellion
-	want := 1 - 0.9*0.9*0.8 // food 0.1, health 0.1, Down Deep 0.2
+	want := 1 - 0.9*0.8 // food 0.1, Down Deep 0.2
 	if !near(b.H[deep], want) || !near(b.G[deep], want*(1-0.8)) {
 		t.Errorf("Down Deep: H = %v, G = %v, want %v and %v", b.H[deep], b.G[deep], want, want*0.2)
 	}
 	if b.H[top] != 0 || b.G[top] != 0 {
-		t.Errorf("fed, healthy Up Top adult: H = %v, G = %v, want 0", b.H[top], b.G[top])
+		t.Errorf("fed, sick Up Top adult: H = %v, G = %v, want 0", b.H[top], b.G[top])
 	}
 	if b.H[child] != 0 || b.G[child] != 0 {
 		t.Errorf("child: H = %v, G = %v, want 0", b.H[child], b.G[child])
 	}
-	if !near(b.H[doubter], 0.5) || !near(b.G[doubter], 0.5*0.5) {
-		t.Errorf("doubter: H = %v, G = %v, want 0.5 and 0.25", b.H[doubter], b.G[doubter])
+	if !near(b.H[doubter], want) || !near(b.G[doubter], want*0.5) {
+		t.Errorf("doubter: H = %v, G = %v, want %v and %v", b.H[doubter], b.G[doubter], want, want*0.5)
 	}
 
 	// Rationing everywhere: Up Top food hardship 0.1 and nothing else.
@@ -210,7 +213,7 @@ func (s *tiny) doubt(id world.PersonID) { s.w.Beliefs.Known[id] = 1<<world.NumFl
 
 // ODD §6.14, Arrest estimate and Stages, by hand. Ten officers on duty,
 // all adults on floors connected to the court, so each zone's patrol is
-// 10 × its share of them. A Down Deep doubter with health 0.5 has
+// 10 × its share of them. A Down Deep doubter on half rations has
 // H = 1 − 0.5 × 0.8 = 0.6 and G = 0.6 × 0.95 = 0.57. They are active when
 // G − R × P > T, so R decides; then the counts move P the next day.
 func TestActivation(t *testing.T) {
@@ -223,6 +226,7 @@ func TestActivation(t *testing.T) {
 	s.start()
 	w, b, c := s.w, s.w.Rebellion, s.w.Control
 	w.Depts[1].Headcount, w.Depts[2].Headcount = 8, 2
+	w.Silo.Intake[world.DownDeep] = 0.5
 	for _, id := range deep {
 		s.doubt(id)
 	}
@@ -297,7 +301,7 @@ func TestActivation(t *testing.T) {
 }
 
 // T12.2 done-when: Epstein's qualitative result. 1,000 Down Deep adults
-// with all five flags (L = 0.05), health spread over 0.75–1 (so H is
+// with all five flags (L = 0.05), losses from 2 to 12 years ago (so H is
 // 0.2–0.4) and R over 0–1. Officers are cut by one a day from 200 to 0.
 // Actives don't follow the officers' steady fall; they burst: some
 // 10-day window, 5% of the fall, holds more than a quarter of the whole
@@ -311,13 +315,14 @@ func TestEpsteinBursts(t *testing.T) {
 	for _, doubting := range []bool{true, false} {
 		s := newTiny(t)
 		const n = 1000
-		for i := range n {
-			s.add(30, 2, 0.75+0.25*float64((i*7)%n)/n)
+		for range n {
+			s.add(30, 2, 1)
 		}
 		s.start()
 		w, b := s.w, s.w.Rebellion
 		for i := range n {
 			w.Beliefs.Risk[i] = float64(i) / n
+			b.LossDay[i] = w.Day - world.Tick(2*year+10*year*((i*7)%n)/n) // h_loss = 0.25 down to 0.008
 			if doubting {
 				s.doubt(world.PersonID(i))
 			}
@@ -375,15 +380,18 @@ func (s *tiny) tie(a, b world.PersonID) {
 // of the active organise.
 func TestJoiningAndViolence(t *testing.T) {
 	s := newTiny(t)
-	hub := s.add(30, 2, 0.5)   // G = 0.6 × 0.95 = 0.57
-	hot := s.add(30, 2, 0.5)   // G = 0.57: violent once joined
-	cool := s.add(30, 2, 0.9)  // H = 1 − 0.9 × 0.8 = 0.28, G = 0.266: joins, not violent
-	shy := s.add(30, 2, 0.5)   // tied to hub only, R = 1: needs hub out
-	calm := s.add(30, 1, 1)    // H = 0
-	loner := s.add(30, 2, 0.5) // no ties
-	edge := s.add(30, 2, 0.5)  // like hub, R just above 3/4
+	// Down Deep on half rations: H = 1 − 0.5 × 0.8 = 0.6, G = 0.6 × 0.95 = 0.57.
+	// Up Top on 72% rations: H = 0.28, so G = 0.266 for a doubter, 0.056 for the calm.
+	hub := s.add(30, 2, 1)
+	hot := s.add(30, 2, 1)   // violent once joined
+	cool := s.add(30, 1, 1)  // Up Top: joins, not violent
+	shy := s.add(30, 2, 1)   // tied to hub and edge only, R = 1: needs both out
+	calm := s.add(30, 1, 1)  // Up Top, no flags: G < T
+	loner := s.add(30, 2, 1) // no ties
+	edge := s.add(30, 2, 1)  // like hub, R just above 3/4
 	s.start()
 	w, b, c := s.w, s.w.Rebellion, s.w.Control
+	w.Silo.Intake = [3]float64{0.72, 1, 0.5}
 	for _, id := range []world.PersonID{hub, hot, cool, shy, loner, edge} {
 		s.doubt(id)
 	}
@@ -503,5 +511,42 @@ func TestUnrestAndRebellion(t *testing.T) {
 	day(0.05, false)
 	if b.RebellionStart != world.None {
 		t.Errorf("rebellion with no action in the last 7 days")
+	}
+}
+
+// ODD §6.14, Strikes, and §1.2: workers who joined yesterday strike today.
+// Mechanical, a critical department, is on strike when at least q_strike
+// = 10% of its workers are; General is not critical. Shadows strike but
+// don't count toward the share.
+func TestStrikes(t *testing.T) {
+	s := newTiny(t)
+	var mech []world.PersonID
+	for range 20 {
+		mech = append(mech, s.add(30, 2, 1))
+	}
+	shadow := s.add(15, 2, 1)
+	gen := s.add(30, 2, 1)
+	s.start()
+	w, b := s.w, s.w.Rebellion
+	for _, id := range mech {
+		w.People[id].Stage, w.People[id].Department = world.Worker, 3
+	}
+	w.People[shadow].Stage, w.People[shadow].Department = world.Shadow, 3
+	w.People[gen].Stage, w.People[gen].Department = world.Worker, 0
+	w.Depts[3].Headcount = 20
+
+	b.Stage[mech[0]], b.Stage[shadow], b.Stage[gen] = world.Violent, world.Joined, world.Joined
+	b.Stage[mech[1]] = world.Active // active, not on strike
+	s.m.strikes(w)
+	if b.Striking[3] != 1 || b.Striking[0] != 1 || s.m.action(w) {
+		t.Errorf("striking %v, action %v; want 1 in Mechanical and General, no action (1 of 20 < 10%%)", b.Striking, s.m.action(w))
+	}
+	if !b.OnStrike(w, shadow) || b.OnStrike(w, mech[1]) {
+		t.Errorf("shadow on strike %v, active worker on strike %v; want true, false", b.OnStrike(w, shadow), b.OnStrike(w, mech[1]))
+	}
+	b.Stage[mech[2]] = world.Joined
+	s.m.strikes(w)
+	if b.Striking[3] != 2 || !s.m.action(w) {
+		t.Errorf("striking %v, action %v; want 2 in Mechanical, a strike (2 of 20)", b.Striking, s.m.action(w))
 	}
 }

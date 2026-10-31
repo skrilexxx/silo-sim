@@ -82,6 +82,7 @@ func (s *Scenario) Validate() error {
 		{"rebellion.scapegoatHardship", s.Rebellion.ScapegoatHardship},
 		{"rebellion.activeThreshold", s.Rebellion.ActiveThreshold},
 		{"rebellion.violentThreshold", s.Rebellion.ViolentThreshold},
+		{"rebellion.strikeShare", s.Rebellion.StrikeShare},
 		{"rebellion.unrestShare", s.Rebellion.UnrestShare},
 		{"rebellion.rebellionShare", s.Rebellion.RebellionShare},
 	}

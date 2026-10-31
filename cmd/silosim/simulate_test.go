@@ -577,6 +577,54 @@ func TestGrievanceRuns(t *testing.T) {
 	}
 }
 
+// T12.4: a Mechanical strike cuts power through the §6.6 loop. A
+// 1,000-person silo whose Down Deep is made angry (s_DD = 0.5) and then
+// learns the outside and the screen (a cleaning failure 35 days before
+// the end of year 20): within those 35 days Down Deep workers strike,
+// Mechanical's coverage and, on days without a generator outage, the power
+// factor fall below anything in the years before, and the strike starts a
+// rebellion. The window is short on purpose: at s_DD = 0.5 the Down Deep
+// may stay out until life support fails, and 3 of 19 seeds collapsed
+// within 30 years (T12.4).
+func TestMechanicalStrikeCutsPower(t *testing.T) {
+	golden := loadInto(t, goldenScenario)
+	cfg := loadInto(t, "../../scenarios/baseline.yaml")
+	cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, 0, 20, golden.Population
+	cfg.Lottery.TargetPopulation = cfg.Population
+	cfg.Output.InvariantEvery = 30
+	cfg.Rebellion.ScapegoatHardship = 0.5
+	cfg.Modules = append(cfg.Modules, "space", "network", "beliefs", "control", "rebellion")
+	shock := 20*365 - 35
+	cfg.Events = []config.Event{{Day: shock, Type: "cleaningFailure"}}
+	dir := mustSimulate(t, cfg)
+	lines := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(dir, "daily.csv")))), "\n")
+	head := strings.Split(lines[0], ",")
+	col := func(name string) int { return slices.Index(head, name) }
+	var lowCov, lowPower [2]float64 // before and after the shock
+	lowCov, lowPower = [2]float64{1, 1}, [2]float64{1, 1}
+	most := [2]int{}
+	for _, line := range lines[1:] {
+		c := strings.Split(line, ",")
+		after := 0
+		if atoi(t, c[0]) >= shock {
+			after = 1
+		}
+		cov, _ := strconv.ParseFloat(c[col("mechanicalCoverage")], 64)
+		lowCov[after] = min(lowCov[after], cov)
+		if c[col("outage")] == "0" {
+			pow, _ := strconv.ParseFloat(c[col("powerFactor")], 64)
+			lowPower[after] = min(lowPower[after], pow)
+		}
+		most[after] = max(most[after], atoi(t, c[col("onStrike")]))
+	}
+	rebellions := sum(column(t, dir, "rebellions"))
+	t.Logf("before/after the shock: most on strike %v, lowest Mechanical coverage %v, lowest power factor %v; rebellions %d",
+		most, lowCov, lowPower, rebellions)
+	if most[1] == 0 || lowCov[1] >= lowCov[0] || lowPower[1] >= lowPower[0] || rebellions == 0 {
+		t.Error("want strikes after the shock, lower Mechanical coverage and power than before, and a rebellion")
+	}
+}
+
 // T11.4 done-when: flagged couples never conceive, so their share of the
 // births falls far below their share of the silo; logged as an outcome,
 // not tuned. 100 years of a 1,000-person silo with σ = 0.1, so couples
