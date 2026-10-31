@@ -690,3 +690,55 @@ func TestImplantDoctors(t *testing.T) {
 		t.Errorf("%d births to flagged parents, want 1", c.Tally.FlaggedBirths)
 	}
 }
+
+// ODD §6.14, Fights: a rebel arrested in a fight is taken into custody at
+// the next control step, charged with violence without a detection draw
+// and using no arrest capacity, then tried at the court as anyone else.
+// With no active rule listing violence there is nothing to charge, and
+// they stay free.
+func TestSeizedInFight(t *testing.T) {
+	for _, ruled := range []bool{true, false} {
+		s := newTiny(t)
+		s.cfg.Control.ArrestsPerOfficer = 0 // no capacity at all
+		s.cfg.Pact[3].Active = ruled        // noViolence: mines(730)
+		a := s.on(3)
+		s.start()
+		c := s.w.Control
+		c.Seized = []world.PersonID{a}
+		s.step()
+		if !ruled {
+			if c.Held(a) || c.Tally.Arrests != 0 {
+				t.Errorf("no rule against violence: held %v, %d arrests; want free", c.Held(a), c.Tally.Arrests)
+			}
+			continue
+		}
+		if c.Hold[a] != world.Custody || c.Charges[a] != 1<<3 || c.Tally.Arrests != 1 || len(c.Cases) != 0 || len(c.Seized) != 0 {
+			t.Fatalf("hold %d, charges %b, %d arrests, cases %v, seized %v", c.Hold[a], c.Charges[a], c.Tally.Arrests, c.Cases, c.Seized)
+		}
+		s.days(2) // to the court, tried
+		if c.Hold[a] != world.Mines {
+			t.Errorf("after the trial: hold %d, want the mines", c.Hold[a])
+		}
+	}
+}
+
+// ODD §6.14, Held zones: Judicial arrests nobody whose day location is in
+// a zone the rebels hold; the case waits until the zone is freed.
+func TestNoArrestInHeldZone(t *testing.T) {
+	s := newTiny(t)
+	a := s.on(3) // the Mids
+	s.start()
+	c := s.w.Control
+	s.w.Rebellion = &world.Rebellion{}
+	s.w.Rebellion.Held[world.Mids] = true
+	s.offend(a, world.TradeRelic)
+	s.step()
+	if c.Held(a) || !slices.Equal(c.Cases, []world.PersonID{a}) {
+		t.Fatalf("in a held zone: held %v, cases %v; want free with the case waiting", c.Held(a), c.Cases)
+	}
+	s.w.Rebellion.Held[world.Mids] = false
+	s.step()
+	if c.Hold[a] != world.Custody {
+		t.Errorf("zone freed: hold %d, want custody", c.Hold[a])
+	}
+}

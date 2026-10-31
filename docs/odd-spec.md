@@ -51,7 +51,7 @@ The answers are **conditional and comparative**. The agents follow rules, not hu
 - **Trigger:** the scripted event (`events:` in the scenario, T7.4) that happened within the 365 days before the start, or "none". With no scripted events, every rebellion is "none", and Q1's trigger question is answered by experiments that script shocks.
 - **Endings** (one per rebellion; collapse takes precedence):
   - *Suppressed:* it ends with the regime still in place.
-  - *Regime change:* rebels hold Up Top, the zone of the IT floors and the Mayor's office, for 30 days in a row (§6.14). The regime is replaced and the scenario's post-change policy applies (§6.15). The run continues.
+  - *Regime change:* rebels hold Up Top, the zone of the IT floors and the Mayor's office, for 30 days in a row (§6.14), the 30 a scenario setting (`rebellion.regimeDays`). The regime is replaced and the scenario's post-change policy applies (§6.15). The run continues.
   - *Split:* a stair segment broken during the rebellion is still broken 90 days later, and at least 1,000 people live on each side of it.
   - *Collapse:* see below.
 - **Collapse** (the silo is dead, and the run stops), on the first day any of these holds; the cause is recorded. It is checked only with the rebellion module on (§6.14), so the baseline never stops early:
@@ -724,7 +724,7 @@ People in custody or detained have no conversations (§6.11) and can't use their
 1. newcomers get their state;
 2. Head of IT: the post filled if empty, the successor named; empty implant doctor posts filled;
 3. detection of the acts reported since the last step;
-4. releases;
+4. releases; then the rebels arrested in yesterday's fights (§6.14) taken into custody, with their searches and naming;
 5. cleanings of those who died at today's deaths step: their effects; then trials of those who reached the court today, each raising F;
 6. a raid, perhaps;
 7. arrests, with their searches and naming;
@@ -815,9 +815,9 @@ Every stage is computed from today's G and F and from yesterday's stages and zon
 rebels\ out = \min(B_z,\; e_J \times O_z), \qquad officers\ out = \min(O_z,\; e_R \times B_z)
 ```
 
-A loss that is not a whole number is rounded down, plus one with a chance equal to the fraction. The rebels put out are drawn uniformly from the B\_z; the officers uniformly from all officers on duty, since patrols are abstract. Each one put out is killed with chance p\_kill; killed people are held until they die at the next day's deaths step (§3 step 7), handled as any death (§6.1). A rebel not killed is arrested: in custody and sent to the court as in an arrest (§6.13), charged with `violence` with no detection draw and using no arrest capacity. An officer not killed is wounded: a work injury (§6.2). Officers are armed and rebels are not, so e\_J > e\_R: at the defaults a patrol beats up to √(e\_J / e\_R) ≈ 2.2 times its number.
+A loss that is not a whole number is rounded down, plus one with a chance equal to the fraction. The rebels put out are drawn uniformly from the B\_z; the officers uniformly from all officers on duty, since patrols are abstract. Each one put out is killed with chance p\_kill: they die at the next day's deaths step (§3 step 7) with the cleaners, handled as any death (§6.1), and their family, a rebel's or an officer's, has a loss (above). A rebel not killed is arrested: control takes them into custody at its next step, charged with `violence` with no detection draw and using no arrest capacity, and tries them like anyone arrested (§6.13); with no active rule listing violence there is nothing to charge them with, and they stay free. A rebel put out is calm from then on. An officer not killed is wounded: a work injury (§6.2). Officers are armed and rebels are not, so e\_J > e\_R: at the defaults a patrol beats up to √(e\_J / e\_R) ≈ 2.2 times its number.
 
-**Held zones.** Rebels *hold* a zone on a day when its violent rebels, wherever they are in it, outnumber its patrol. Judicial arrests nobody whose day location is in a held zone (§6.13); their cases wait. Holding Up Top, where the IT floors and the Mayor's office are, for 30 days in a row is a regime change (§1.2). It ends the rebellion and is logged; what the new regime does comes with §6.15, so until then the silo runs on as before.
+**Held zones.** Rebels *hold* a zone on a day when its violent rebels, wherever they are in it, outnumber its patrol. Judicial arrests nobody whose day location is in a held zone (§6.13); their cases wait. Holding Up Top, where the IT floors and the Mayor's office are, for 30 days in a row is a regime change (§1.2). It ends the rebellion that day and is logged, and the count of held days starts again; what the new regime does comes with §6.15, so until then the silo runs on as before. Rebels don't march, so only Up Top's own people can hold it: in 19 seeds × 30 years of a 1,000-person silo with a cleaning failure and s\_DD up to 0.6, rebels held the Down Deep 4 times and Up Top never (T12.5).
 
 **Sabotage.** Each violent rebel sabotages with daily chance p\_sab, visited in the tick's shuffled order (§3). The target follows from their day location:
 
@@ -892,10 +892,11 @@ rebellion:                        # ODD §6.14; used only when `rebellion` is in
   rebellionShare: 0.05            # a rebellion: at least this share active ...
   rebellionDays: 7                # ... on this many days in a row, with a collective action on one of them
   quietDays: 30                   # both end after this many days in a row below unrestShare
+  regimeDays: 30                  # regime change: rebels hold Up Top this many days in a row
   pointOfNoReturn: 0              # P_min (§1.2); 0 = off until measured in T12.6
 ```
 
-`output.runAfterCollapse` (default false) sits with the other output settings. Checked at load: ℓ, s\_DD, T, T\_v, p\_kill, p\_sab, q\_strike and both shares of §1.2 are in [0, 1], and T\_v ≥ T; the three day counts are integers ≥ 1; T\_loss, k and D\_stair are strictly greater than 0; e\_J and e\_R are ≥ 0; P\_min is an integer ≥ 0.
+`output.runAfterCollapse` (default false) sits with the other output settings. Checked at load: ℓ, s\_DD, T, T\_v, p\_kill, p\_sab, q\_strike and both shares of §1.2 are in [0, 1], and T\_v ≥ T; the four day counts are integers ≥ 1; T\_loss, k and D\_stair are strictly greater than 0; e\_J and e\_R are ≥ 0; P\_min is an integer ≥ 0.
 
 ## 7. Parameters
 

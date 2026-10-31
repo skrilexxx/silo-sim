@@ -246,11 +246,15 @@ rebellion:                        # ODD §6.14 (part 2, draft); used only when `
   arrestConstant: 2.3             # k: P = 0.9 when the patrol equals the actives plus one; Epstein (2002)
   violentThreshold: 0.3           # T_v: a joined adult is violent when G − R × felt risk > T_v; guess
   strikeShare: 0.1                # q_strike: a critical department is on strike when this share of its workers strike (§1.2); guess
+  officerEffect: 0.05             # e_J: rebels put out a day per officer in a fight (Lanchester's square law); guess
+  rebelEffect: 0.01               # e_R: officers put out a day per violent rebel in a fight; guess (a patrol beats √(e_J/e_R) ≈ 2.2× its number)
+  killedShare: 0.3                # p_kill: share of those put out who die; the rest are arrested (rebels) or wounded (officers); guess
   unrestShare: 0.01               # unrest: at least this share of adults active ... (ODD §1.2, decision D1)
   unrestDays: 3                   # ... on this many days in a row
   rebellionShare: 0.05            # rebellion: at least this share of adults active ...
   rebellionDays: 7                # ... on this many days in a row, with a collective action on one of them
   quietDays: 30                   # unrest and a rebellion end after this many days in a row below unrestShare
+  regimeDays: 30                  # regime change: rebels hold Up Top this many days in a row (§1.2, decision D1)
 
 governance:                       # ODD §6.8
   mode: appointment               # or: election

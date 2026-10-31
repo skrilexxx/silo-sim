@@ -26,6 +26,13 @@ type Rebellion struct {
 	// Per department, its workers on strike today (ODD §6.14, Strikes).
 	Striking []int
 
+	// Per zone, after today's fights (ODD §6.14, Held zones): its patrol,
+	// whether rebels hold it, and for how many days in a row.
+	Patrol   [NumZones]float64
+	Held     [NumZones]bool
+	HeldDays [NumZones]int
+	Tally    FightTally
+
 	// Unrest and rebellion (ODD §1.2): days in a row with at least the
 	// unrest share of adults active, with at least the rebellion share,
 	// and with less than the unrest share; the last day a collective
@@ -36,6 +43,24 @@ type Rebellion struct {
 	LastAction                  Tick
 	UnrestStart, RebellionStart Tick
 	UnrestSpells, Rebellions    int
+}
+
+// FightTally counts the losses in fights since day 0 (ODD §6.14).
+type FightTally struct {
+	RebelsKilled, RebelsArrested, OfficersKilled, OfficersWounded int
+}
+
+// Holds reports whether rebels hold the zone of a floor today, so Judicial
+// arrests nobody there (ODD §6.14, Held zones). False when the module is
+// off or the floor is 0 (the stairs).
+func (r *Rebellion) Holds(w *World, floor int) bool {
+	return r != nil && floor > 0 && r.Held[w.Floors[floor-1].Zone]
+}
+
+// ZoneEvent: type "zoneHeld" or "zoneFreed" (ODD §6.14, Held zones).
+type ZoneEvent struct {
+	EventHeader
+	Zone string `json:"zone"`
 }
 
 // OnStrike reports whether a worker or shadow is on strike today: they

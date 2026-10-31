@@ -41,7 +41,7 @@ func newTiny(t *testing.T) *tiny {
 	cfg.Rebellion.ActiveThreshold, cfg.Rebellion.ArrestConstant, cfg.Rebellion.ViolentThreshold = 0.1, 2.3, 0.3
 	cfg.Rebellion.StrikeShare = 0.1
 	cfg.Rebellion.UnrestShare, cfg.Rebellion.UnrestDays = 0.01, 3
-	cfg.Rebellion.RebellionShare, cfg.Rebellion.RebellionDays, cfg.Rebellion.QuietDays = 0.05, 7, 30
+	cfg.Rebellion.RebellionShare, cfg.Rebellion.RebellionDays, cfg.Rebellion.QuietDays, cfg.Rebellion.RegimeDays = 0.05, 7, 30, 30
 	return &tiny{t: t, w: w, m: New(), r: r, cfg: cfg}
 }
 
@@ -512,6 +512,23 @@ func TestUnrestAndRebellion(t *testing.T) {
 	if b.RebellionStart != world.None {
 		t.Errorf("rebellion with no action in the last 7 days")
 	}
+
+	// Rebels holding Up Top for 30 days in a row end a running rebellion
+	// with a regime change, that day.
+	w.Events = nil
+	day(0.05, true)
+	start = b.RebellionStart
+	b.HeldDays[world.UpTop] = 29
+	day(0.05, true)
+	if b.RebellionStart == world.None {
+		t.Fatalf("regime change after 29 days held")
+	}
+	b.HeldDays[world.UpTop] = 30
+	day(0.05, true)
+	ev := w.Events[len(w.Events)-1].(world.RebellionEvent)
+	if b.RebellionStart != world.None || ev.Type != "rebellionEnd" || ev.Start != start || ev.End != w.Day || ev.Ending != "regimeChange" || b.HeldDays[world.UpTop] != 0 {
+		t.Errorf("event %+v, rebellion %d, held days %d; want a regime change today, the count restarted", ev, b.RebellionStart, b.HeldDays[world.UpTop])
+	}
 }
 
 // ODD §6.14, Strikes, and §1.2: workers who joined yesterday strike today.
@@ -548,5 +565,116 @@ func TestStrikes(t *testing.T) {
 	s.m.strikes(w)
 	if b.Striking[3] != 2 || !s.m.action(w) {
 		t.Errorf("striking %v, action %v; want 2 in Mechanical, a strike (2 of 20)", b.Striking, s.m.action(w))
+	}
+}
+
+// battle is a world for fights: ten Judicial officers living Up Top on
+// floor 1 (the court) and ten violent Down Deep rebels on floor 2, tied in
+// a ring so they join on the first day (R = 0), the first with a child
+// (the last person). Yesterday's counts give each zone half the adults, so
+// each zone's patrol is 10 × 10/20 = 5.
+func battle(t *testing.T, eJ, eR, kill float64) (*tiny, []world.PersonID, []world.PersonID) {
+	s := newTiny(t)
+	s.cfg.Rebellion.OfficerEffect, s.cfg.Rebellion.RebelEffect, s.cfg.Rebellion.KilledShare = eJ, eR, kill
+	s.cfg.Health.InjuryCost = 0.3
+	var officers, rebels []world.PersonID
+	for range 10 {
+		officers = append(officers, s.add(30, 1, 1))
+	}
+	for range 10 {
+		rebels = append(rebels, s.add(30, 2, 1))
+	}
+	child := s.add(10, 2, 1)
+	s.w.People[child].Mother = rebels[0]
+	s.start()
+	w := s.w
+	w.Network.Children[rebels[0]] = []world.PersonID{child}
+	for _, id := range officers {
+		w.People[id].Stage, w.People[id].Department = world.Worker, 1
+	}
+	w.Depts[1].Headcount = 10
+	w.Silo.Intake[world.DownDeep] = 0.5 // G = 0.6 × 0.95 = 0.57
+	for i, id := range rebels {
+		s.doubt(id)
+		w.Beliefs.Risk[id] = 0
+		s.tie(id, rebels[(i+1)%len(rebels)])
+	}
+	return s, officers, rebels
+}
+
+// ODD §6.14, Fights, decision D6: with a patrol of 5 and 10 violent
+// rebels, e_J = 0.4 puts out 0.4 × 5 = 2 rebels and e_R = 0.1 puts out
+// 0.1 × 10 = 1 officer. With p_kill = 0 the rebels are arrested (handed to
+// control) and the officer wounded; the 8 left outnumber the patrol of 5,
+// so the rebels hold the Down Deep. With e_J = 2 every rebel is put out
+// and, at p_kill = 1, killed, and their families have a loss; the officers
+// killed shrink the patrol.
+func TestFights(t *testing.T) {
+	s, officers, rebels := battle(t, 0.4, 0.1, 0)
+	w, b, c := s.w, s.w.Rebellion, s.w.Control
+	w.Events = nil
+	s.step()
+	out := 0
+	for _, id := range rebels {
+		if b.Stage[id] == world.Calm {
+			out++
+		} else if b.Stage[id] != world.Violent {
+			t.Errorf("rebel %d: stage %d, want violent or put out", id, b.Stage[id])
+		}
+	}
+	wounded := 0
+	for _, id := range officers {
+		if w.People[id].Health < 1 {
+			wounded++
+			if !near(w.People[id].Health, 0.7) {
+				t.Errorf("officer %d: health %v, want 0.7", id, w.People[id].Health)
+			}
+		}
+	}
+	if out != 2 || len(c.Seized) != 2 || len(c.Doomed) != 0 || wounded != 1 {
+		t.Errorf("%d rebels put out, seized %v, doomed %v, %d officers wounded; want 2, 2, none, 1", out, c.Seized, c.Doomed, wounded)
+	}
+	if b.Tally != (world.FightTally{RebelsArrested: 2, OfficersWounded: 1}) {
+		t.Errorf("tally %+v", b.Tally)
+	}
+	if b.Held != [3]bool{false, false, true} || b.Patrol[world.DownDeep] != 5 || !s.m.action(w) {
+		t.Errorf("held %v, patrol %v, action %v; want the Down Deep held against a patrol of 5, an action", b.Held, b.Patrol, s.m.action(w))
+	}
+	if len(w.Events) != 1 || w.Events[0].(world.ZoneEvent) != (world.ZoneEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "zoneHeld"}, Zone: "downDeep"}) {
+		t.Errorf("events %v, want zoneHeld downDeep", w.Events)
+	}
+	if !b.Holds(w, 2) || b.Holds(w, 1) || b.Holds(w, 0) {
+		t.Errorf("Holds: floor 2 %v, floor 1 %v, the stairs %v", b.Holds(w, 2), b.Holds(w, 1), b.Holds(w, 0))
+	}
+
+	s, _, rebels = battle(t, 2, 0.5, 1)
+	w, b, c = s.w, s.w.Rebellion, s.w.Control
+	child := world.PersonID(len(w.People) - 1)
+	s.step()
+	// 10 rebels and min(5, 0.5 × 10) = 5 officers out, all killed.
+	if len(c.Doomed) != 15 || b.Tally != (world.FightTally{RebelsKilled: 10, OfficersKilled: 5}) {
+		t.Errorf("doomed %d, tally %+v; want 15 and 10 rebels, 5 officers killed", len(c.Doomed), b.Tally)
+	}
+	if b.LossDay[child] != w.Day {
+		t.Errorf("a killed rebel's child: last loss %d, want today", b.LossDay[child])
+	}
+	if b.Held[world.DownDeep] || b.Patrol[world.DownDeep] != 2.5 {
+		t.Errorf("held %v, patrol %v; want nobody left to hold, patrol (10 − 5) × 10/20 = 2.5", b.Held, b.Patrol)
+	}
+}
+
+// ODD §6.14, Held zones: rebels on a floor cut off from every court can't
+// be fought, but a zone with no patrol is held by any violent rebel in it.
+func TestCutOffZoneIsHeld(t *testing.T) {
+	s, _, _ := battle(t, 1, 1, 1)
+	w, b := s.w, s.w.Rebellion
+	w.Space.Broken[0] = true
+	s.step() // yesterday's counts still reach the Down Deep: patrol 5, but nobody there can be reached
+	if len(w.Control.Doomed) != 0 || !b.Held[world.DownDeep] {
+		t.Errorf("doomed %v, held %v; want no fight, the Down Deep held", w.Control.Doomed, b.Held)
+	}
+	s.step()
+	if b.Patrol[world.DownDeep] != 0 || !b.Held[world.DownDeep] || b.HeldDays[world.DownDeep] != 2 {
+		t.Errorf("patrol %v, held %v for %d days; want no patrol, held 2 days", b.Patrol, b.Held, b.HeldDays[world.DownDeep])
 	}
 }

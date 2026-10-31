@@ -117,6 +117,7 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 	m.implantDoctors(w)
 	m.detect(w, r)
 	m.releases(w)
+	m.seize(w, r)
 	m.cleanings(w, r)
 	m.trials(w)
 	if m.raid > 0 && r.Float64() < m.raid {
@@ -357,6 +358,31 @@ func (m *Module) charge(c *world.Control, id world.PersonID, rule int) {
 // releases: ODD §6.13, Penalties. Detained people whose last day has
 // passed are free and start walking home; so do people freed earlier who
 // couldn't, while the stairs were broken.
+// seize takes into custody the rebels arrested in a fight at yesterday's
+// rebellion step (ODD §6.14, Fights): charged with violence without a
+// detection draw, using no arrest capacity, their flat searched and a
+// Flamekeeper unseated, as on any arrest. The trial step sends them to the
+// court. With no active rule listing violence there is nothing to charge
+// them with, and they stay free.
+func (m *Module) seize(w *world.World, r *rng.Stream) {
+	c := w.Control
+	rule := m.ruleOf[world.Violence]
+	for _, id := range c.Seized {
+		if rule == world.None || !w.People[id].Alive || c.Hold[id] != world.Free {
+			continue
+		}
+		m.charge(c, id, rule)
+		c.Cases = slices.DeleteFunc(c.Cases, func(x world.PersonID) bool { return x == id })
+		c.Hold[id] = world.Custody
+		c.Tally.Arrests++
+		m.held = append(m.held, id)
+		m.homeward = slices.DeleteFunc(m.homeward, func(x world.PersonID) bool { return x == id })
+		m.search(w, r, w.People[id].Household)
+		m.unseat(w, r, id)
+	}
+	c.Seized = c.Seized[:0]
+}
+
 func (m *Module) releases(w *world.World) {
 	c := w.Control
 	m.held = slices.DeleteFunc(m.held, func(id world.PersonID) bool {
@@ -524,7 +550,7 @@ func (m *Module) arrests(w *world.World, r *rng.Stream) {
 		if s.Location[id] != 0 && !c.Held(id) {
 			court = m.court(w, s.Location[id])
 		}
-		if court == 0 || s.StartTrip(id, w.Day, court) != nil {
+		if court == 0 || w.Rebellion.Holds(w, s.Location[id]) || s.StartTrip(id, w.Day, court) != nil { // ODD §6.14: no arrests in a held zone
 			i++
 			continue
 		}

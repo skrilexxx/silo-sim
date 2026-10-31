@@ -60,18 +60,28 @@ func Check(w *world.World, cfg *config.Scenario) error {
 }
 
 // ODD §6.14 (draft): H and G lie in 0–1; everyone not calm has a
-// grievance (so is an adult), is free and is not the Head of IT.
+// grievance (so is an adult), is free and is not the Head of IT; in a held
+// zone the violent outnumber the patrol.
 func rebellion(w *world.World) error {
 	b := w.Rebellion
 	if b == nil {
 		return nil
 	}
+	var violent [world.NumZones]int
 	for _, id := range w.Alive {
 		if h, g := b.H[id], b.G[id]; h < 0 || h > 1 || g < 0 || g > 1 {
 			return fmt.Errorf("day %d: person %d has H = %v, G = %v, outside 0–1", w.Day, id, h, g)
 		}
 		if b.Stage[id] != world.Calm && (b.G[id] == 0 || w.Control.Held(id) || w.Control.IsHead(id)) {
 			return fmt.Errorf("day %d: person %d at stage %d has G = %v, held %v, Head %v", w.Day, id, b.Stage[id], b.G[id], w.Control.Held(id), w.Control.IsHead(id))
+		}
+		if f := w.Space.Where(w, id); b.Stage[id] == world.Violent && f != 0 {
+			violent[w.Floors[f-1].Zone]++
+		}
+	}
+	for z, held := range b.Held {
+		if held && float64(violent[z]) <= b.Patrol[z] {
+			return fmt.Errorf("day %d: zone %v held by %d violent rebels against a patrol of %v", w.Day, world.Zone(z), violent[z], b.Patrol[z])
 		}
 	}
 	return nil

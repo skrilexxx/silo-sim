@@ -22,7 +22,11 @@ type Module struct {
 	threshold, k float64 // T and k (Epstein 2002)
 	violent      float64 // T_v
 	strikeShare  float64 // q_strike
-	critical     []int   // Mechanical, Farms, Supply and Medical (ODD §1.2)
+	eJ, eR, kill float64 // e_J, e_R, p_kill (decision D6)
+	injury       float64 // a work injury's cost to health (ODD §6.2)
+	fought       bool    // a fight today
+	pool         []world.PersonID
+	critical     []int // Mechanical, Farms, Supply and Medical (ODD §1.2)
 	prev         []world.RebelStage
 	def          config.Rebellion // the definitions of unrest and rebellion (ODD §1.2)
 	officers     []int            // Judicial's and the Sheriff's department indexes
@@ -47,6 +51,7 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	m.adultAge = world.Tick(cfg.Work.WorkerAge * engine.DaysPerYear)
 	m.threshold, m.k, m.violent = cfg.Rebellion.ActiveThreshold, cfg.Rebellion.ArrestConstant, cfg.Rebellion.ViolentThreshold
 	m.def, m.strikeShare = cfg.Rebellion, cfg.Rebellion.StrikeShare
+	m.eJ, m.eR, m.kill, m.injury = cfg.Rebellion.OfficerEffect, cfg.Rebellion.RebelEffect, cfg.Rebellion.KilledShare, cfg.Health.InjuryCost
 	for d, dep := range w.Depts {
 		if dep.Name == "judicial" || dep.Name == "sheriff" {
 			m.officers = append(m.officers, d)
@@ -77,6 +82,7 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 	m.hardship(w)
 	m.strikes(w)
 	m.stages(w)
+	m.fights(w, r)
 	m.track(w, m.activeShare(w), m.action(w))
 	m.count(w)
 	return nil
@@ -98,12 +104,7 @@ func (m *Module) newcomers(w *world.World) {
 func (m *Module) losses(w *world.World) {
 	b, c := w.Rebellion, w.Control
 	for _, id := range c.Cleaned {
-		m.buf = w.Network.Ties(w, id, m.buf[:0])
-		for _, t := range m.buf {
-			if t.Kind <= world.TieKin {
-				b.LossDay[t.Other] = w.Day
-			}
-		}
+		m.grieve(w, id)
 	}
 	for _, id := range c.DeniedToday {
 		if !w.People[id].Alive {
@@ -112,6 +113,17 @@ func (m *Module) losses(w *world.World) {
 		b.LossDay[id] = w.Day
 		if p := w.People[id].Partner; p != world.None {
 			b.LossDay[p] = w.Day
+		}
+	}
+}
+
+// grieve gives the family of someone cleaned or killed in a fight a loss
+// today: partner, household and kin (ODD §6.14, Hardship).
+func (m *Module) grieve(w *world.World, id world.PersonID) {
+	m.buf = w.Network.Ties(w, id, m.buf[:0])
+	for _, t := range m.buf {
+		if t.Kind <= world.TieKin {
+			w.Rebellion.LossDay[t.Other] = w.Day
 		}
 	}
 }
@@ -153,17 +165,9 @@ func (m *Module) hardship(w *world.World) {
 func (m *Module) stages(w *world.World) {
 	b, c := w.Rebellion, w.Control
 	m.reachable(w)
-	officers := m.onDuty(w)
-	reach := 0
-	for _, n := range b.Reach {
-		reach += n
-	}
 	var p [world.NumZones]float64 // P on floors connected to a court; 0 elsewhere
-	for z := range p {
-		if reach > 0 {
-			patrol := float64(officers) * float64(b.Reach[z]) / float64(reach)
-			p[z] = 1 - math.Exp(-m.k*patrol/float64(b.Actives[z]+1))
-		}
+	for z, patrol := range m.patrols(w, m.onDuty(w)) {
+		p[z] = 1 - math.Exp(-m.k*patrol/float64(b.Actives[z]+1))
 	}
 	m.prev = append(m.prev[:0], b.Stage...)
 	for _, id := range w.Alive {
@@ -243,9 +247,12 @@ func (m *Module) strikes(w *world.World) {
 }
 
 // action reports whether a collective action is under way today (ODD
-// §6.14): a critical department on strike, its strikers at least a share
-// q_strike of its workers. Fights and held zones come with T12.5.
+// §6.14): a fight, a held zone, or a critical department on strike, its
+// strikers at least a share q_strike of its workers.
 func (m *Module) action(w *world.World) bool {
+	if m.fought || slices.Contains(w.Rebellion.Held[:], true) {
+		return true
+	}
 	for _, d := range m.critical {
 		if n := w.Rebellion.Striking[d]; n > 0 && float64(n) >= m.strikeShare*float64(w.Depts[d].Headcount) {
 			return true
@@ -262,7 +269,9 @@ func (m *Module) action(w *world.World) bool {
 // of them. Both end after QuietDays days in a row below UnrestShare, their
 // end day the first of those. An unrest spell during which a rebellion
 // starts is that rebellion's run-up, not unrest, and no unrest is tracked
-// while a rebellion runs (Adam, 2026-10-31).
+// while a rebellion runs (Adam, 2026-10-31). Rebels holding Up Top for
+// RegimeDays days in a row end a rebellion with a regime change, that day;
+// the count of held days starts again.
 func (m *Module) track(w *world.World, share float64, action bool) {
 	b, d := w.Rebellion, m.def
 	if share >= d.UnrestShare {
@@ -281,6 +290,10 @@ func (m *Module) track(w *world.World, share float64, action bool) {
 	head := func(kind string) world.EventHeader { return world.EventHeader{Day: w.Day, Type: kind} }
 	quietSince := w.Day - world.Tick(d.QuietDays) + 1
 	switch {
+	case b.RebellionStart != world.None && b.HeldDays[world.UpTop] >= d.RegimeDays:
+		w.Events = append(w.Events, world.RebellionEvent{EventHeader: head("rebellionEnd"),
+			Start: b.RebellionStart, End: w.Day, Ending: "regimeChange"})
+		b.RebellionStart, b.HeldDays[world.UpTop] = world.None, 0
 	case b.RebellionStart != world.None:
 		if b.Quiet >= d.QuietDays {
 			w.Events = append(w.Events, world.RebellionEvent{EventHeader: head("rebellionEnd"),
@@ -299,6 +312,136 @@ func (m *Module) track(w *world.World, share float64, action bool) {
 		}
 	case b.Busy >= d.UnrestDays:
 		b.UnrestStart = w.Day - world.Tick(d.UnrestDays) + 1
+	}
+}
+
+// patrols spreads the officers over the zones in proportion to
+// yesterday's adults on floors connected to a court (ODD §6.14, Arrest
+// estimate).
+func (m *Module) patrols(w *world.World, officers int) [world.NumZones]float64 {
+	var p [world.NumZones]float64
+	reach := 0
+	for _, n := range w.Rebellion.Reach {
+		reach += n
+	}
+	for z := range p {
+		if reach > 0 {
+			p[z] = float64(officers) * float64(w.Rebellion.Reach[z]) / float64(reach)
+		}
+	}
+	return p
+}
+
+// ODD §6.14, Fights (decision D6). In each zone, Up Top first, where
+// violent rebels on floors connected to a court (B of them) meet a patrol
+// O > 0, Lanchester's square law puts out min(B, e_J × O) rebels, drawn
+// uniformly from them, and min(O, e_R × B) officers, drawn uniformly from
+// all officers on duty, as patrols are abstract. A fraction is rounded
+// down, plus one with a chance equal to it. Each one put out is killed
+// with chance p_kill, dying at the next deaths step, and their family has
+// a loss; otherwise a rebel is arrested (control takes them into custody
+// at its next step) and an officer wounded (a work injury). A rebel put
+// out is calm from then on. Then the held zones.
+func (m *Module) fights(w *world.World, r *rng.Stream) {
+	b, c := w.Rebellion, w.Control
+	m.fought = false
+	officers := m.onDuty(w)
+	patrol := m.patrols(w, officers)
+	var duty []world.PersonID // officers on duty not yet put out today, built at the first fight
+	killed := 0
+	for z := range world.NumZones {
+		m.pool = m.pool[:0]
+		for _, id := range w.Alive {
+			if f := w.Space.Where(w, id); b.Stage[id] == world.Violent && f != 0 && m.reach[f-1] && w.Floors[f-1].Zone == world.Zone(z) {
+				m.pool = append(m.pool, id)
+			}
+		}
+		if len(m.pool) == 0 || patrol[z] == 0 {
+			continue
+		}
+		m.fought = true
+		if duty == nil {
+			for _, id := range w.Alive {
+				if m.officer(w, id) {
+					duty = append(duty, id)
+				}
+			}
+		}
+		for _, id := range draw(r, m.pool, round(r, min(float64(len(m.pool)), m.eJ*patrol[z]))) {
+			b.Stage[id] = world.Calm
+			if r.Float64() < m.kill {
+				c.Doomed = append(c.Doomed, id)
+				m.grieve(w, id)
+				b.Tally.RebelsKilled++
+			} else {
+				c.Seized = append(c.Seized, id)
+				b.Tally.RebelsArrested++
+			}
+		}
+		n := min(len(duty), round(r, min(patrol[z], m.eR*float64(len(m.pool)))))
+		out := draw(r, duty, n)
+		for _, id := range out {
+			if r.Float64() < m.kill {
+				c.Doomed = append(c.Doomed, id)
+				m.grieve(w, id)
+				b.Tally.OfficersKilled++
+				killed++
+			} else {
+				p := &w.People[id]
+				p.Health = max(0, p.Health-m.injury)
+				b.Tally.OfficersWounded++
+			}
+		}
+		duty = duty[len(out):] // draw moved the ones put out to the front
+	}
+	m.hold(w, m.patrols(w, officers-killed))
+}
+
+// round rounds x down, plus one with a chance equal to the fraction.
+func round(r *rng.Stream, x float64) int {
+	n := int(x)
+	if f := x - float64(n); f > 0 && r.Float64() < f {
+		n++
+	}
+	return n
+}
+
+// draw moves n people drawn uniformly from ids to its front (a partial
+// Fisher–Yates shuffle) and returns them.
+func draw(r *rng.Stream, ids []world.PersonID, n int) []world.PersonID {
+	for i := range n {
+		j := r.IntRange(i, len(ids)-1)
+		ids[i], ids[j] = ids[j], ids[i]
+	}
+	return ids[:n]
+}
+
+// ODD §6.14, Held zones: rebels hold a zone when its violent rebels,
+// wherever they are in it, outnumber its patrol after today's fights.
+func (m *Module) hold(w *world.World, patrol [world.NumZones]float64) {
+	b := w.Rebellion
+	var violent [world.NumZones]int
+	for _, id := range w.Alive {
+		if f := w.Space.Where(w, id); b.Stage[id] == world.Violent && f != 0 {
+			violent[w.Floors[f-1].Zone]++
+		}
+	}
+	b.Patrol = patrol
+	for z := range world.NumZones {
+		held := float64(violent[z]) > patrol[z]
+		if held {
+			b.HeldDays[z]++
+		} else {
+			b.HeldDays[z] = 0
+		}
+		if held != b.Held[z] {
+			kind := "zoneFreed"
+			if held {
+				kind = "zoneHeld"
+			}
+			w.Events = append(w.Events, world.ZoneEvent{EventHeader: world.EventHeader{Day: w.Day, Type: kind}, Zone: world.Zone(z).String()})
+		}
+		b.Held[z] = held
 	}
 }
 

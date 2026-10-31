@@ -250,6 +250,9 @@ type Rebellion struct {
 	ArrestConstant    float64 `yaml:"arrestConstant"`
 	ViolentThreshold  float64 `yaml:"violentThreshold"`
 	StrikeShare       float64 `yaml:"strikeShare"`
+	OfficerEffect     float64 `yaml:"officerEffect"`
+	RebelEffect       float64 `yaml:"rebelEffect"`
+	KilledShare       float64 `yaml:"killedShare"`
 
 	// Definitions of unrest and rebellion (ODD §1.2, decision D1).
 	UnrestShare    float64 `yaml:"unrestShare"`
@@ -257,6 +260,7 @@ type Rebellion struct {
 	RebellionShare float64 `yaml:"rebellionShare"`
 	RebellionDays  int     `yaml:"rebellionDays"`
 	QuietDays      int     `yaml:"quietDays"`
+	RegimeDays     int     `yaml:"regimeDays"`
 }
 
 // Rule is one row of the Pact (ODD §6.9).
