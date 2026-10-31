@@ -81,6 +81,9 @@ func (s *Scenario) Validate() error {
 		{"rebellion.lossHardship", s.Rebellion.LossHardship},
 		{"rebellion.scapegoatHardship", s.Rebellion.ScapegoatHardship},
 		{"rebellion.activeThreshold", s.Rebellion.ActiveThreshold},
+		{"rebellion.violentThreshold", s.Rebellion.ViolentThreshold},
+		{"rebellion.unrestShare", s.Rebellion.UnrestShare},
+		{"rebellion.rebellionShare", s.Rebellion.RebellionShare},
 	}
 	for _, u := range unit {
 		if u.v < 0 || u.v > 1 {
@@ -133,6 +136,9 @@ func (s *Scenario) Validate() error {
 		{"control.deniedTries", float64(s.Control.DeniedTries)},
 		{"rebellion.lossHalfLifeYears", s.Rebellion.LossHalfLifeYears},
 		{"rebellion.arrestConstant", s.Rebellion.ArrestConstant},
+		{"rebellion.unrestDays", float64(s.Rebellion.UnrestDays)},
+		{"rebellion.rebellionDays", float64(s.Rebellion.RebellionDays)},
+		{"rebellion.quietDays", float64(s.Rebellion.QuietDays)},
 	}
 	for i, d := range s.Work.Departments {
 		positive = append(positive, struct {
@@ -232,6 +238,9 @@ func (s *Scenario) Validate() error {
 	}
 
 	// ODD §6.13: a raid is a daily chance, R_raid / 365.
+	if r := s.Rebellion; r.ViolentThreshold < r.ActiveThreshold {
+		add("rebellion.violentThreshold = %v, must be at least rebellion.activeThreshold (%v)", r.ViolentThreshold, r.ActiveThreshold)
+	}
 	if s.Control.RaidsPerYear > daysPerYear {
 		add("control.raidsPerYear = %v, must be at most %d", s.Control.RaidsPerYear, daysPerYear)
 	}

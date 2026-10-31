@@ -46,8 +46,8 @@ The answers are **conditional and comparative**. The agents follow rules, not hu
 **Definitions**
 
 - **Active rebel:** an adult (18+) whom the activation rule of §6.14 makes active on a given day.
-- **Unrest:** at least 1% of adults active on 3 days in a row, without meeting the rebellion test. Logged; not a rebellion.
-- **Rebellion:** starts when, on 7 days in a row, at least 5% of adults are active **and** at least one collective action (§6.14) is under way on one of those days: a strike in a critical department (Mechanical, Farms, Supply, Medical; at least a share q\_strike = 10% of its workers on strike), a fight with Judicial, or rebels holding a zone. Its start day is the first of the 7 days. It ends when fewer than 1% of adults are active for 30 days in a row, or at collapse. Only one rebellion runs at a time.
+- **Unrest:** at least 1% of adults active on 3 days in a row, without meeting the rebellion test. Its start day is the first of the 3 days. It ends when fewer than 1% of adults are active for 30 days in a row, its end day the first of those 30 (Adam, 2026-10-31). An unrest spell during which a rebellion starts is that rebellion's run-up, counted as the rebellion and not as unrest, and no unrest is tracked while a rebellion runs (Adam, 2026-10-31). Logged; not a rebellion.
+- **Rebellion:** starts when, on 7 days in a row, at least 5% of adults are active **and** at least one collective action (§6.14) is under way on one of those days: a strike in a critical department (Mechanical, Farms, Supply, Medical; at least a share q\_strike = 10% of its workers on strike), a fight with Judicial, or rebels holding a zone. Its start day is the first of the 7 days. It ends when fewer than 1% of adults are active for 30 days in a row, its end day the first of those 30, or at collapse. Only one rebellion runs at a time. The shares and day counts in these two definitions are scenario settings (`rebellion:`, §6.14).
 - **Trigger:** the scripted event (`events:` in the scenario, T7.4) that happened within the 365 days before the start, or "none". With no scripted events, every rebellion is "none", and Q1's trigger question is answered by experiments that script shocks.
 - **Endings** (one per rebellion; collapse takes precedence):
   - *Suppressed:* it ends with the regime still in place.
@@ -860,8 +860,8 @@ Each sabotage is the offence `sabotage` (§6.9).
 **Outputs** (only when the module is on):
 
 - *daily.csv:* adults active, joined and violent; workers on strike; held zones; broken segments; pump down.
-- *yearly.csv:* mean H and G of adults by home zone; rebels killed and arrested in fights, officers killed and wounded; sabotage by target; stair repairs; days with unrest; rebellions started.
-- *events.jsonl:* `unrest` and `rebellion` (start and end, with the ending), `zoneHeld` and `zoneFreed`, `sabotage` (person, target), `stairRepaired`, `collapse` (cause), `extinction`.
+- *yearly.csv:* mean H and G of adults by home zone; rebels killed and arrested in fights, officers killed and wounded; sabotage by target; stair repairs; unrest spells ended and rebellions started.
+- *events.jsonl:* `unrest` (start and end, logged at its end, once it is sure it never became a rebellion), `rebellionStart` (start) and `rebellionEnd` (start, end and ending), `zoneHeld` and `zoneFreed`, `sabotage` (person, target), `stairRepaired`, `collapse` (cause), `extinction`.
 - *rebellions.jsonl:* one line per rebellion, written at its end, or at the end of the run as unfinished: start, trigger, starting zone, peak share of adults active, duration, collective actions (departments struck, fights, zones held), deaths, arrests, damage (segments broken, generator and pump sabotage) and ending (§1.2).
 - *run.json:* time to first rebellion (or none), rebellions, unrest spells, and the day and cause of collapse (or none).
 - *frames.csv.gz:* per floor, the share of adults active and violent.
@@ -870,7 +870,7 @@ Each sabotage is the offence `sabotage` (§6.9).
 
 **Off and null.** With the module off, nothing of this exists and nothing is checked for collapse. With it on and T = 1 nobody is ever active (G ≤ 1 and N ≥ 0), so nobody strikes, fights or sabotages and nothing breaks. The files then differ from a run without the module only by the new columns and outcome fields, unless the silo collapses, which `scenarios/baseline.yaml` never does.
 
-**Parameters:** loss hardship ℓ and its half-life T\_loss, scapegoat hardship s\_DD, activation threshold T and arrest constant k (both Epstein 2002), violence threshold T\_v, officer and rebel effect e\_J and e\_R, killed share p\_kill, sabotage chance p\_sab, stair repair time D\_stair, strike share q\_strike (§1.2), and the point of no return P\_min (§1.2, measured in T12.6). They move into §7 when M12 is done. In the scenario file they are the `rebellion:` section:
+**Parameters:** loss hardship ℓ and its half-life T\_loss, scapegoat hardship s\_DD, activation threshold T and arrest constant k (both Epstein 2002), violence threshold T\_v, officer and rebel effect e\_J and e\_R, killed share p\_kill, sabotage chance p\_sab, stair repair time D\_stair, strike share q\_strike (§1.2), and the point of no return P\_min (§1.2, measured in T12.6); also the definitions of unrest and rebellion (§1.2, decision D1), which are not model parameters but settings of what is counted. They move into §7 when M12 is done. In the scenario file they are the `rebellion:` section:
 
 ```yaml
 rebellion:                        # ODD §6.14; used only when `rebellion` is in modules
@@ -886,10 +886,15 @@ rebellion:                        # ODD §6.14; used only when `rebellion` is in
   sabotageChance: 0.001           # p_sab: per violent rebel and day; guess
   stairRepairDays: 60             # D_stair: mean days to repair a segment at full Mechanical coverage; guess
   strikeShare: 0.1                # q_strike: share of a department's workers on strike that makes it a strike (§1.2); guess
+  unrestShare: 0.01               # §1.2, decision D1: unrest is at least this share of adults active ...
+  unrestDays: 3                   # ... on this many days in a row
+  rebellionShare: 0.05            # a rebellion: at least this share active ...
+  rebellionDays: 7                # ... on this many days in a row, with a collective action on one of them
+  quietDays: 30                   # both end after this many days in a row below unrestShare
   pointOfNoReturn: 0              # P_min (§1.2); 0 = off until measured in T12.6
 ```
 
-`output.runAfterCollapse` (default false) sits with the other output settings. Checked at load: ℓ, s\_DD, T, T\_v, p\_kill, p\_sab and q\_strike are in [0, 1], and T\_v ≥ T; T\_loss, k and D\_stair are strictly greater than 0; e\_J and e\_R are ≥ 0; P\_min is an integer ≥ 0.
+`output.runAfterCollapse` (default false) sits with the other output settings. Checked at load: ℓ, s\_DD, T, T\_v, p\_kill, p\_sab, q\_strike and both shares of §1.2 are in [0, 1], and T\_v ≥ T; the three day counts are integers ≥ 1; T\_loss, k and D\_stair are strictly greater than 0; e\_J and e\_R are ≥ 0; P\_min is an integer ≥ 0.
 
 ## 7. Parameters
 

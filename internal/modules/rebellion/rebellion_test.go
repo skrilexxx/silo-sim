@@ -37,7 +37,9 @@ func newTiny(t *testing.T) *tiny {
 	cfg := &config.Scenario{}
 	cfg.Work.WorkerAge = 18
 	cfg.Rebellion.LossHardship, cfg.Rebellion.LossHalfLifeYears, cfg.Rebellion.ScapegoatHardship = 0.5, 2, 0.2
-	cfg.Rebellion.ActiveThreshold, cfg.Rebellion.ArrestConstant = 0.1, 2.3
+	cfg.Rebellion.ActiveThreshold, cfg.Rebellion.ArrestConstant, cfg.Rebellion.ViolentThreshold = 0.1, 2.3, 0.3
+	cfg.Rebellion.UnrestShare, cfg.Rebellion.UnrestDays = 0.01, 3
+	cfg.Rebellion.RebellionShare, cfg.Rebellion.RebellionDays, cfg.Rebellion.QuietDays = 0.05, 7, 30
 	return &tiny{t: t, w: w, m: New(), r: r, cfg: cfg}
 }
 
@@ -353,4 +355,153 @@ func everyNth(xs []int, n int) []int {
 		out = append(out, xs[i])
 	}
 	return out
+}
+
+// tie gives a and b a coworker tie (ODD §6.11), before start.
+func (s *tiny) tie(a, b world.PersonID) {
+	n := s.w.Network
+	n.Weak[a] = append(n.Weak[a], world.Tie{Other: b, Kind: world.TieCoworker})
+	n.Weak[b] = append(n.Weak[b], world.Tie{Other: a, Kind: world.TieCoworker})
+}
+
+// ODD §6.14, Stages: joining and violence. No officers on duty, so P = 0
+// and, with F = 0, N = 0: every Down Deep doubter is active (G > T).
+// Hub (and edge, with the same ties) is tied to three of them and one calm
+// Up Top adult. Nobody joins on the first day, since nobody was out the
+// day before. The next day 3 of hub's 4 ties were out: hub joins with
+// R = 0.75, edge with R just above does not; shy, tied to hub and edge
+// only, joins even with R = 1; a loner with no ties never joins. Joined
+// people with G − N > T_v = 0.3 are violent and commit violence, the rest
+// of the active organise.
+func TestJoiningAndViolence(t *testing.T) {
+	s := newTiny(t)
+	hub := s.add(30, 2, 0.5)   // G = 0.6 × 0.95 = 0.57
+	hot := s.add(30, 2, 0.5)   // G = 0.57: violent once joined
+	cool := s.add(30, 2, 0.9)  // H = 1 − 0.9 × 0.8 = 0.28, G = 0.266: joins, not violent
+	shy := s.add(30, 2, 0.5)   // tied to hub only, R = 1: needs hub out
+	calm := s.add(30, 1, 1)    // H = 0
+	loner := s.add(30, 2, 0.5) // no ties
+	edge := s.add(30, 2, 0.5)  // like hub, R just above 3/4
+	s.start()
+	w, b, c := s.w, s.w.Rebellion, s.w.Control
+	for _, id := range []world.PersonID{hub, hot, cool, shy, loner, edge} {
+		s.doubt(id)
+	}
+	for _, other := range []world.PersonID{hot, cool, shy, calm} {
+		s.tie(hub, other)
+		s.tie(edge, other)
+	}
+	risk := map[world.PersonID]float64{hub: 0.75, hot: 0.01, cool: 0.01, shy: 1, loner: 0.01, edge: 0.75 + 1e-9}
+	for id, r := range risk {
+		w.Beliefs.Risk[id] = r
+	}
+
+	s.step()
+	for _, id := range []world.PersonID{hub, hot, cool, shy, loner, edge} {
+		if b.Stage[id] != world.Active {
+			t.Errorf("day 1, person %d: stage %d, want active (nobody was out yesterday)", id, b.Stage[id])
+		}
+	}
+	c.Acts = nil
+	s.step()
+	want := map[world.PersonID]world.RebelStage{hub: world.Violent, hot: world.Violent, cool: world.Joined,
+		shy: world.Violent, calm: world.Calm, loner: world.Active, edge: world.Active}
+	for id, st := range want {
+		if b.Stage[id] != st {
+			t.Errorf("day 2, person %d: stage %d, want %d", id, b.Stage[id], st)
+		}
+	}
+	if len(c.Acts) != 6 {
+		t.Errorf("acts %v: want 6", c.Acts)
+	}
+	for _, a := range c.Acts {
+		if v := b.Stage[a.Person] == world.Violent; v != (a.Offence == world.Violence) || !v && a.Offence != world.Organise {
+			t.Errorf("person %d at stage %d committed %v", a.Person, b.Stage[a.Person], a.Offence)
+		}
+	}
+}
+
+// ODD §1.2, Definitions, driven day by day with chosen shares of adults
+// active: unrest after 3 days at 1%, ending 30 quiet days later and logged
+// with the first quiet day as its end; no rebellion without a collective
+// action; a rebellion started by one, absorbing the open unrest spell, and
+// ending as suppressed after 30 quiet days.
+func TestUnrestAndRebellion(t *testing.T) {
+	s := newTiny(t)
+	s.add(30, 1, 1)
+	s.start()
+	w, b := s.w, s.w.Rebellion
+	w.Events = nil
+	day := func(share float64, action bool) {
+		w.Day++
+		s.m.track(w, share, action)
+	}
+	day(0.01, false)
+	day(0.01, false)
+	day(0, false)
+	if b.UnrestStart != world.None {
+		t.Fatalf("unrest after 2 days at 1%%")
+	}
+	first := w.Day + 1
+	for range 3 {
+		day(0.01, false)
+	}
+	if b.UnrestStart != first {
+		t.Fatalf("unrest start %d, want %d", b.UnrestStart, first)
+	}
+	quiet := w.Day + 1
+	for range 29 {
+		day(0.009, false)
+	}
+	if b.UnrestStart == world.None || len(w.Events) != 0 {
+		t.Fatalf("unrest ended after 29 quiet days")
+	}
+	day(0, false)
+	if b.UnrestStart != world.None || b.UnrestSpells != 1 || len(w.Events) != 1 {
+		t.Fatalf("after 30 quiet days: unrest start %d, %d spells, events %v", b.UnrestStart, b.UnrestSpells, w.Events)
+	}
+	if ev := w.Events[0].(world.UnrestEvent); ev.Type != "unrest" || ev.Start != first || ev.End != quiet {
+		t.Errorf("event %+v, want unrest %d to %d", ev, first, quiet)
+	}
+
+	// 10 days at 5% with no action: unrest, not a rebellion. An action on
+	// the 11th makes the last 7 days a rebellion; the unrest spell is its
+	// run-up and is never logged.
+	w.Events = nil
+	for range 10 {
+		day(0.05, false)
+	}
+	if b.RebellionStart != world.None || b.UnrestStart == world.None {
+		t.Fatalf("rebellion %d, unrest %d after 10 days at 5%% with no action", b.RebellionStart, b.UnrestStart)
+	}
+	day(0.05, true)
+	if b.RebellionStart != w.Day-6 || b.UnrestStart != world.None || b.Rebellions != 1 {
+		t.Fatalf("rebellion start %d (want %d), unrest %d, %d rebellions", b.RebellionStart, w.Day-6, b.UnrestStart, b.Rebellions)
+	}
+	start := b.RebellionStart
+	day(0.2, false)
+	quiet = w.Day + 1
+	for range 30 {
+		day(0.001, false)
+	}
+	if b.RebellionStart != world.None || b.UnrestSpells != 1 || len(w.Events) != 2 {
+		t.Fatalf("rebellion start %d, %d unrest spells, events %v", b.RebellionStart, b.UnrestSpells, w.Events)
+	}
+	if ev := w.Events[1].(world.RebellionEvent); ev.Type != "rebellionEnd" || ev.Start != start || ev.End != quiet || ev.Ending != "suppressed" {
+		t.Errorf("event %+v, want rebellionEnd %d to %d, suppressed", ev, start, quiet)
+	}
+
+	// The action must fall within the 7 days: one 7 days before the 7th
+	// day at 5% is too old.
+	day(0, true)
+	for range 7 {
+		day(0.05, false)
+	}
+	if b.RebellionStart != world.None {
+		t.Errorf("rebellion from an action 8 days back")
+	}
+	day(0.05, false)
+	if b.RebellionStart != world.None {
+		t.Errorf("rebellion with no action in the last 7 days")
+	}
 }

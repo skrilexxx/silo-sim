@@ -20,9 +20,12 @@ type Module struct {
 	buf       []world.Tie
 
 	threshold, k float64 // T and k (Epstein 2002)
-	officers     []int   // Judicial's and the Sheriff's department indexes
-	courts       []int   // Judicial's office floors
-	reach        []bool  // per floor: connected to a court today
+	violent      float64 // T_v
+	prev         []world.RebelStage
+	def          config.Rebellion // the definitions of unrest and rebellion (ODD §1.2)
+	officers     []int            // Judicial's and the Sheriff's department indexes
+	courts       []int            // Judicial's office floors
+	reach        []bool           // per floor: connected to a court today
 }
 
 func New() *Module { return &Module{} }
@@ -40,7 +43,8 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	m.loss, m.scapegoat = cfg.Rebellion.LossHardship, cfg.Rebellion.ScapegoatHardship
 	m.lossDays = cfg.Rebellion.LossHalfLifeYears * engine.DaysPerYear
 	m.adultAge = world.Tick(cfg.Work.WorkerAge * engine.DaysPerYear)
-	m.threshold, m.k = cfg.Rebellion.ActiveThreshold, cfg.Rebellion.ArrestConstant
+	m.threshold, m.k, m.violent = cfg.Rebellion.ActiveThreshold, cfg.Rebellion.ArrestConstant, cfg.Rebellion.ViolentThreshold
+	m.def = cfg.Rebellion
 	for d, dep := range w.Depts {
 		if dep.Name == "judicial" || dep.Name == "sheriff" {
 			m.officers = append(m.officers, d)
@@ -50,7 +54,7 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 		}
 	}
 	m.reach = make([]bool, len(w.Floors))
-	w.Rebellion = &world.Rebellion{}
+	w.Rebellion = &world.Rebellion{LastAction: world.None, UnrestStart: world.None, RebellionStart: world.None}
 	m.newcomers(w)
 	m.count(w)
 	return nil
@@ -66,6 +70,7 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 	m.losses(w)
 	m.hardship(w)
 	m.stages(w)
+	m.track(w, m.activeShare(w), m.action(w))
 	m.count(w)
 	return nil
 }
@@ -129,11 +134,14 @@ func (m *Module) hardship(w *world.World) {
 }
 
 // ODD §6.14, Arrest estimate and Stages. An eligible adult is active
-// when G − R × (1 − (1 − P)(1 − F)) > T, with P = 1 − exp(−k × O_z /
-// (A_z + 1)) from yesterday's counts in the zone of their day location
-// and today's officers. Nothing is drawn and nobody's stage depends on
-// another's today, so the visiting order doesn't matter. Each active
-// person commits the offence organise.
+// when G − N > T, with net risk N = R × (1 − (1 − P)(1 − F)) and P = 1 −
+// exp(−k × O_z / (A_z + 1)) from yesterday's counts in the zone of their
+// day location and today's officers. An active adult joins when at least
+// a share R of their ties were active or beyond yesterday, and a joined
+// one is violent when G − N > T_v. Nothing is drawn and nobody's stage
+// depends on another's today, so the visiting order doesn't matter. Each
+// violent person commits the offence violence, every other active one
+// organise.
 func (m *Module) stages(w *world.World) {
 	b, c := w.Rebellion, w.Control
 	m.reachable(w)
@@ -149,6 +157,7 @@ func (m *Module) stages(w *world.World) {
 			p[z] = 1 - math.Exp(-m.k*patrol/float64(b.Actives[z]+1))
 		}
 	}
+	m.prev = append(m.prev[:0], b.Stage...)
 	for _, id := range w.Alive {
 		b.Stage[id] = world.Calm
 		floor := w.Space.Where(w, id)
@@ -159,11 +168,110 @@ func (m *Module) stages(w *world.World) {
 		if m.reach[floor-1] {
 			pz = p[w.Floors[floor-1].Zone]
 		}
-		risk := w.Beliefs.Risk[id] * (1 - (1-pz)*(1-c.Fear))
-		if b.G[id]-risk > m.threshold {
-			b.Stage[id] = world.Active
-			c.Report(world.Act{Person: id, Other: world.None, Offence: world.Organise})
+		r := w.Beliefs.Risk[id]
+		n := r * (1 - (1-pz)*(1-c.Fear))
+		if b.G[id]-n <= m.threshold {
+			continue
 		}
+		b.Stage[id] = world.Active
+		if m.joins(w, id, r) {
+			b.Stage[id] = world.Joined
+			if b.G[id]-n > m.violent {
+				b.Stage[id] = world.Violent
+			}
+		}
+		act := world.Organise
+		if b.Stage[id] == world.Violent {
+			act = world.Violence
+		}
+		c.Report(world.Act{Person: id, Other: world.None, Offence: act})
+	}
+}
+
+// joins: at least a share r of the person's ties were active or beyond
+// yesterday (ODD §6.14, Granovetter 1978). Someone with no ties never
+// joins.
+func (m *Module) joins(w *world.World, id world.PersonID, r float64) bool {
+	ties := w.Network.TiesOf(w, id)
+	if len(ties) == 0 {
+		return false
+	}
+	out := 0
+	for _, t := range ties {
+		if int(t.Other) < len(m.prev) && m.prev[t.Other] != world.Calm {
+			out++
+		}
+	}
+	return float64(out) >= r*float64(len(ties))
+}
+
+// activeShare is today's share of adults active or beyond.
+func (m *Module) activeShare(w *world.World) float64 {
+	adults, active := 0, 0
+	for _, id := range w.Alive {
+		if w.Day-w.People[id].BirthDay >= m.adultAge {
+			adults++
+			if w.Rebellion.Stage[id] != world.Calm {
+				active++
+			}
+		}
+	}
+	if adults == 0 {
+		return 0
+	}
+	return float64(active) / float64(adults)
+}
+
+// action reports whether a collective action is under way today (ODD
+// §6.14): a critical department on strike (T12.4), a fight or a held zone
+// (T12.5). None exist yet.
+func (m *Module) action(w *world.World) bool { return false }
+
+// ODD §1.2, Definitions: unrest and rebellion. A rebellion starts on the
+// last of RebellionDays days in a row with at least RebellionShare of
+// adults active, if a collective action was under way on one of them; its
+// start day is the first of them. Unrest starts on the last of UnrestDays
+// days in a row with at least UnrestShare active, its start day the first
+// of them. Both end after QuietDays days in a row below UnrestShare, their
+// end day the first of those. An unrest spell during which a rebellion
+// starts is that rebellion's run-up, not unrest, and no unrest is tracked
+// while a rebellion runs (Adam, 2026-10-31).
+func (m *Module) track(w *world.World, share float64, action bool) {
+	b, d := w.Rebellion, m.def
+	if share >= d.UnrestShare {
+		b.Busy, b.Quiet = b.Busy+1, 0
+	} else {
+		b.Busy, b.Quiet = 0, b.Quiet+1
+	}
+	if share >= d.RebellionShare {
+		b.Rising++
+	} else {
+		b.Rising = 0
+	}
+	if action {
+		b.LastAction = w.Day
+	}
+	head := func(kind string) world.EventHeader { return world.EventHeader{Day: w.Day, Type: kind} }
+	quietSince := w.Day - world.Tick(d.QuietDays) + 1
+	switch {
+	case b.RebellionStart != world.None:
+		if b.Quiet >= d.QuietDays {
+			w.Events = append(w.Events, world.RebellionEvent{EventHeader: head("rebellionEnd"),
+				Start: b.RebellionStart, End: quietSince, Ending: "suppressed"})
+			b.RebellionStart = world.None
+		}
+	case b.Rising >= d.RebellionDays && b.LastAction != world.None && b.LastAction > w.Day-world.Tick(d.RebellionDays):
+		b.RebellionStart, b.UnrestStart = w.Day-world.Tick(d.RebellionDays)+1, world.None
+		b.Rebellions++
+		w.Events = append(w.Events, world.RebellionEvent{EventHeader: head("rebellionStart"), Start: b.RebellionStart})
+	case b.UnrestStart != world.None:
+		if b.Quiet >= d.QuietDays {
+			w.Events = append(w.Events, world.UnrestEvent{EventHeader: head("unrest"), Start: b.UnrestStart, End: quietSince})
+			b.UnrestStart = world.None
+			b.UnrestSpells++
+		}
+	case b.Busy >= d.UnrestDays:
+		b.UnrestStart = w.Day - world.Tick(d.UnrestDays) + 1
 	}
 }
 

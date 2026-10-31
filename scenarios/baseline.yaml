@@ -244,6 +244,12 @@ rebellion:                        # ODD §6.14 (part 2, draft); used only when `
   scapegoatHardship: 0.2          # s_DD: hardship of living Down Deep; guess (lore: Mechanical is blamed when trouble rises, S2)
   activeThreshold: 0.1            # T: active when G − R × felt risk > T; Epstein (2002)
   arrestConstant: 2.3             # k: P = 0.9 when the patrol equals the actives plus one; Epstein (2002)
+  violentThreshold: 0.3           # T_v: a joined adult is violent when G − R × felt risk > T_v; guess
+  unrestShare: 0.01               # unrest: at least this share of adults active ... (ODD §1.2, decision D1)
+  unrestDays: 3                   # ... on this many days in a row
+  rebellionShare: 0.05            # rebellion: at least this share of adults active ...
+  rebellionDays: 7                # ... on this many days in a row, with a collective action on one of them
+  quietDays: 30                   # unrest and a rebellion end after this many days in a row below unrestShare
 
 governance:                       # ODD §6.8
   mode: appointment               # or: election

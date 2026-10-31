@@ -560,15 +560,18 @@ func TestGrievanceRuns(t *testing.T) {
 		t.Errorf("mean G %.4f → %.4f after the shock, want it more than doubled", g[19], g[20])
 	}
 	before, after := 0, 0
-	for _, line := range strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(dir, "daily.csv")))), "\n")[1:] {
+	lines := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(dir, "daily.csv")))), "\n")
+	active := slices.Index(strings.Split(lines[0], ","), "active")
+	for _, line := range lines[1:] {
 		cols := strings.Split(line, ",")
-		if day, n := atoi(t, cols[0]), atoi(t, cols[len(cols)-1]); day < cfg.Events[0].Day {
+		if day, n := atoi(t, cols[0]), atoi(t, cols[active]); day < cfg.Events[0].Day {
 			before = max(before, n)
 		} else {
 			after = max(after, n)
 		}
 	}
-	t.Logf("most adults active on a day: %d before the shock, %d after", before, after)
+	t.Logf("most adults active on a day: %d before the shock, %d after; unrest spells %d, rebellions %d",
+		before, after, sum(column(t, dir, "unrestSpells")), sum(column(t, dir, "rebellions")))
 	if after <= before {
 		t.Errorf("at most %d active after the shock, %d before; want more after", after, before)
 	}

@@ -248,6 +248,14 @@ type Rebellion struct {
 	ScapegoatHardship float64 `yaml:"scapegoatHardship"`
 	ActiveThreshold   float64 `yaml:"activeThreshold"`
 	ArrestConstant    float64 `yaml:"arrestConstant"`
+	ViolentThreshold  float64 `yaml:"violentThreshold"`
+
+	// Definitions of unrest and rebellion (ODD §1.2, decision D1).
+	UnrestShare    float64 `yaml:"unrestShare"`
+	UnrestDays     int     `yaml:"unrestDays"`
+	RebellionShare float64 `yaml:"rebellionShare"`
+	RebellionDays  int     `yaml:"rebellionDays"`
+	QuietDays      int     `yaml:"quietDays"`
 }
 
 // Rule is one row of the Pact (ODD §6.9).
