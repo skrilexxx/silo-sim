@@ -29,6 +29,16 @@ type Module struct {
 	residential    []int   // floors with homes, lowest first: where raids go
 	find, name     float64 // p_find, p_name
 	held, homeward []world.PersonID
+
+	fail, lift, fear   float64 // p_fail, λ, φ
+	liftKeep, fearKeep float64 // the share of S and F kept each day
+	condemned          []cleaning
+}
+
+// cleaning is a cleaner sentenced today, for tomorrow's control step.
+type cleaning struct {
+	id   world.PersonID
+	rule int
 }
 
 func New() *Module { return &Module{} }
@@ -62,6 +72,9 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	}
 	m.perOfficer, m.raid = cfg.Control.ArrestsPerOfficer, cfg.Control.RaidsPerYear/engine.DaysPerYear
 	m.find, m.name, m.mines = cfg.Control.FindChance, cfg.Control.NameChance, cfg.Control.MinesFloor
+	m.fail, m.lift, m.fear = cfg.Control.CleaningFailChance, cfg.Control.CleaningLift, cfg.Control.FearPerTrial
+	m.liftKeep = math.Exp2(-1 / (cfg.Control.LiftHalfLifeYears * engine.DaysPerYear))
+	m.fearKeep = math.Exp2(-1 / (cfg.Control.FearHalfLifeYears * engine.DaysPerYear))
 	for d, dep := range w.Depts {
 		if dep.Name == "judicial" || dep.Name == "sheriff" {
 			m.officers = append(m.officers, d)
@@ -98,14 +111,63 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 	m.headOfIT(w)
 	m.detect(w, r)
 	m.releases(w)
-	if err := m.trials(w); err != nil {
-		return err
-	}
+	m.cleanings(w, r)
+	m.trials(w)
 	if m.raid > 0 && r.Float64() < m.raid {
 		m.raidFloor(w, r)
 	}
 	m.arrests(w, r)
+	w.Control.Fear *= m.fearKeep
+	w.Beliefs.Lift *= m.liftKeep
 	return nil
+}
+
+// EventTypes: ODD §6.13, Scripted events. cleaningFailure is a failed
+// cleaning everyone sees, with no cleaner: everyone alive aged 14 or more
+// and not dosed learns the outside and the screen flags as lived. It fires
+// just before the control step.
+func (m *Module) EventTypes() []engine.EventType {
+	return []engine.EventType{{Name: "cleaningFailure", Phase: engine.PhaseControl, Fire: func(w *world.World, r *rng.Stream) error {
+		m.shock(w, r, 1)
+		return nil
+	}}}
+}
+
+// cleanings: ODD §6.13, Cleaning. The people sentenced yesterday died at
+// today's deaths step. Each cleaning failed with chance p_fail: everyone
+// aged 14 or more and not dosed watched with chance v, the rule's
+// visibility, and learned the outside and the screen flags as lived.
+// Otherwise the lift S rose by λ × v.
+func (m *Module) cleanings(w *world.World, r *rng.Stream) {
+	c := w.Control
+	for _, cl := range m.condemned {
+		v := m.rules[cl.rule].Visibility
+		failed := r.Float64() < m.fail
+		if failed {
+			c.Tally.Failed++
+			m.shock(w, r, v)
+		} else {
+			w.Beliefs.Lift += m.lift * v
+		}
+		c.Tally.Cleanings++
+		w.Events = append(w.Events, world.CleaningEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "cleaning"},
+			Person: cl.id, Rule: m.rules[cl.rule].ID, Failed: failed})
+	}
+	m.condemned = m.condemned[:0]
+}
+
+// shock is the cleaning-failure shock: each person alive, aged 14 or
+// more and not dosed watches with chance v (everyone when v = 1, with no
+// draw) and learns the outside and the screen as lived.
+func (m *Module) shock(w *world.World, r *rng.Stream, v float64) {
+	b := w.Beliefs
+	for _, id := range w.Alive {
+		if w.Day-w.People[id].BirthDay < m.shadowAge || int(id) >= len(b.Known) || b.Dosed(w, id) || v < 1 && r.Float64() >= v {
+			continue
+		}
+		b.Learn(id, world.FlagOutside, true)
+		b.Learn(id, world.FlagScreen, true)
+	}
 }
 
 // newcomers: people born since the last step have no charges.
@@ -296,7 +358,7 @@ func (m *Module) walkHome(w *world.World, id world.PersonID) bool {
 // trials: ODD §6.13, Trial. People in custody who reached the court are
 // tried. One who stopped short, at a break in the stairs, walks on to the
 // nearest court they can reach.
-func (m *Module) trials(w *world.World) error {
+func (m *Module) trials(w *world.World) {
 	c, s := w.Control, w.Space
 	for _, id := range slices.Clone(m.held) { // a warning removes them
 		if c.Hold[id] != world.Custody || s.Location[id] == 0 {
@@ -308,20 +370,19 @@ func (m *Module) trials(w *world.World) error {
 			}
 			continue
 		}
-		if err := m.try(w, id); err != nil {
-			return err
-		}
+		m.try(w, id)
 	}
-	return nil
 }
 
 // try sentences one person: for each rule in their case, the first or
 // the repeat penalty; they serve the most severe detention among them,
-// and every confiscation and family flag.
-func (m *Module) try(w *world.World, id world.PersonID) error {
+// and every confiscation and family flag. The trial adds φ × v to the
+// fear, with v the visibility of the most visible rule in the case.
+func (m *Module) try(w *world.World, id world.PersonID) {
 	c := w.Control
 	var worst config.Penalty
-	confiscate, flag := false, false
+	worstRule := world.None
+	confiscate, flag, v := false, false, 0.0
 	for i, rule := range m.rules {
 		if c.Charges[id]&(1<<i) == 0 {
 			continue
@@ -330,11 +391,12 @@ func (m *Module) try(w *world.World, id world.PersonID) error {
 		if c.Convicted[id]&(1<<i) != 0 && rule.Repeat != nil {
 			pen = *rule.Repeat
 		}
-		if severity(pen) > severity(worst) {
-			worst = pen
+		if worstRule == world.None || severity(pen) > severity(worst) {
+			worst, worstRule = pen, i
 		}
-		confiscate, flag = confiscate || pen.Confiscate, flag || pen.FlagFamily
+		confiscate, flag, v = confiscate || pen.Confiscate, flag || pen.FlagFamily, max(v, rule.Visibility)
 	}
+	c.Fear = min(1, c.Fear+m.fear*v)
 	c.Convicted[id] |= c.Charges[id]
 	c.Charges[id] = 0
 	if confiscate {
@@ -347,7 +409,9 @@ func (m *Module) try(w *world.World, id world.PersonID) error {
 	}
 	switch {
 	case worst.Cleaning:
-		return fmt.Errorf("control: person %d sentenced to cleaning, which comes with T11.3", id)
+		c.Hold[id], c.Until[id] = world.Condemned, w.Day+1
+		c.Doomed = append(c.Doomed, id)
+		m.condemned = append(m.condemned, cleaning{id, worstRule})
 	case worst.Mines > 0:
 		c.Tally.Mines++
 		c.Hold[id], c.Until[id] = world.Mines, w.Day+world.Tick(worst.Mines)
@@ -363,7 +427,6 @@ func (m *Module) try(w *world.World, id world.PersonID) error {
 			m.homeward = append(m.homeward, id)
 		}
 	}
-	return nil
 }
 
 // severity orders detentions: cleaning, then mines, then prison, then

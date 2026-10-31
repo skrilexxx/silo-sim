@@ -173,6 +173,8 @@ control:                          # ODD §6.13 (part 2, draft); used only when `
   cleaningFailChance: 0.05        # p_fail: a cleaner refuses and walks out of sight; guess
   cleaningLift: 0.05              # λ: lift of everyone's L from a cleaning seen by all (× the rule's visibility); guess
   liftHalfLifeYears: 1            # T_S: the lift halves in this time; guess
+  fearPerTrial: 0.01              # φ: fear added by a trial seen by all (× the rule's visibility); guess
+  fearHalfLifeYears: 1            # T_F: fear halves in this time; guess
   implantDoctors: 2               # N_doc: Medical workers who do every implant removal; show ("one or two doctors")
   deniedTries: 3                  # N_try: denied lottery wins before a flagged couple stops entering; guess (Adam: 3–4)
 

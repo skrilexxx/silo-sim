@@ -37,13 +37,16 @@ func newTiny(t *testing.T) *tiny {
 	cfg.Work.ShadowAge, cfg.Work.MasterMinSkill = 14, 0.5
 	cfg.Control.Surveillance, cfg.Control.ArrestsPerOfficer, cfg.Control.MinesFloor = 1, 1, 4
 	cfg.Control.FindChance, cfg.Control.NameChance = 1, 1
+	cfg.Control.CleaningLift, cfg.Control.LiftHalfLifeYears = 0.1, 1
+	cfg.Control.FearPerTrial, cfg.Control.FearHalfLifeYears = 0.1, 1
 	cfg.Pact = []config.Rule{
 		{ID: "noRelics", Active: true, Offences: []string{"holdRelic", "tradeRelic"}, Detection: 1,
 			First: config.Penalty{Confiscate: true, Prison: 90}, Repeat: &config.Penalty{Confiscate: true, Prison: 365}},
 		{ID: "noForbiddenTalk", Active: true, Offences: []string{"speakForbidden"}, Detection: 1,
 			First: config.Penalty{FlagFamily: true}, Repeat: &config.Penalty{Prison: 180, FlagFamily: true}},
 		{ID: "noOrganising", Active: false, Offences: []string{"organise"}, Detection: 1},
-		{ID: "noViolence", Active: true, Offences: []string{"violence"}, Detection: 1, First: config.Penalty{Mines: 730}},
+		{ID: "noViolence", Active: true, Offences: []string{"violence"}, Detection: 1, First: config.Penalty{Mines: 730}, Visibility: 0.8},
+		{ID: "goingOut", Active: true, Offences: []string{"askToGoOut"}, Detection: 1, First: config.Penalty{Cleaning: true}, Visibility: 0.5},
 	}
 	return &tiny{t: t, cfg: cfg, w: w, m: New(), r: r}
 }
@@ -548,5 +551,95 @@ func TestHeldTalkWithNobody(t *testing.T) {
 	s.step()
 	if s.w.Control.Held(a) || slices.Contains(s.m.held, a) {
 		t.Error("the dead are still held")
+	}
+}
+
+// deathsStep stands in for the deaths step (ODD §6.1): the condemned die.
+func (s *tiny) deathsStep() {
+	for _, id := range s.w.Control.Doomed {
+		s.kill(id)
+	}
+	s.w.Control.Doomed = s.w.Control.Doomed[:0]
+}
+
+// ODD §6.13, Cleaning: a cleaning sentence holds the condemned overnight;
+// they die at the next deaths step, and that day's control step logs the
+// cleaning and lifts L by λ × v; the lift halves every T_S. The trial
+// adds φ × v to the fear, which halves every T_F.
+func TestCleaningLiftsL(t *testing.T) {
+	s := newTiny(t)
+	a := s.on(1)
+	s.on(3)
+	s.start()
+	c, b := s.w.Control, s.w.Beliefs
+	s.offend(a, world.AskToGoOut)
+	s.days(2) // arrested, tried
+	if c.Hold[a] != world.Condemned || !slices.Equal(c.Doomed, []world.PersonID{a}) {
+		t.Fatalf("hold %d, doomed %v", c.Hold[a], c.Doomed)
+	}
+	if want := 0.1 * 0.5; math.Abs(c.Fear-want*s.m.fearKeep) > 1e-12 {
+		t.Errorf("fear %v after the trial and a day's decay, want %v", c.Fear, want*s.m.fearKeep)
+	}
+	s.deathsStep()
+	s.step()
+	ev := s.w.Events[len(s.w.Events)-1].(world.CleaningEvent)
+	if ev.Person != a || ev.Rule != "goingOut" || ev.Failed || c.Tally.Cleanings != 1 || c.Held(a) {
+		t.Errorf("event %+v, %d cleanings, still held %v", ev, c.Tally.Cleanings, c.Held(a))
+	}
+	if want := 0.1 * 0.5 * s.m.liftKeep; math.Abs(b.Lift-want) > 1e-12 {
+		t.Errorf("lift %v, want λ × v = 0.05, a day decayed: %v", b.Lift, want)
+	}
+	lift, fear := b.Lift, c.Fear
+	s.days(year)
+	if math.Abs(b.Lift-lift/2) > 1e-9 || math.Abs(c.Fear-fear/2) > 1e-9 {
+		t.Errorf("a year on: lift %v (want %v), fear %v (want %v)", b.Lift, lift/2, c.Fear, fear/2)
+	}
+	b.Base[0] = 0.8
+	b.Lift = 0.3
+	if b.L(0) != 1 {
+		t.Errorf("L %v, want it capped at 1", b.L(0))
+	}
+}
+
+// ODD §6.13, Cleaning: a failed cleaning teaches every watcher aged 14 or
+// more and not dosed the outside and the screen as lived, with no lift;
+// with visibility v each watches with chance v. The scripted
+// cleaningFailure is seen by everyone.
+func TestCleaningFailure(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Control.CleaningFailChance = 1
+	a := s.on(1)
+	kid := s.add(10, world.Child, world.None, 0)
+	dosed := s.on(3)
+	var crowd []world.PersonID
+	for range 2000 {
+		crowd = append(crowd, s.on(3))
+	}
+	s.start()
+	b := s.w.Beliefs
+	b.DosedUntil[dosed] = s.w.Day + 100
+	s.offend(a, world.AskToGoOut)
+	s.days(2)
+	s.deathsStep()
+	s.step()
+	both := world.Flags(1<<world.FlagOutside | 1<<world.FlagScreen)
+	seen := 0
+	for _, id := range crowd {
+		if b.Known[id] == both && b.Lived[id] == both {
+			seen++
+		}
+	}
+	share, sd := float64(seen)/2000, math.Sqrt(0.25/2000)
+	t.Logf("%.3f of the crowd watched (v = 0.5)", share)
+	if math.Abs(share-0.5) > 5*sd || b.Known[kid] != 0 || b.Known[dosed] != 0 || b.Lift != 0 || s.w.Control.Tally.Failed != 1 {
+		t.Errorf("watched %.3f, kid knows %05b, dosed %05b, lift %v, failed %d", share, b.Known[kid], b.Known[dosed], b.Lift, s.w.Control.Tally.Failed)
+	}
+
+	s = newTiny(t)
+	a, kid = s.on(1), s.add(10, world.Child, world.None, 0)
+	s.start()
+	s.m.EventTypes()[0].Fire(s.w, s.r)
+	if b := s.w.Beliefs; b.Known[a] != both || b.Known[kid] != 0 {
+		t.Errorf("scripted: adult knows %05b, child %05b", b.Known[a], b.Known[kid])
 	}
 }

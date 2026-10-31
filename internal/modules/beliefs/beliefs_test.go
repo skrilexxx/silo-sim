@@ -1062,3 +1062,27 @@ func TestActsReported(t *testing.T) {
 		t.Errorf("acts %+v, want %+v", s.w.Control.Acts, want)
 	}
 }
+
+// ODD §6.12, §6.13: fear F silences talk with acquaintances. At F = 1
+// nothing passes over a weak tie, and nothing is said there (no act);
+// over a strong tie talk goes on as before.
+func TestFearSilencesAcquaintances(t *testing.T) {
+	for _, fear := range []float64{0, 1} {
+		s := newTiny(t)
+		teller, mate, coworker := s.add(40, world.Worker), s.add(40, world.Worker), s.add(40, world.Worker)
+		s.join(mate, s.w.People[teller].Household)
+		s.w.Control = &world.Control{Head: world.None, Successor: world.None, Fear: fear}
+		s.startWith(1)
+		b, n := s.w.Beliefs, s.w.Network
+		n.Weak[teller] = []world.Tie{{Other: coworker, Kind: world.TieCoworker}}
+		n.Weak[coworker] = []world.Tie{{Other: teller, Kind: world.TieCoworker}}
+		n.Forget(s.w, []world.PersonID{teller, coworker}, nil)
+		b.Base[mate], b.Base[coworker] = 0, 0
+		b.Learn(teller, world.FlagSilos, false)
+		s.step()
+		heard := b.Known[coworker].Has(world.FlagSilos)
+		if !b.Known[mate].Has(world.FlagSilos) || heard != (fear == 0) || len(s.w.Control.Acts) != 2-int(fear) {
+			t.Errorf("F = %v: mate knows %v, coworker %v, %d acts", fear, b.Known[mate].Has(world.FlagSilos), heard, len(s.w.Control.Acts))
+		}
+	}
+}

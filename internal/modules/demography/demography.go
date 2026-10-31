@@ -61,6 +61,18 @@ func (m *Module) deaths(w *world.World, r *rng.Stream) error {
 			}
 		}
 	}
+	// ODD §6.13: the condemned go out to clean today, after the day's
+	// natural deaths, in the order they were sentenced.
+	if c := w.Control; c != nil {
+		for _, id := range c.Doomed {
+			if w.People[id].Alive {
+				if err := m.die(w, r, id); err != nil {
+					return err
+				}
+			}
+		}
+		c.Doomed = c.Doomed[:0]
+	}
 	// Removed after the loop, not during it, so the loop's order is the
 	// tick's shuffled order throughout.
 	m.removeDead(w, before)

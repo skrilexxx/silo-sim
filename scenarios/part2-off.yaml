@@ -42,6 +42,8 @@ control:                  # M11, off
   cleaningFailChance: 1
   cleaningLift: 1
   liftHalfLifeYears: 10
+  fearPerTrial: 1
+  fearHalfLifeYears: 10
   implantDoctors: 50
   deniedTries: 1
 

@@ -491,3 +491,46 @@ func TestControlNull(t *testing.T) {
 		}
 	}
 }
+
+// floats returns the named column of yearly.csv as numbers.
+func floats(t *testing.T, dir, name string) []float64 {
+	t.Helper()
+	rows := strings.Split(strings.TrimSpace(string(readFile(t, filepath.Join(dir, "yearly.csv")))), "\n")
+	i := slices.Index(strings.Split(rows[0], ","), name)
+	if i < 0 {
+		t.Fatalf("no column %s", name)
+	}
+	var out []float64
+	for _, row := range rows[1:] {
+		x, err := strconv.ParseFloat(strings.Split(row, ",")[i], 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, x)
+	}
+	return out
+}
+
+// T11.3 done-when: the cleaning-failure shock. A scripted cleaningFailure
+// in year 20 of a 1,000-person silo: at the next snapshot, 265 days
+// later, every adult knows the outside and the screen (nobody is dosed)
+// less the 2.5% that a 20-year half-life of lived knowledge forgets in
+// that time, and their mean L has fallen by about 2δ = 0.3.
+func TestCleaningFailureShock(t *testing.T) {
+	golden := loadInto(t, goldenScenario)
+	cfg := loadInto(t, "../../scenarios/baseline.yaml")
+	cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, 0, 25, golden.Population
+	cfg.Lottery.TargetPopulation = cfg.Population
+	cfg.Output.InvariantEvery = 30
+	cfg.Modules = append(cfg.Modules, "space", "network", "beliefs", "control")
+	cfg.Events = []config.Event{{Day: 20*365 + 100, Type: "cleaningFailure"}}
+	dir := mustSimulate(t, cfg)
+	out, scr, l := floats(t, dir, "knowOutside"), floats(t, dir, "knowScreen"), floats(t, dir, "meanL")
+	t.Logf("years 20–21: outside %.3f → %.3f, screen %.3f → %.3f, mean L %.3f → %.3f", out[19], out[20], scr[19], scr[20], l[19], l[20])
+	if out[20] < 0.95 || scr[20] < 0.95 || out[19] > 0.1 {
+		t.Errorf("outside %.3f → %.3f, screen → %.3f; want nearly nobody, then every adult", out[19], out[20], scr[20])
+	}
+	if drop := l[19] - l[20]; drop < 0.25 || drop > 0.35 {
+		t.Errorf("mean L fell by %.3f, want about 0.3", drop)
+	}
+}

@@ -32,6 +32,7 @@ type Beliefs struct {
 	Hidden []Flags   // facts hidden by Vitamin D+: not known until recalled
 	Risk   []float64 // risk aversion R, 0–1, fixed at birth (ODD §6.14)
 	Cost   float64   // δ: legitimacy lost per known flag
+	Lift   float64   // S: silo-wide lift of L from cleanings (ODD §6.13); 0 without them
 
 	Relics []Relic
 
@@ -123,7 +124,8 @@ func (b *Beliefs) Forget(id PersonID, f Flag) {
 	b.Lived[id] &^= 1 << f
 }
 
-// L is the person's legitimacy: their base minus δ per known flag.
+// L is the person's legitimacy: their base minus δ per known flag, plus
+// the lift S, within 0–1.
 func (b *Beliefs) L(id PersonID) float64 {
-	return max(0, b.Base[id]-b.Cost*float64(b.Known[id].Count()))
+	return Clamp01(b.Base[id] - b.Cost*float64(b.Known[id].Count()) + b.Lift)
 }

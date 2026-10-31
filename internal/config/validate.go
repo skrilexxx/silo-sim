@@ -77,6 +77,7 @@ func (s *Scenario) Validate() error {
 		{"control.nameChance", s.Control.NameChance},
 		{"control.cleaningFailChance", s.Control.CleaningFailChance},
 		{"control.cleaningLift", s.Control.CleaningLift},
+		{"control.fearPerTrial", s.Control.FearPerTrial},
 	}
 	for _, u := range unit {
 		if u.v < 0 || u.v > 1 {
@@ -125,6 +126,7 @@ func (s *Scenario) Validate() error {
 		{"beliefs.relicKeptYears", s.Beliefs.RelicKeptYears},
 		{"beliefs.waterDosingDays", float64(s.Beliefs.WaterDosingDays)},
 		{"control.liftHalfLifeYears", s.Control.LiftHalfLifeYears},
+		{"control.fearHalfLifeYears", s.Control.FearHalfLifeYears},
 		{"control.deniedTries", float64(s.Control.DeniedTries)},
 	}
 	for i, d := range s.Work.Departments {

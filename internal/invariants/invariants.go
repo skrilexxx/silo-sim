@@ -77,6 +77,9 @@ func control(w *world.World, rules int) error {
 			return fmt.Errorf("day %d: Head of IT %d knows %05b or holds a Flamekeeper seat", w.Day, h, w.Beliefs.Known[h])
 		}
 	}
+	if c.Fear < 0 || c.Fear > 1 || w.Beliefs.Lift < 0 {
+		return fmt.Errorf("day %d: fear %v, lift %v", w.Day, c.Fear, w.Beliefs.Lift)
+	}
 	if s := c.Successor; s != world.None && !w.People[s].Alive {
 		return fmt.Errorf("day %d: successor %d is dead", w.Day, s)
 	}

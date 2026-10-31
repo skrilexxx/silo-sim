@@ -248,6 +248,14 @@ type HeadOfITEvent struct {
 	Successor bool     `json:"successor"` // they were the previous Head's successor
 }
 
+// CleaningEvent: type "cleaning", a cleaner went out (ODD §6.13).
+type CleaningEvent struct {
+	EventHeader
+	Person PersonID `json:"person"`
+	Rule   string   `json:"rule"`   // the Pact rule they were sentenced under
+	Failed bool     `json:"failed"` // they refused and walked out of sight
+}
+
 // ScriptedEvent: type "scripted", a shock from the scenario's events: list
 // (ODD §5). What it causes is logged by the module that defines it.
 type ScriptedEvent struct {

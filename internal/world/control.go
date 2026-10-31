@@ -34,10 +34,11 @@ type Act struct {
 type Hold uint8
 
 const (
-	Free    Hold = iota
-	Custody      // arrested, until the trial
-	Prison       // detained on the court floor
-	Mines        // detained on the mines floor
+	Free      Hold = iota
+	Custody        // arrested, until the trial
+	Prison         // detained on the court floor
+	Mines          // detained on the mines floor
+	Condemned      // sentenced to cleaning: goes out the next day
 )
 
 // Tally counts what the regime did since day 0, for the output files.
@@ -48,6 +49,7 @@ type Tally struct {
 	Prisons   int
 	Mines     int
 	Cleanings int
+	Failed    int // cleanings that failed
 	Taken     int // relics confiscated
 	Raids     int
 }
@@ -58,8 +60,10 @@ type Control struct {
 	Head      PersonID // the Head of IT, or None
 	Successor PersonID // the Head's chosen successor, or None
 
-	Acts  []Act // reported since the last control step, in order
-	Tally Tally
+	Acts   []Act // reported since the last control step, in order
+	Tally  Tally
+	Fear   float64    // F, 0–1: how afraid the silo is of punishment
+	Doomed []PersonID // condemned to cleaning: they die at the next deaths step (ODD §6.1)
 
 	// Charges holds, per person, one bit per Pact rule they are charged
 	// under: their open case, or the case they are in custody for. Cases

@@ -455,7 +455,8 @@ func (m *Module) forget(w *world.World, r *rng.Stream) {
 // follows them, not the population. With the control module on, each
 // telling (the slot lands, the listener doesn't know the flag, and the two
 // talk) is reported as an act, believed or not (ODD §6.13), and the Head of
-// IT tells nothing.
+// IT tells nothing. Over a weak tie the teller dares to speak only with
+// chance 1 − F, the silo's fear; one who doesn't commits no act.
 //
 // The draws are made in the cheapest order, with the same chances. Every
 // pair of a teller's tie and a flag they tell is a slot; a slot is a real
@@ -474,6 +475,10 @@ func (m *Module) converse(w *world.World, r *rng.Stream) {
 	}
 	r.Shuffle(len(m.tellers), func(i, j int) { m.tellers[i], m.tellers[j] = m.tellers[j], m.tellers[i] })
 
+	fear := 0.0
+	if w.Control != nil {
+		fear = w.Control.Fear
+	}
 	sk := newSkip(r, m.pass)
 	for _, k := range m.tellers {
 		m.fl = flagsOf(b.Known[k]&^m.fresh[k], m.fl[:0])
@@ -484,6 +489,9 @@ func (m *Module) converse(w *world.World, r *rng.Stream) {
 			t, f := ties[s/len(fl)], fl[s%len(fl)]
 			j := t.Other
 			if b.Known[j].Has(f) {
+				continue
+			}
+			if fear > 0 && t.Kind.Weak() && r.Float64() < fear { // ODD §6.12: fear silences talk with acquaintances
 				continue
 			}
 			pass := !b.Hidden[j].Has(f) && !b.Dosed(w, j) && r.Float64() < 1-b.L(j)

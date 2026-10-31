@@ -210,3 +210,19 @@ func TestOrphansGoToAnotherZoneWhenTheirsHasNone(t *testing.T) {
 		t.Errorf("Up Top household is %v, want its adult plus both children", w.Households[2].Members)
 	}
 }
+
+// ODD §6.13, Cleaning: the condemned die at the deaths step, handled as
+// any death (the partner widowed, the death counted for the lottery).
+func TestCondemnedDieAtTheDeathsStep(t *testing.T) {
+	w, m := family(t)
+	for i := range w.People {
+		w.People[i].BirthDay = w.Day - 20*year // young: no natural deaths to speak of
+	}
+	w.Control = &world.Control{Doomed: []world.PersonID{1}}
+	if err := m.deaths(w, stream(t)); err != nil {
+		t.Fatal(err)
+	}
+	if w.People[1].Alive || slices.Contains(w.Alive, 1) || w.People[0].Partner != world.None || m.deaths30 == 0 || len(w.Control.Doomed) != 0 {
+		t.Errorf("alive %v, partner of 0: %d, deaths30 %d, doomed %v", w.People[1].Alive, w.People[0].Partner, m.deaths30, w.Control.Doomed)
+	}
+}

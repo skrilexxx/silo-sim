@@ -234,6 +234,8 @@ type Control struct {
 	CleaningFailChance float64 `yaml:"cleaningFailChance"`
 	CleaningLift       float64 `yaml:"cleaningLift"`
 	LiftHalfLifeYears  float64 `yaml:"liftHalfLifeYears"`
+	FearPerTrial       float64 `yaml:"fearPerTrial"`
+	FearHalfLifeYears  float64 `yaml:"fearHalfLifeYears"`
 	ImplantDoctors     int     `yaml:"implantDoctors"`
 	DeniedTries        int     `yaml:"deniedTries"`
 }
