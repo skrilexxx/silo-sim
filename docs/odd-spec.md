@@ -47,14 +47,14 @@ The answers are **conditional and comparative**. The agents follow rules, not hu
 
 - **Active rebel:** an adult (18+) whom the activation rule of §6.14 makes active on a given day.
 - **Unrest:** at least 1% of adults active on 3 days in a row, without meeting the rebellion test. Logged; not a rebellion.
-- **Rebellion:** starts when, on 7 days in a row, at least 5% of adults are active **and** at least one collective action (§6.14) is under way on one of those days: a strike in a critical department (Mechanical, Farms, Supply, Medical), a clash with Judicial, or rebels holding a floor. Its start day is the first of the 7 days. It ends when fewer than 1% of adults are active for 30 days in a row, or at collapse. Only one rebellion runs at a time.
+- **Rebellion:** starts when, on 7 days in a row, at least 5% of adults are active **and** at least one collective action (§6.14) is under way on one of those days: a strike in a critical department (Mechanical, Farms, Supply, Medical; at least a share q\_strike = 10% of its workers on strike), a fight with Judicial, or rebels holding a zone. Its start day is the first of the 7 days. It ends when fewer than 1% of adults are active for 30 days in a row, or at collapse. Only one rebellion runs at a time.
 - **Trigger:** the scripted event (`events:` in the scenario, T7.4) that happened within the 365 days before the start, or "none". With no scripted events, every rebellion is "none", and Q1's trigger question is answered by experiments that script shocks.
 - **Endings** (one per rebellion; collapse takes precedence):
   - *Suppressed:* it ends with the regime still in place.
-  - *Regime change:* rebels hold the IT floors and the Mayor's office for 30 days in a row. The regime is replaced and the scenario's post-change policy applies (§6.15). The run continues.
+  - *Regime change:* rebels hold Up Top, the zone of the IT floors and the Mayor's office, for 30 days in a row (§6.14). The regime is replaced and the scenario's post-change policy applies (§6.15). The run continues.
   - *Split:* a stair segment broken during the rebellion is still broken 90 days later, and at least 1,000 people live on each side of it.
   - *Collapse:* see below.
-- **Collapse** (the silo is dead, and the run stops), on the first day any of these holds; the cause is recorded:
+- **Collapse** (the silo is dead, and the run stops), on the first day any of these holds; the cause is recorded. It is checked only with the rebellion module on (§6.14), so the baseline never stops early:
   1. air or water below 0.2 for 30 days in a row;
   2. a Safeguard goes off (§6.16);
   3. population below the **point of no return** P\_min.
@@ -181,6 +181,7 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 10.5. **Network** *(part 2, draft)* — weak ties ended and drawn again; the connected runs of floors for the day's conversations (6.11)
 10.7. **Beliefs** *(part 2, draft)* — upbringing, forgetting, Vitamin D+, relics, the day's conversations that pass knowledge on, Flamekeepers (6.12)
 10.8. **Control** *(part 2, draft)* — Head of IT, detection, releases, trials and cleanings, raids, arrests (6.13)
+10.9. **Rebellion** *(part 2, draft)* — hardship and grievance, stages, fights, sabotage, stair repairs, unrest and rebellion, collapse (6.14)
 11. **Logging** — daily metrics written (8)
 
 ### Every 30 days
@@ -354,7 +355,7 @@ The generator is the root of the loop: it powers the farms, the water pumps and 
 - **Generator condition c:** loses 0.0004 per day (from new to broken in about 7 years without care). Repair adds ρ × mechanicalCoverage × (1 − c) and uses 1 part a day; with fewer parts in stock than one repair day uses there is no repair. Because repair slows as c nears 1, condition settles where wear and repair balance: c\* = 1 − wear / (ρ × coverage), which is 0.8 at full coverage with ρ = 0.002. Wear and repair come first each day, then the failure draw; c is kept within 0–1. The generator step runs before the work step (§3), so it uses the previous day's mechanicalCoverage (on day 1, the coverage from initialization).
 - **Failure:** daily chance f₀ × (1 − c)², with f₀ = 0.002, which gives about 3 failures per century at c = 0.8. A failure drops c by 0.1 and takes ⌈3 / (skill × partsShare)⌉ days to fix, at most 10. Here skill is the average skill of Mechanical workers (shadows not counted), and partsShare = min(1, parts in stock / the 30 a failure uses), measured before the failure takes its parts. With no workers or no parts the cap applies. Repair time is the work divided by the rate Mechanical can do it at: 3 days with perfect skill and full parts, about 4 at the usual skill of 0.85, 6 with a green crew (skill 0.5) or half the parts. Short outages matter because air follows power: one of 8 days or more on backup drops average health below the point where the loop can recover (see the calibration log, 2026-10-29). A failure then consumes its parts, as many as are left if the stock is short. The day of the failure is the first day of the outage. While it is down, the condition is frozen: no wear, no repair, no parts used and no new failure draw; only the days left count down. Backup power then gives 17.3% of capacity (about 26% of day-1 demand), whatever c and Mechanical coverage are. When capacity went from 1.3 to 1.5, this share went from 20% to 17.3%, so outages stay as harsh as before.
 - **Power:** supply = capacity × c × mechanicalCoverage (or backup while down); demand is fixed per person and per farm floor. Capacity is set on day 1 to 1.5 × day-1 demand. A failure leaves the condition at about 0.7, and 1.5 × 0.7 = 1.05, so the silo keeps full power after a repair; the earlier 1.3 left it at 0.91 and could tip the health loop into a collapse (calibration log, 2026-10-29). powerFactor = min(1, supply / demand).
-- **Water:** powerFactor × mechanicalCoverage (today's powerFactor, the previous day's coverage).
+- **Water:** powerFactor × mechanicalCoverage (today's powerFactor, the previous day's coverage). *Part 2:* 0 while the water pump is down after sabotage (§6.14).
 - **Air:** moves toward powerFactor by a third of the gap each day, so short outages are survivable and long ones are not.
 - **Food:** production = farm output × kcal per unit of farm output × powerFactor, added to the stock. Farm output is the previous day's, since the work step (§3 step 5) comes later.
 - **Parts:** measured in days of normal use. Supply makes 1.2 units a day × supplyCoverage (scavenging and recycling), added at the start of the generator step (§3 step 1) every day, outage days included, so they can serve that day's repair; each repair day uses 1 unit; each failure uses 30 more.
@@ -677,7 +678,7 @@ Relics are not lost or destroyed in this module. The regime can find and take th
 | tradeRelic | Each handover (§6.12); one act by both giver and receiver | Beliefs |
 | holdRelic | Holding is not an act: it is found only by searches (below) | — |
 
-The rest come with later modules: `organise`, `violence`, `sabotage` and `askToGoOut` with rebellion (§6.14), which decides who says "I want to go out"; `contactAttempt` with Silo 1 (§6.16). No module produces `unpermittedConception` yet, so its row has no effect.
+The rebellion module (§6.14) reports `organise` (each day a person is active), `violence` (each day a person is violent; a rebel arrested in a fight is charged with it without a detection draw) and `sabotage` (each sabotage). `contactAttempt` comes with Silo 1 (§6.16), and walking out with it, so no module produces `askToGoOut` or `unpermittedConception` yet, and their rows have no effect.
 
 **Detection.** Each act is seen with chance
 
@@ -689,7 +690,7 @@ where σ is the surveillance level (a policy lever, §6.15), c\_IT is IT's cover
 
 **Cases.** A case is a person and the rules they are charged under. A person has at most one open case: a detection against someone whose case is open, or who is in custody awaiting trial, adds the rule to it. Against someone serving a sentence, it opens a case that waits until they are released.
 
-**Arrests.** Each day Judicial arrests up to ⌊a × officers⌋ people, where officers are the workers of Judicial and the Sheriff who are not off work (§6.10). Open cases are taken oldest first, in the order they were opened. An arrest starts a trip (§6.10) to the *court*: the Judicial office floor nearest to where the person is, among those connected to it (lower on a tie). If the trip can't start (they are on the stairs, or no court floor is connected), the case waits and uses no capacity. From the arrest to the trial the person is *in custody*. On arrest:
+**Arrests.** Each day Judicial arrests up to ⌊a × officers⌋ people, where officers are the workers of Judicial and the Sheriff who are not off work (§6.10). Open cases are taken oldest first, in the order they were opened. An arrest starts a trip (§6.10) to the *court*: the Judicial office floor nearest to where the person is, among those connected to it (lower on a tie). If the trip can't start (they are on the stairs, or no court floor is connected), or their day location is in a zone the rebels hold (§6.14), the case waits and uses no capacity. Rebels arrested in a fight (§6.14) are sent to the court the same way but use no capacity. From the arrest to the trial the person is *in custody*. On arrest:
 
 - their flat is searched (below);
 - a Flamekeeper loses their seat and, with chance p\_name, names one other member, drawn uniformly; the named member is charged with `speakForbidden`, with no detection draw, if a rule listing it is active. A named member may name another when arrested in turn, so arrests can roll the group up one by one (T10.5), but the chain often stops. Naming each member with chance p\_name wiped out all 15 in the first year of every run (T11.2: about 4 named per arrest).
@@ -714,7 +715,7 @@ People in custody or detained have no conversations (§6.11) and can't use their
 - *Cleaned:* the silo-wide lift S (§6.12) rises by λ × v, and halves every T\_S years, so everyone's L is a little higher for a while and dissent (G = H × (1 − L), §6.14) falls.
 - *Failed:* the cleaning-failure shock. Each living person aged 14 or more who is not dosed watches with chance v, and learns the outside and screen flags as lived. Nobody else learns anything directly, but the watchers tell others (§6.12). There is no lift.
 
-**Fear.** F, 0–1, is how afraid the silo is of being punished. Every trial adds φ × v, with v the visibility of the most visible rule in the case: a warning for talk (v = 0.3) is barely noticed, a public cleaning (v = 1) is seen by everyone. F stays at most 1 and halves every T\_F years, so a crackdown makes people go quiet and a long peace lets them talk again. Fear acts on talk with acquaintances (§6.12, Telling and believing), not on talk in the family, so it slows the spread of knowledge across the silo while doubt still runs in families. It counts trials, not trials per head: a smaller silo has fewer of them and so less fear. Activation (§6.14) may read F too. F starts at 0; the warm-up years let it settle.
+**Fear.** F, 0–1, is how afraid the silo is of being punished. Every trial adds φ × v, with v the visibility of the most visible rule in the case: a warning for talk (v = 0.3) is barely noticed, a public cleaning (v = 1) is seen by everyone. F stays at most 1 and halves every T\_F years, so a crackdown makes people go quiet and a long peace lets them talk again. Fear acts on talk with acquaintances (§6.12, Telling and believing), not on talk in the family, so it slows the spread of knowledge across the silo while doubt still runs in families. It counts trials, not trials per head: a smaller silo has fewer of them and so less fear. Activation reads F too: it raises everyone's felt danger of arrest (§6.14). F starts at 0; the warm-up years let it settle.
 
 **Covert lottery denial** (§6.4). A couple is flagged if either partner is. A flagged couple can be drawn in the lottery as usual and believes it has won, but no implant is removed: the year passes with no child. The draw goes on to the next couple, so a denied win uses up no permit and the silo's births are not cut, only the flagged couple's (Adam, 2026-10-31: when each denied win used up a permit, a small silo with σ = 0.3 died out within 70 years). For 365 days from the draw she is not eligible, as with an open window, but the lottery does not count her in E (the regime knows the window is empty). After that she can enter and win again, and is denied again. Medical puts it down to infertility, so the couple learns nothing. Only the *implant doctors* know: N\_doc Medical workers who do every implant removal, so the regime keeps the secret to as few people as it can. Each denied win teaches the lottery flag, as lived, to every implant doctor not dosed that day, and they can tell others like any knower (§6.12). On day 1 the posts go to the N\_doc most skilled Medical workers; a doctor who dies, retires or is arrested leaves a post, filled at the next control step by the most skilled Medical worker not holding one. The Head of IT knows it too, and never tells. After N\_try denied wins she believes it and stops entering, never eligible again, whoever her partner is later. With nobody flagged the draw stops after N winners, as in the baseline.
 
@@ -761,6 +762,134 @@ control:                          # ODD §6.13; used only when `control` is in m
 ```
 
 Checked at load: σ, a, p\_find, p\_name, p\_fail and λ are in [0, 1]; R\_raid is in [0, 365]; φ is in [0, 1]; T\_S and T\_F are strictly greater than 0; N\_try is an integer ≥ 1; N\_doc is an integer ≥ 0; the mines floor is in the silo. That it is a Down Deep floor, and that Judicial has office floors, is checked when the module starts.
+
+### 6.14 Grievance and rebellion (draft)
+
+*Answers Q1 and Q2.* The dissent half of the rebellion model, after Epstein's civil violence model (2002): a person turns against the regime when their grievance outweighs their fear of arrest, comes out with others once enough of the people they know have, and the angriest go on to fight and sabotage. The module needs the control module (§6.13), and through it the beliefs, network and space modules; strikes act through work (§6.5), sabotage through resources (§6.6).
+
+**State** (owned by this module; §2 is unchanged): for each person, their stage (below) and the day of their last loss; for each zone, whether rebels hold it and since when; the water pump, running or down until a day; the zone counts of the day before; the open unrest spell and rebellion, if any, with what the log needs (§1.2).
+
+**Hardship.** H, 0–1, is how hard a person's life is. It is recomputed every day for every adult (worker age, 18, §6.5) from four sources, combined like independent chances, so that H stays within 0–1 without a clamp:
+
+```latex
+H = 1 - (1 - h_{food})(1 - h_{health})(1 - h_{loss})(1 - h_{DD})
+```
+
+- *Food:* h\_food = max(0, today's hardship of their home zone) (§6.7): 0 in a fed silo, 0.1 under rationing.
+- *Health:* h\_health = 1 − their health (§6.2).
+- *Loss:* h\_loss = ℓ × 2^(−t / T\_loss), with t the years since their last loss, and 0 if they never had one. A loss is a family member (partner, household or kin, the first three tie kinds of §6.11) cleaned (§6.13, failed or not) or killed in a fight (below), or, for both partners, a denied lottery win (§6.13). The couple puts the denial down to infertility, but a child that never comes is a loss whatever its cause. A new loss starts the clock again; losses don't add up.
+- *Scapegoat:* h\_DD = s\_DD if their home is in the Down Deep, else 0. The regime blames the lowest class when trouble rises, as Mechanical learns in S2 (lore reference).
+
+In a fed, healthy silo H is about 0.05 Up Top and in the Mids and about 0.25 Down Deep.
+
+**Grievance.** G = H × (1 − L), with L the person's legitimacy (§6.12), as in Epstein (2002). Hardship alone breeds no revolt among people who believe the regime is right: at L\_edu = 0.8 even H = 1 gives G = 0.2.
+
+**Arrest estimate.** A person judges their chance of arrest, if they turned active, from the zone they are in, by their day location (§6.10):
+
+```latex
+P = 1 - \exp\left(-k \times \frac{O_z}{A_z + 1}\right), \qquad O_z = officers \times \frac{a_z}{a}
+```
+
+A\_z is the number of adults whose stage was active or beyond yesterday and whose day location was in zone z; the +1 is the person themselves, as in Epstein. O\_z is the zone's *patrol*: the officers on duty (§6.13: Judicial and Sheriff workers not off work) spread over the silo in proportion to adults, where a\_z is the number of adults whose day location yesterday was in z, on a floor connected to a court floor (§6.13), and a the same count over the whole silo. An adult on a floor cut off from every court has O = 0 and so P = 0: the regime can't reach them, and they know it. With k = 2.3, P = 0.9 when the patrol equals the actives plus one (Epstein's choice). As P falls when unrest grows faster than the patrol, a few more actives can tip many others: Epstein's outbursts. Patrols are not people on floors: like arrest capacity (§6.13) they are abstract, and no officer moves. Here the patrol follows the adults; the regime's share per zone becomes a policy lever in §6.15.
+
+**Stages.** Each day every adult takes one *stage*: calm, active, joined or violent, each needing the one before. Calm are all who are not eligible: officers on duty, the Head of IT, people held by Judicial (§6.13) and people on the stairs (§6.10). Fear F (§6.13) raises the felt danger of arrest the way the sources of hardship combine, so the *net risk* is
+
+```latex
+N = R \times \left(1 - (1 - P)(1 - F)\right)
+```
+
+with R the person's risk aversion (§6.12). Then:
+
+- *Active* if G − N > T. Active people speak out and agitate: each day they commit the offence `organise` (§6.9).
+- *Joined* if active and at least a share R of their ties (§6.11, any kind) were active or beyond yesterday. People come out together (Granovetter 1978), and the risk-averse need more of the people they know beside them. Someone with no ties never joins.
+- *Violent* if joined and G − N > T\_v, with T\_v ≥ T: the angriest and least deterred fight. Each day they commit the offence `violence` in place of `organise`.
+
+Every stage is computed from today's G and F and from yesterday's stages and zone counts, so the order people are visited in doesn't matter and the step draws nothing for it. A stage has no memory: a person is active exactly on the days the rule says so. Officers never turn against the regime (no defection), and rebels never march: they act where their day location already puts them.
+
+**Strikes.** From the day after they join, a joined worker or shadow is *on strike*: they stay on their work floor but don't work, as if stranded (§6.10: no output, no skill growth, no work injuries), except that they still count as workers for targets and retraining (§6.5), so the regime doesn't replace them. A Mechanical strike lowers mechanicalCoverage and through the §6.6 loop power, food and air (pattern C3). A department is *on strike* (§1.2) on a day when at least a share q\_strike of its workers are.
+
+**Fights** (decision D6). Each day, in each zone (Up Top, Mids, Down Deep, in that order) where violent rebels on floors connected to a court, B\_z of them, meet a patrol O\_z > 0, the two sides fight. By Lanchester's square law each side loses in proportion to the other's size:
+
+```latex
+rebels\ out = \min(B_z,\; e_J \times O_z), \qquad officers\ out = \min(O_z,\; e_R \times B_z)
+```
+
+A loss that is not a whole number is rounded down, plus one with a chance equal to the fraction. The rebels put out are drawn uniformly from the B\_z; the officers uniformly from all officers on duty, since patrols are abstract. Each one put out is killed with chance p\_kill; killed people are held until they die at the next day's deaths step (§3 step 7), handled as any death (§6.1). A rebel not killed is arrested: in custody and sent to the court as in an arrest (§6.13), charged with `violence` with no detection draw and using no arrest capacity. An officer not killed is wounded: a work injury (§6.2). Officers are armed and rebels are not, so e\_J > e\_R: at the defaults a patrol beats up to √(e\_J / e\_R) ≈ 2.2 times its number.
+
+**Held zones.** Rebels *hold* a zone on a day when its violent rebels, wherever they are in it, outnumber its patrol. Judicial arrests nobody whose day location is in a held zone (§6.13); their cases wait. Holding Up Top, where the IT floors and the Mayor's office are, for 30 days in a row is a regime change (§1.2). It ends the rebellion and is logged; what the new regime does comes with §6.15, so until then the silo runs on as before.
+
+**Sabotage.** Each violent rebel sabotages with daily chance p\_sab, visited in the tick's shuffled order (§3). The target follows from their day location:
+
+- *On a Mechanical floor* (§5): the generator if it is running, else the water pump if it is running, else the stair segment as below.
+- *On a floor below every court floor:* the stair segment between their floor and the next floor up (segment f − 1 for floor f), if it is intact. Breaking it cuts their floor and every floor below it off from the courts, and so from patrols and arrests.
+- *Anywhere else* there is nothing to sabotage.
+
+Effects:
+
+- *Generator:* it fails at the next generator step as if the failure draw had come up (§6.6: condition − 0.1, an outage, 30 parts).
+- *Water pump:* from the next day water is 0 (§6.6) until it is repaired, which takes the same work as a generator failure: ⌈3 / (skill × partsShare)⌉ days, at most 10, and 30 parts. Silo 17's raider wrecked the groundwater pump (lore reference). Water harms nobody's health in the baseline; a pump kept down kills the silo through the collapse check below.
+- *Stair segment:* it is broken (§6.10).
+
+Each sabotage is the offence `sabotage` (§6.9).
+
+**Stair repairs.** Each day each broken segment, visited from 1 to 143, is repaired with chance mechanicalCoverage / D\_stair, unless a floor at either end lies in a held zone. Segments broken by scripted events are repaired the same way. A segment still broken 90 days after it broke in a rebellion is a split (§1.2).
+
+**Unrest, rebellion and endings.** At the end of the step the module applies the tests of §1.2 to the day's stages: unrest, the start and end of a rebellion, and its ending. A *collective action* is under way on a day with a critical department on strike, a fight in any zone, or a held zone. A rebellion's *starting zone* is the home zone of most of the adults active on its start day (on a tie, the first in the order Up Top, Mids, Down Deep).
+
+**Collapse** (§1.2). Checked at the end of the step, and only with this module on, so a baseline run never stops early: air or water below 0.2 for 30 days in a row, or the population below P\_min, which is off (0) until T12.6 measures it. The Safeguard comes with §6.16. On collapse the run records the day and cause and stops, unless `output.runAfterCollapse` is true; then it runs on, logging extinction if the last person dies.
+
+**Nobody says "I want to go out" yet.** No question needs it before Silo 1, where walking out is a contact attempt (§6.16), so this module reports no `askToGoOut`, and the `goingOut` rule has no effect for now.
+
+**Step.** The rebellion step (§3 step 10.9) runs after the control step, in this order:
+
+1. newcomers get their state; the losses reported today (cleanings, denied wins) are recorded;
+2. hardship and grievance;
+3. stages, and the acts reported to control, which sees them at its next step;
+4. fights, zone by zone;
+5. held zones;
+6. sabotage;
+7. stair repairs;
+8. unrest, rebellion and endings; collapse;
+9. the zone counts kept for tomorrow.
+
+**Scripted events** (§5):
+
+- `breakStairs` (segment): breaks the segment, as in S2's blast at levels 90–92.
+- `cull` (share, department optional): a share of the living people, or of the department's workers, drawn uniformly, die at that day's deaths step. It starts runs from the damaged states that measure P\_min (T12.6).
+
+**Outputs** (only when the module is on):
+
+- *daily.csv:* adults active, joined and violent; workers on strike; held zones; broken segments; pump down.
+- *yearly.csv:* mean H and G of adults by home zone; rebels killed and arrested in fights, officers killed and wounded; sabotage by target; stair repairs; days with unrest; rebellions started.
+- *events.jsonl:* `unrest` and `rebellion` (start and end, with the ending), `zoneHeld` and `zoneFreed`, `sabotage` (person, target), `stairRepaired`, `collapse` (cause), `extinction`.
+- *rebellions.jsonl:* one line per rebellion, written at its end, or at the end of the run as unfinished: start, trigger, starting zone, peak share of adults active, duration, collective actions (departments struck, fights, zones held), deaths, arrests, damage (segments broken, generator and pump sabotage) and ending (§1.2).
+- *run.json:* time to first rebellion (or none), rebellions, unrest spells, and the day and cause of collapse (or none).
+- *frames.csv.gz:* per floor, the share of adults active and violent.
+
+**Invariants** (§8): everyone not calm is a living eligible adult; violent people are joined and joined people active; everyone on strike is a joined worker or shadow; H, G and P lie in 0–1; in a held zone violent rebels outnumber the patrol; a stopped pump has a repair day.
+
+**Off and null.** With the module off, nothing of this exists and nothing is checked for collapse. With it on and T = 1 nobody is ever active (G ≤ 1 and N ≥ 0), so nobody strikes, fights or sabotages and nothing breaks. The files then differ from a run without the module only by the new columns and outcome fields, unless the silo collapses, which `scenarios/baseline.yaml` never does.
+
+**Parameters:** loss hardship ℓ and its half-life T\_loss, scapegoat hardship s\_DD, activation threshold T and arrest constant k (both Epstein 2002), violence threshold T\_v, officer and rebel effect e\_J and e\_R, killed share p\_kill, sabotage chance p\_sab, stair repair time D\_stair, strike share q\_strike (§1.2), and the point of no return P\_min (§1.2, measured in T12.6). They move into §7 when M12 is done. In the scenario file they are the `rebellion:` section:
+
+```yaml
+rebellion:                        # ODD §6.14; used only when `rebellion` is in modules
+  lossHardship: 0.5               # ℓ: hardship from a loss in the family, at the day of the loss; guess
+  lossHalfLifeYears: 2            # T_loss: the loss's hardship halves in this time; guess
+  scapegoatHardship: 0.2          # s_DD: hardship of living Down Deep; guess (lore: Mechanical is blamed, S2)
+  activeThreshold: 0.1            # T: Epstein (2002)
+  arrestConstant: 2.3             # k: P = 0.9 when the patrol equals the actives; Epstein (2002)
+  violentThreshold: 0.3           # T_v: guess
+  officerEffect: 0.05             # e_J: rebels put out a day per officer in a fight; guess
+  rebelEffect: 0.01               # e_R: officers put out a day per violent rebel in a fight; guess
+  killedShare: 0.3                # p_kill: share of those put out who die; guess
+  sabotageChance: 0.001           # p_sab: per violent rebel and day; guess
+  stairRepairDays: 60             # D_stair: mean days to repair a segment at full Mechanical coverage; guess
+  strikeShare: 0.1                # q_strike: share of a department's workers on strike that makes it a strike (§1.2); guess
+  pointOfNoReturn: 0              # P_min (§1.2); 0 = off until measured in T12.6
+```
+
+`output.runAfterCollapse` (default false) sits with the other output settings. Checked at load: ℓ, s\_DD, T, T\_v, p\_kill, p\_sab and q\_strike are in [0, 1], and T\_v ≥ T; T\_loss, k and D\_stair are strictly greater than 0; e\_J and e\_R are ≥ 0; P\_min is an integer ≥ 0.
 
 ## 7. Parameters
 
@@ -908,5 +1037,8 @@ The persistent-zones target was 90% until calibration (2026-10-29). Partners are
 ## 9. Sources
 
 - Lore and canon decisions: Silo Mechanics Reference (Show Canon, through S3E9)
+- Dissent: [Epstein (2002), Modeling civil violence: an agent-based computational approach, PNAS 99(suppl. 3) 7243–7250](https://www.pnas.org/doi/10.1073/pnas.092080199): grievance, risk aversion, arrest estimate and activation threshold (§6.14)
+- Joining: Granovetter (1978), Threshold models of collective behavior, American Journal of Sociology 83(6) 1420–1443 (§6.14)
+- Fights: Lanchester's square law (Lanchester 1916, Aircraft in Warfare) (§6.14)
 - Structure of this spec: [Grimm et al. (2020), The ODD protocol for describing agent-based and other simulation models: a second update, JASSS 23(2) 7](https://www.jasss.org/23/2/7/7.pdf) ([record](https://pubs.usgs.gov/publication/70209554))
 - Mortality shape: the Gompertz law, a standard model of adult mortality; the parameters here are tuned by hand, not taken from a life table.

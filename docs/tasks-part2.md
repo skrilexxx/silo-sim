@@ -36,7 +36,7 @@ Each one is settled in the spec task named. Decided ones point to the spec; for 
 | D3 | Location: continuous walking or home and work floors | T8.0 | **Decided 2026-10-30:** home floor + work floor, one day location per person per day; trips as multi-day events, no step-by-step walking; a broken segment strands workers cut off from their department (ODD §6.10) |
 | D4 | Beliefs: one number or several | T10.0 | **Decided 2026-10-31:** legitimacy L (0–1) = an upbringing base minus a cost per known flag; five knowledge flags; no free-text beliefs; hardship enters grievance, not L (ODD §6.12) |
 | D5 | Vitamin D+ in the water: can memories come back? | T10.0 | **Decided 2026-10-31:** dosing hides flags; after it stops, a hidden flag comes back with a chance per cue (a held relic, or a conversation with someone who knows it); hidden flags never fade on their own (ODD §6.12) |
-| D6 | How rebels and Judicial fight | T12.0 | [force ratio decides casualties (simple Lanchester rule); no individual combat] |
+| D6 | How rebels and Judicial fight | T12.0 | **Decided 2026-10-31:** per zone, no marching: violent rebels fight the zone's abstract patrol by Lanchester's square law; those put out are killed or arrested; rebels hold a zone they outnumber its patrol in (ODD §6.14) |
 | D7 | Regime behaviour | T13.0 | [fixed response strategy per scenario (an experimental factor), not a learning regime] |
 | D8 | Silo 1 as agents or as a rule set | T14.0 | [a rule set with three settings: `off`, `watch`, `full`; no second simulated population] |
 | D9 | Several silos at once | — | [no; only as optional work after M15] |
@@ -148,7 +148,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
 
 *Answers Q1 and Q2. This is the core of the thesis.*
 
-- [ ] **T12.0 Spec: grievance, activation and collective action (ODD §6.14).** Decision D6. Based on Epstein's civil violence model (2002), extended with networks and thresholds:
+- [x] **T12.0 Spec: grievance, activation and collective action (ODD §6.14).** (2026-10-31, approved; D6 decided: zone fights by Lanchester's square law, no marching; fear in the net risk; `askToGoOut` deferred to §6.16) Decision D6. Based on Epstein's civil violence model (2002), extended with networks and thresholds:
   - **hardship H** from zone hardship (rations), health, losses in the family (denied lottery, cleaned relatives) and being in the Down Deep (scapegoating, S2)
   - **grievance G** = H × (1 − L)
   - **active** when G − R × P(arrest) > threshold, where P(arrest) is estimated from officers and active rebels among the person's contacts and floor
@@ -156,13 +156,13 @@ Questions, definitions and the plumbing every later module needs. No model behav
   - **escalation:** unrest → protest or strike → uprising
   - **actions:** strikes in a department (a Mechanical strike cuts power), occupying floors, barricading or breaking stair segments, sabotaging the generator or water pump, clashes with Judicial (force ratio decides casualties)
   - **endings:** suppressed, regime change, split silo, silo death (D2)
-- [ ] **T12.1 Hardship and grievance.**
-- [ ] **T12.2 Activation and arrest estimate.**
+- [ ] **T12.1 Module, hardship and grievance.** The `rebellion:` section; H from food, health, losses and the Down Deep; G = H × (1 − L); losses reported by control (cleanings, denied wins). Mean H and G by zone in `yearly.csv`.
+- [ ] **T12.2 Arrest estimate and activation.** Patrols per zone, P, net risk with fear, the active stage and its `organise` acts.
   - *Done when:* reproduces the qualitative result of Epstein's model in a test world: with low legitimacy, outbursts come in bursts when the officer ratio drops.
-- [ ] **T12.3 Collective action and thresholds.** Groups per floor and department, joining by threshold, escalation states.
-- [ ] **T12.4 Strikes and leverage.** A strike stops a department's output; a Mechanical strike lowers power through the existing loop (§6.6).
-- [ ] **T12.5 Clashes and casualties.** Judicial versus rebels by force ratio; deaths, injuries and arrests.
-- [ ] **T12.6 Sabotage and collapse.** Stair segments, generator, water pump; the collapse checks of ODD §1.2; the run records the cause and stops (or keeps going to extinction with `output.runAfterCollapse`). **Measure P_min:** start runs from damaged states (population cut to 9,000, 8,000, 7,000 …; Mechanical cut by 10%, 20% …), 100 seeds each; P_min is the highest population at which fewer than 5% of seeds recover above 9,000 within 50 years. Write it into ODD §1.2 and the calibration log.
+- [ ] **T12.3 Joining and escalation.** The joined stage (share R of ties), the violent stage (T\_v) and its `violence` acts; unrest and the rebellion test of §1.2.
+- [ ] **T12.4 Strikes and leverage.** Joined workers and shadows stop working (still counted for targets and retraining); a Mechanical strike lowers power through the existing loop (§6.6).
+- [ ] **T12.5 Fights and held zones.** Lanchester's square law per zone; deaths, wounds and arrests; held zones block arrests; regime change.
+- [ ] **T12.6 Sabotage and collapse.** Stair segments, generator, water pump; stair repairs; the `breakStairs` and `cull` events; the collapse checks of ODD §1.2; the run records the cause and stops (or keeps going to extinction with `output.runAfterCollapse`). **Measure P_min:** start runs from damaged states (population cut to 9,000, 8,000, 7,000 …; Mechanical cut by 10%, 20% …), 100 seeds each; P_min is the highest population at which fewer than 5% of seeds recover above 9,000 within 50 years. Write it into ODD §1.2 and the calibration log.
 - [ ] **T12.7 Rebellion log and outcomes.** `rebellions.jsonl`: start, trigger, zone, peak size, actions, casualties, damage, ending.
 - [ ] **T12.8 First-results checkpoint.** `scenarios/canon.yaml` with modules 8–12 on, 100 seeds. Check patterns C1–C4. **Stop here if they fail.** Fix rules in the spec, not numbers, then continue. This is the first moment the thesis has real results; write them into the calibration log.
 
