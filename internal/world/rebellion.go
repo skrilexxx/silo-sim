@@ -56,6 +56,116 @@ type Rebellion struct {
 	LastAction                  Tick
 	UnrestStart, RebellionStart Tick
 	UnrestSpells, Rebellions    int
+
+	// The rebellion log (ODD §6.14, Outputs): one entry per day, the last
+	// RebellionDays days while no rebellion runs (a rebellion's start lies
+	// that far back when it is detected), every day since its start while
+	// one runs; the running rebellion's trigger; and the records of
+	// rebellions ended since the output module last took them.
+	Days       []RebellionDay
+	Trigger    string
+	TriggerDay Tick
+	Ended      []RebellionRecord
+}
+
+// RebellionDay is what one day adds to a rebellion's record (ODD §6.14,
+// Outputs). Counts are the day's own, not running totals.
+type RebellionDay struct {
+	Day      Tick
+	Share    float64 // adults active or beyond
+	Zone     Zone    // home zone of most of them; Up Top on a tie or with none
+	Struck   []int   // critical departments on strike
+	Fought   bool
+	Held     [NumZones]bool
+	Fights   FightTally
+	Arrests  int // by Judicial, for any offence (ODD §6.13)
+	Sabotage [NumTargets]int
+}
+
+// RebellionRecord is one line of rebellions.jsonl (ODD §6.14, Outputs).
+type RebellionRecord struct {
+	Start             Tick     `json:"start"`
+	End               *Tick    `json:"end"` // nil while unfinished
+	Days              int      `json:"days"`
+	Trigger           string   `json:"trigger"`
+	TriggerDay        *Tick    `json:"triggerDay,omitempty"`
+	Zone              string   `json:"zone"`
+	PeakActive        float64  `json:"peakActive"`
+	Struck            []string `json:"struck"`
+	FightDays         int      `json:"fightDays"`
+	Held              []string `json:"held"`
+	RebelsKilled      int      `json:"rebelsKilled"`
+	OfficersKilled    int      `json:"officersKilled"`
+	FightArrests      int      `json:"fightArrests"`
+	Arrests           int      `json:"arrests"`
+	SegmentsBroken    int      `json:"segmentsBroken"`
+	GeneratorSabotage int      `json:"generatorSabotage"`
+	PumpSabotage      int      `json:"pumpSabotage"`
+	Ending            string   `json:"ending"`
+}
+
+// Record sums the running rebellion's days into its record (ODD §6.14,
+// Outputs). It covers the days from its start up to its end day, or the
+// day before when suppressed, as that end day is the first quiet one; end
+// None is a rebellion still running, its record unfinished, covering every
+// day so far. Days is end − start (today + 1 − start while unfinished).
+func (r *Rebellion) Record(w *World, end Tick, ending string) RebellionRecord {
+	start := r.RebellionStart
+	rec := RebellionRecord{Start: start, Trigger: r.Trigger, Struck: []string{}, Held: []string{}, Ending: ending}
+	last := end
+	switch {
+	case end == None:
+		last = w.Day
+		rec.Days = int(w.Day + 1 - start)
+	case ending == "suppressed":
+		last = end - 1
+		fallthrough
+	default:
+		rec.End = &end
+		rec.Days = int(end - start)
+	}
+	if r.TriggerDay != None {
+		rec.TriggerDay = &r.TriggerDay
+	}
+	struck := make([]bool, len(w.Depts))
+	var held [NumZones]bool
+	for i := range r.Days {
+		d := &r.Days[i]
+		if d.Day < start || d.Day > last {
+			continue
+		}
+		if d.Day == start {
+			rec.Zone = d.Zone.String()
+		}
+		rec.PeakActive = max(rec.PeakActive, d.Share)
+		for _, dep := range d.Struck {
+			struck[dep] = true
+		}
+		if d.Fought {
+			rec.FightDays++
+		}
+		for z, h := range d.Held {
+			held[z] = held[z] || h
+		}
+		rec.RebelsKilled += d.Fights.RebelsKilled
+		rec.OfficersKilled += d.Fights.OfficersKilled
+		rec.FightArrests += d.Fights.RebelsArrested
+		rec.Arrests += d.Arrests
+		rec.SegmentsBroken += d.Sabotage[TargetStairs]
+		rec.GeneratorSabotage += d.Sabotage[TargetGenerator]
+		rec.PumpSabotage += d.Sabotage[TargetPump]
+	}
+	for dep, s := range struck {
+		if s {
+			rec.Struck = append(rec.Struck, w.Depts[dep].Name)
+		}
+	}
+	for z, h := range held {
+		if h {
+			rec.Held = append(rec.Held, Zone(z).String())
+		}
+	}
+	return rec
 }
 
 // Target is what a sabotage hits (ODD §6.14, Sabotage).

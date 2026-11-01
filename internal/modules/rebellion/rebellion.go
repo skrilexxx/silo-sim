@@ -35,6 +35,13 @@ type Module struct {
 	officers     []int            // Judicial's and the Sheriff's department indexes
 	courts       []int            // Judicial's office floors
 	reach        []bool           // per floor: connected to a court today
+	events       []config.Event   // the scripted events, for triggers (ODD §1.2)
+
+	// Totals at the end of yesterday's step, for the day's counts in the
+	// rebellion log.
+	lastFights  world.FightTally
+	lastSab     [world.NumTargets]int
+	lastArrests int
 }
 
 func New() *Module { return &Module{} }
@@ -69,8 +76,9 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 		}
 	}
 	m.reach = make([]bool, len(w.Floors))
+	m.events, m.lastArrests = cfg.Events, w.Control.Tally.Arrests
 	w.Rebellion = &world.Rebellion{LastAction: world.None, UnrestStart: world.None, RebellionStart: world.None,
-		Collapsed: world.None, Striking: make([]int, len(w.Depts))}
+		Collapsed: world.None, Striking: make([]int, len(w.Depts)), TriggerDay: world.None}
 	m.newcomers(w)
 	m.count(w)
 	return nil
@@ -188,9 +196,7 @@ func (m *Module) collapse(w *world.World) {
 	b.Collapsed = w.Day
 	w.Events = append(w.Events, world.CollapseEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "collapse"}, Cause: cause})
 	if b.RebellionStart != world.None {
-		w.Events = append(w.Events, world.RebellionEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "rebellionEnd"},
-			Start: b.RebellionStart, End: w.Day, Ending: "collapse"})
-		b.RebellionStart = world.None
+		m.end(w, w.Day, "collapse")
 	}
 	w.Over = w.Over || !m.runAfter
 }
@@ -354,18 +360,68 @@ func (m *Module) strikes(w *world.World) {
 }
 
 // action reports whether a collective action is under way today (ODD
-// §6.14): a fight, a held zone, or a critical department on strike, its
-// strikers at least a share q_strike of its workers.
+// §6.14): a fight, a held zone, or a critical department on strike.
 func (m *Module) action(w *world.World) bool {
-	if m.fought || slices.Contains(w.Rebellion.Held[:], true) {
-		return true
-	}
+	return m.fought || slices.Contains(w.Rebellion.Held[:], true) || len(m.struck(w)) > 0
+}
+
+// struck lists the critical departments on strike today: their strikers
+// are at least a share q_strike of their workers (ODD §1.2).
+func (m *Module) struck(w *world.World) []int {
+	var ds []int
 	for _, d := range m.critical {
 		if n := w.Rebellion.Striking[d]; n > 0 && float64(n) >= m.strikeShare*float64(w.Depts[d].Headcount) {
-			return true
+			ds = append(ds, d)
 		}
 	}
-	return false
+	return ds
+}
+
+// log adds today to the rebellion log (ODD §6.14, Outputs): the share
+// active, the home zone of most active adults, the collective actions,
+// and today's fight losses, arrests and sabotage. While no rebellion runs
+// it keeps only the days a rebellion detected today could reach back to.
+func (m *Module) log(w *world.World, share float64) {
+	b, c := w.Rebellion, w.Control
+	if n := m.def.RebellionDays - 1; b.RebellionStart == world.None && len(b.Days) > n {
+		b.Days = slices.Delete(b.Days, 0, len(b.Days)-n)
+	}
+	var homes [world.NumZones]int
+	for _, id := range w.Alive {
+		if b.Stage[id] != world.Calm {
+			homes[w.Floors[w.Households[w.People[id].Household].Floor-1].Zone]++
+		}
+	}
+	t, l := b.Tally, m.lastFights
+	b.Days = append(b.Days, world.RebellionDay{Day: w.Day, Share: share, Zone: world.Zone(slices.Index(homes[:], slices.Max(homes[:]))),
+		Struck: m.struck(w), Fought: m.fought, Held: b.Held, Arrests: c.Tally.Arrests - m.lastArrests,
+		Fights: world.FightTally{RebelsKilled: t.RebelsKilled - l.RebelsKilled, RebelsArrested: t.RebelsArrested - l.RebelsArrested,
+			OfficersKilled: t.OfficersKilled - l.OfficersKilled, OfficersWounded: t.OfficersWounded - l.OfficersWounded}})
+	for i := range b.Sabotage {
+		b.Days[len(b.Days)-1].Sabotage[i] = b.Sabotage[i] - m.lastSab[i]
+	}
+	m.lastFights, m.lastSab, m.lastArrests = t, b.Sabotage, c.Tally.Arrests
+}
+
+// end ends the running rebellion with its end day and ending: the
+// rebellionEnd event and its record (ODD §1.2, §6.14 Outputs).
+func (m *Module) end(w *world.World, end world.Tick, ending string) {
+	b := w.Rebellion
+	w.Events = append(w.Events, world.RebellionEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "rebellionEnd"},
+		Start: b.RebellionStart, End: end, Ending: ending})
+	b.Ended = append(b.Ended, b.Record(w, end, ending))
+	b.RebellionStart = world.None
+}
+
+// trigger is the latest scripted event within the year up to the start,
+// the later in the file on a tie, or none (ODD §1.2).
+func (m *Module) trigger(b *world.Rebellion) {
+	b.Trigger, b.TriggerDay = "none", world.None
+	for _, ev := range m.events {
+		if d := world.Tick(ev.Day); d <= b.RebellionStart && d > b.RebellionStart-engine.DaysPerYear && d >= b.TriggerDay {
+			b.Trigger, b.TriggerDay = ev.Type, d
+		}
+	}
 }
 
 // ODD §1.2, Definitions: unrest and rebellion. A rebellion starts on the
@@ -381,6 +437,7 @@ func (m *Module) action(w *world.World) bool {
 // the count of held days starts again.
 func (m *Module) track(w *world.World, share float64, action bool) {
 	b, d := w.Rebellion, m.def
+	m.log(w, share)
 	if share >= d.UnrestShare {
 		b.Busy, b.Quiet = b.Busy+1, 0
 	} else {
@@ -398,18 +455,16 @@ func (m *Module) track(w *world.World, share float64, action bool) {
 	quietSince := w.Day - world.Tick(d.QuietDays) + 1
 	switch {
 	case b.RebellionStart != world.None && b.HeldDays[world.UpTop] >= d.RegimeDays:
-		w.Events = append(w.Events, world.RebellionEvent{EventHeader: head("rebellionEnd"),
-			Start: b.RebellionStart, End: w.Day, Ending: "regimeChange"})
-		b.RebellionStart, b.HeldDays[world.UpTop] = world.None, 0
+		m.end(w, w.Day, "regimeChange")
+		b.HeldDays[world.UpTop] = 0
 	case b.RebellionStart != world.None:
 		if b.Quiet >= d.QuietDays {
-			w.Events = append(w.Events, world.RebellionEvent{EventHeader: head("rebellionEnd"),
-				Start: b.RebellionStart, End: quietSince, Ending: "suppressed"})
-			b.RebellionStart = world.None
+			m.end(w, quietSince, "suppressed")
 		}
 	case b.Rising >= d.RebellionDays && b.LastAction != world.None && b.LastAction > w.Day-world.Tick(d.RebellionDays):
 		b.RebellionStart, b.UnrestStart = w.Day-world.Tick(d.RebellionDays)+1, world.None
 		b.Rebellions++
+		m.trigger(b)
 		w.Events = append(w.Events, world.RebellionEvent{EventHeader: head("rebellionStart"), Start: b.RebellionStart})
 	case b.UnrestStart != world.None:
 		if b.Quiet >= d.QuietDays {

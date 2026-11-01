@@ -2,6 +2,7 @@ package rebellion
 
 import (
 	"math"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -792,6 +793,9 @@ func TestCollapse(t *testing.T) {
 		if ev := w.Events[0].(world.CollapseEvent); ev.Cause != "air" || w.Events[1].(world.RebellionEvent).Ending != "collapse" {
 			t.Errorf("events %v, want collapse (air) and the rebellion ended by it", w.Events)
 		}
+		if len(b.Ended) != 1 || b.Ended[0].Ending != "collapse" || *b.Ended[0].End != w.Day || b.Ended[0].Days != 10 {
+			t.Errorf("records %+v, want one ended by collapse today, 10 days long", b.Ended)
+		}
 	}
 	s := newTiny(t)
 	s.add(30, 1, 1)
@@ -800,5 +804,72 @@ func TestCollapse(t *testing.T) {
 	s.m.collapse(s.w)
 	if s.w.Rebellion.Collapsed != s.w.Day || s.w.Events[0].(world.CollapseEvent).Cause != "population" {
 		t.Errorf("1 person, P_min 2: events %v", s.w.Events)
+	}
+}
+
+// ODD §6.14, Outputs: a rebellion's record covers its days from the first
+// of the 7 days it took to detect, run-up included, up to the day before
+// the first quiet day; the quiet days after are not part of it. Its
+// trigger is the latest scripted event within the year up to its start.
+func TestRebellionRecord(t *testing.T) {
+	s := newTiny(t)
+	id := s.add(30, 2, 1) // home Down Deep
+	first := s.w.Day + 1
+	s.cfg.Events = []config.Event{{Day: int(first) - 400, Type: "old"}, {Day: int(first) - 100, Type: "cleaningFailure"}}
+	s.start()
+	w, b, c := s.w, s.w.Rebellion, s.w.Control
+	w.Depts[3].Headcount = 1 // Mechanical
+	b.Stage[id] = world.Active
+	day := func(share float64, action bool) {
+		w.Day++
+		s.m.track(w, share, action)
+	}
+	day(0.05, false)
+	b.Tally.RebelsKilled++ // a run-up death, on day 2
+	day(0.06, false)
+	for range 4 {
+		day(0.05, false)
+	}
+	b.Striking[3], b.Held[world.DownDeep] = 1, true
+	c.Tally.Arrests += 2
+	b.Sabotage[world.TargetStairs]++
+	day(0.2, true)
+	if b.RebellionStart != first {
+		t.Fatalf("rebellion start %d, want %d", b.RebellionStart, first)
+	}
+	b.Striking[3], b.Held[world.DownDeep] = 0, false
+	b.Stage[id] = world.Calm
+	quiet := w.Day + 1
+	for i := range 30 {
+		if i == 4 {
+			b.Tally.OfficersKilled++ // after the end day: not counted
+		}
+		day(0, false)
+	}
+	if len(b.Ended) != 1 {
+		t.Fatalf("records %v, want one", b.Ended)
+	}
+	got := b.Ended[0]
+	td := first - 100
+	want := world.RebellionRecord{Start: first, End: &quiet, Days: int(quiet - first), Trigger: "cleaningFailure", TriggerDay: &td,
+		Zone: "downDeep", PeakActive: 0.2, Struck: []string{"mechanical"}, Held: []string{"downDeep"},
+		RebelsKilled: 1, Arrests: 2, SegmentsBroken: 1, Ending: "suppressed"}
+	if *got.End != *want.End || *got.TriggerDay != *want.TriggerDay {
+		t.Errorf("end %d, trigger day %d; want %d, %d", *got.End, *got.TriggerDay, quiet, td)
+	}
+	got.End, got.TriggerDay, want.End, want.TriggerDay = nil, nil, nil, nil
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("record\n %+v\nwant\n %+v", got, want)
+	}
+	day(0, false)
+	if len(b.Days) != 7 {
+		t.Errorf("%d days kept the day after, with no rebellion running, want 7", len(b.Days))
+	}
+
+	// An event more than a year before the start is no trigger.
+	b.RebellionStart = first + 300 // the last event, cleaningFailure, 400 days before
+	s.m.trigger(b)
+	if b.Trigger != "none" || b.TriggerDay != world.None {
+		t.Errorf("trigger %q on day %d, want none", b.Trigger, b.TriggerDay)
 	}
 }

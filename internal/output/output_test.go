@@ -148,3 +148,67 @@ func TestBaselineFrameMetrics(t *testing.T) {
 		}
 	}
 }
+
+// ODD §6.14, Outputs: rebellions.jsonl and run.json's outcomes exist only
+// with the rebellion module on. Rebellions that started in warm-up are
+// dropped; one still running at the end is written as unfinished; the
+// outcomes count what events.jsonl shows, and null means none.
+func TestRebellionLogAndOutcomes(t *testing.T) {
+	dir := t.TempDir()
+	o, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Scenario{WarmupYears: 1}
+	if err := o.Init(&world.World{}, cfg, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := o.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "rebellions.jsonl")); !os.IsNotExist(err) || o.Outcomes() != nil {
+		t.Fatalf("module off: rebellions.jsonl (%v), outcomes %v", err, o.Outcomes())
+	}
+
+	dir = t.TempDir()
+	if o, err = New(dir); err != nil {
+		t.Fatal(err)
+	}
+	r := &world.Rebellion{RebellionStart: world.None, TriggerDay: world.None}
+	w := &world.World{Rebellion: r}
+	if err := o.Init(w, cfg, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := *o.Outcomes(); got != (Outcomes{}) {
+		t.Fatalf("outcomes before anything happened %+v, want all null or 0", got)
+	}
+	head := func(day world.Tick, kind string) world.EventHeader { return world.EventHeader{Day: day, Type: kind} }
+	end := func(start, day world.Tick) {
+		r.RebellionStart, r.Trigger = start, "none"
+		w.Day = day
+		w.Events = append(w.Events, world.RebellionEvent{EventHeader: head(start+6, "rebellionStart"), Start: start})
+		r.Ended = append(r.Ended, r.Record(w, day, "regimeChange"))
+		if err := o.writeEvents(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	end(5, 40)    // warm-up: dropped
+	end(380, 400) // measured
+	w.Events = append(w.Events, world.UnrestEvent{EventHeader: head(420, "unrest"), Start: 410, End: 415})
+	r.RebellionStart, w.Day = 500, 510
+	w.Events = append(w.Events, world.RebellionEvent{EventHeader: head(506, "rebellionStart"), Start: 500},
+		world.CollapseEvent{EventHeader: head(510, "collapse"), Cause: "water"})
+	if err := o.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(filepath.Join(dir, "rebellions.jsonl"))
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(lines) != 2 || !strings.HasPrefix(lines[0], `{"start":380,"end":400,"days":20,`) ||
+		!strings.HasPrefix(lines[1], `{"start":500,"end":null,"days":11,`) || !strings.HasSuffix(lines[1], `"ending":"unfinished"}`) {
+		t.Errorf("rebellions.jsonl:\n%s", data)
+	}
+	got := o.Outcomes()
+	if *got.FirstRebellionDay != 380 || got.Rebellions != 2 || got.UnrestSpells != 1 || *got.CollapseDay != 510 || *got.CollapseCause != "water" {
+		t.Errorf("outcomes %+v", got)
+	}
+}

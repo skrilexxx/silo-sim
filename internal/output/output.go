@@ -45,6 +45,12 @@ type Writer struct {
 	metrics    []FrameMetric
 	vals       []float64 // one per floor, reused
 
+	// rebellions.jsonl and run.json's outcomes, only with the rebellion
+	// module on (nil otherwise).
+	rebels     *bufio.Writer
+	rebelsFile *os.File
+	outcomes   *Outcomes
+
 	w                 *world.World
 	warmupDays        world.Tick // 0 if warm-up is logged too
 	understaffedShare float64
@@ -122,6 +128,11 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 		return err
 	}
 	if w.Rebellion != nil {
+		f, err := os.Create(filepath.Join(o.dir, "rebellions.jsonl"))
+		if err != nil {
+			return err
+		}
+		o.rebelsFile, o.rebels, o.outcomes = f, bufio.NewWriter(f), &Outcomes{}
 		if _, err := o.daily.WriteString(",active,joined,violent,onStrike,heldUpTop,heldMids,heldDownDeep,brokenSegments,pumpDown"); err != nil {
 			return err
 		}
@@ -639,22 +650,83 @@ func (o *Writer) checkDepartments(w *world.World) {
 }
 
 // writeEvents writes and clears World.Events, dropping warm-up events.
-// With no warm-up nothing is dropped, day-0 events included.
+// With no warm-up nothing is dropped, day-0 events included. With the
+// rebellion module on it also writes the rebellions ended since, and
+// counts the outcomes.
 func (o *Writer) writeEvents() error {
 	for _, e := range o.w.Events {
-		if o.warmupDays > 0 && e.When() <= o.warmupDays {
-			continue
-		}
-		line, err := json.Marshal(e)
-		if err != nil {
-			return err
-		}
-		if _, err := o.events.Write(append(line, '\n')); err != nil {
-			return err
+		o.count(e)
+		if o.measured(e.When()) {
+			if err := writeJSON(o.events, e); err != nil {
+				return err
+			}
 		}
 	}
 	o.w.Events = o.w.Events[:0]
+	if o.rebels == nil {
+		return nil
+	}
+	for _, rec := range o.w.Rebellion.Ended {
+		if o.measured(rec.Start) {
+			if err := writeJSON(o.rebels, rec); err != nil {
+				return err
+			}
+		}
+	}
+	o.w.Rebellion.Ended = o.w.Rebellion.Ended[:0]
 	return nil
+}
+
+func (o *Writer) measured(day world.Tick) bool { return o.warmupDays == 0 || day > o.warmupDays }
+
+func writeJSON(b *bufio.Writer, v any) error {
+	line, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	_, err = b.Write(append(line, '\n'))
+	return err
+}
+
+// Outcomes are run.json's part-2 fields (ODD §1.2, Outcome metrics), only
+// with the rebellion module on. They count the rebellions that started
+// and the unrest spells that ended on measured days, as events.jsonl
+// does; a collapse counts whenever it came, as a run that collapsed in
+// warm-up still died. Null is censored: none by the end of the run.
+type Outcomes struct {
+	FirstRebellionDay *world.Tick `json:"firstRebellionDay"`
+	Rebellions        int         `json:"rebellions"`
+	UnrestSpells      int         `json:"unrestSpells"`
+	CollapseDay       *world.Tick `json:"collapseDay"`
+	CollapseCause     *string     `json:"collapseCause"`
+}
+
+// Outcomes returns the run's outcomes, or nil with the rebellion module
+// off. Read it after Close.
+func (o *Writer) Outcomes() *Outcomes { return o.outcomes }
+
+func (o *Writer) count(e world.Event) {
+	out := o.outcomes
+	if out == nil {
+		return
+	}
+	if c, ok := e.(world.CollapseEvent); ok {
+		out.CollapseDay, out.CollapseCause = &c.Day, &c.Cause
+	}
+	if !o.measured(e.When()) {
+		return
+	}
+	switch e := e.(type) {
+	case world.RebellionEvent:
+		if e.Type == "rebellionStart" {
+			out.Rebellions++
+			if out.FirstRebellionDay == nil {
+				out.FirstRebellionDay = &e.Start
+			}
+		}
+	case world.UnrestEvent:
+		out.UnrestSpells++
+	}
 }
 
 // Close writes the last events, flushes and closes every file. A failed
@@ -663,6 +735,17 @@ func (o *Writer) Close() error {
 	var err error
 	if o.w != nil {
 		err = o.writeEvents()
+	}
+	if o.rebels != nil {
+		// ODD §6.14, Outputs: a rebellion still running is written as unfinished.
+		if r := o.w.Rebellion; r.RebellionStart != world.None && o.measured(r.RebellionStart) && err == nil {
+			err = writeJSON(o.rebels, r.Record(o.w, world.None, "unfinished"))
+		}
+		for _, step := range []func() error{o.rebels.Flush, o.rebelsFile.Close} {
+			if serr := step(); err == nil {
+				err = serr
+			}
+		}
 	}
 	for i, b := range []*bufio.Writer{o.daily, o.yearly, o.events} {
 		if i >= len(o.files) {
@@ -750,6 +833,7 @@ type RunInfo struct {
 	Finished       bool           `json:"finished"`
 	RuntimeSeconds float64        `json:"runtimeSeconds"`
 	Error          string         `json:"error,omitempty"`
+	Outcomes       *Outcomes      `json:"outcomes,omitempty"` // part 2, with the rebellion module on
 }
 
 // ScenarioMap turns the scenario into a map keyed like the YAML file, so

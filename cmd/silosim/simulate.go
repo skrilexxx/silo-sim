@@ -55,7 +55,8 @@ func simulate(cfg *config.Scenario) (string, error) {
 	// Wall-clock time is measured here, outside the simulation, and only
 	// goes into run.json; it never reaches the model or daily.csv.
 	start := time.Now()
-	runErr := run1(cfg, dir, modules)
+	outcomes, runErr := run1(cfg, dir, modules)
+	info.Outcomes = outcomes
 	info.RuntimeSeconds = time.Since(start).Seconds()
 	info.Finished = runErr == nil
 	if runErr != nil {
@@ -67,18 +68,20 @@ func simulate(cfg *config.Scenario) (string, error) {
 	return dir, runErr
 }
 
-func run1(cfg *config.Scenario, dir string, modules []engine.Module) error {
+// run1 plays the run and returns its outcomes for run.json (nil with the
+// rebellion module off).
+func run1(cfg *config.Scenario, dir string, modules []engine.Module) (*output.Outcomes, error) {
 	r, err := rng.New(cfg.Seed, "initpop")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	w, err := initpop.Build(cfg, r)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	out, err := output.New(dir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, m := range modules {
 		if fs, ok := m.(output.FrameSource); ok {
@@ -88,13 +91,13 @@ func run1(cfg *config.Scenario, dir string, modules []engine.Module) error {
 	e, err := engine.New(cfg, w, append(modules, out))
 	if err != nil {
 		out.Close()
-		return err
+		return nil, err
 	}
 	runErr := e.Run()
 	if err := out.Close(); err != nil && runErr == nil {
 		runErr = err
 	}
-	return runErr
+	return out.Outcomes(), runErr
 }
 
 // newModule builds a model module by its scenario name.
