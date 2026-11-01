@@ -172,7 +172,10 @@ func (m *Module) repairs(w *world.World, r *rng.Stream) {
 
 // ODD §1.2, Collapse: air or water below the collapse level for
 // CollapseDays days in a row, or the population below P_min (off while
-// 0). The first collapse is recorded; it ends a running rebellion, and the
+// 0). A population collapse while air or water is below the level that
+// day is a life-support death, and records air or water as its cause:
+// people die of bad air within days, before the 30-day test can fire
+// (T12.7). The first collapse is recorded; it ends a running rebellion, and the
 // run after this tick unless output.runAfterCollapse is set. The
 // Safeguard comes with §6.16.
 func (m *Module) collapse(w *world.World) {
@@ -194,7 +197,12 @@ func (m *Module) collapse(w *world.World) {
 	case b.WaterLow >= d.CollapseDays:
 		cause = "water"
 	case d.PointOfNoReturn > 0 && len(w.Alive) < d.PointOfNoReturn:
-		cause = "population"
+		switch cause = "population"; {
+		case s.AirQuality < d.CollapseLevel:
+			cause = "air"
+		case s.WaterSupply < d.CollapseLevel:
+			cause = "water"
+		}
 	default:
 		return
 	}

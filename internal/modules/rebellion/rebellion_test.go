@@ -805,6 +805,22 @@ func TestCollapse(t *testing.T) {
 	if s.w.Rebellion.Collapsed != s.w.Day || s.w.Events[0].(world.CollapseEvent).Cause != "population" {
 		t.Errorf("1 person, P_min 2: events %v", s.w.Events)
 	}
+	// Below P_min with bad air or water that day, the cause is life
+	// support: air first, then water.
+	for _, c := range []struct {
+		air, water float64
+		want       string
+	}{{0.1, 0.1, "air"}, {1, 0.1, "water"}, {0.2, 0.2, "population"}} {
+		s := newTiny(t)
+		s.add(30, 1, 1)
+		s.cfg.Rebellion.PointOfNoReturn = 2
+		s.start()
+		s.w.Silo.AirQuality, s.w.Silo.WaterSupply = c.air, c.water
+		s.m.collapse(s.w)
+		if got := s.w.Events[0].(world.CollapseEvent).Cause; got != c.want {
+			t.Errorf("air %v, water %v: cause %s, want %s", c.air, c.water, got, c.want)
+		}
+	}
 
 	// A rebellion detected on the day the silo collapsed was running when
 	// it died: it ends by the collapse, which comes first (ODD §1.2).

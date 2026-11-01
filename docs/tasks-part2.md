@@ -175,6 +175,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
   - **The Order** (S2) as the default playbook: blame Mechanical, raids, propaganda.
   - **Response strategies:** crackdown, reform (raise L, lower hardship, elections), memory wipe (water dosing plus relic destruction), mixed.
   - **Pact rewrite** = a policy change with a legitimacy cost or benefit.
+  - **The life-support spiral (found in T12.7, left for M13 by Adam, 2026-11-01).** Health balances at air = 1 − recoveryRate × medicalCoverage / airDamage = 0.8; below it, lower health lowers Mechanical's output (skill × health), so power and air, so health again. A rebellion that takes away about a quarter of Mechanical's output (arrests, deaths) plus one sabotaged generator puts the silo under the line, and nothing reacts: in a harsh test (s\_DD 0.9, T\_v 0.15) the silo slid for 100 days after the rebellion was suppressed, then about 9,000 people died on one day, as everyone's health is the same and health 0 is certain death. Decide whether the regime responds to it (moving workers to Mechanical, rations), and whether the one-day cliff is acceptable.
 - [ ] **T13.1 Policy vector and scheduled policy changes.**
 - [ ] **T13.2 Response strategies,** triggered by rebellion state.
 - [ ] **T13.3 Memory-wipe strategy,** using T10.4 and T10.6.
