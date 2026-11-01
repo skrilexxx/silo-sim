@@ -72,6 +72,13 @@ The answers are **conditional and comparative**. The agents follow rules, not hu
 | C4 | **Crushed rebellions are forgotten** | Freedom Day, lost records, Vitamin D+ | 40 years after a suppressed rebellion, < 10% of adults hold the true-history flag (§6.12) |
 | C5 | **A rebellion can end a silo** | Silo 17 | With Silo 1 on `full`, 5–50% of rebellions end in collapse |
 
+**How the patterns are counted** (`silosim report`, which reads only the output files; Adam, 2026-11-01). Each is judged over the whole batch, not per seed, and only on measured days.
+
+- *C1:* the pooled rate: all rebellions that started in the batch, divided by the measured years the silos ran (a run that collapses counts up to its last day), × 100. A mean of per-seed rates would let one silo that dies early with a rebellion dominate.
+- *C2:* the treated windows are the 5 years from each scripted `cleaningFailure` (its own day included). The comparison windows are the measured period cut into 5-year blocks from its first day, keeping only blocks that overlap no 5-year window after any cleaning failure, scripted or a sentenced cleaning that failed. A window counts as having a rebellion if one starts in it. A window cut short by the end of the run counts only if a rebellion started in it, so a rebellion that ends the silo early is not lost. C2 holds when both kinds of window exist, at least one treated window has a rebellion, and the treated share is at least 3× the comparison share (or the comparison share is 0).
+- *C3:* over all rebellions in the batch: the share whose starting zone (§6.14) is the Down Deep, and among those the share with Mechanical on strike on any of its days (`struck` in `rebellions.jsonl`).
+- *C4:* each suppressed rebellion is judged at the first yearly snapshot at least 40 years after its end day, by the share of adults who know the history flag (`knowHistory`); one with no such snapshot is not judged. C4 holds when at least 90% of the judged rebellions are under 10%, the same bar as the §8 targets.
+
 C1 bounds the rebellion rate, which is also what Q1 measures. That is deliberate but limited: C1 is a wide plausibility check (no constant revolts, no eternal peace), never a target to tune toward a point. Q1's answer is what *changes* the rate, read from comparisons between scenarios.
 
 **Outcome metrics**

@@ -41,7 +41,7 @@ silosim/
 │   │   └── silo1/            # M14: 6.16 Silo 1
 │   ├── invariants/           # ODD §8 invariant checks
 │   ├── output/               # daily.csv, yearly.csv, events.jsonl, run.json, rebellions.jsonl, frames.csv.gz
-│   └── report/               # calibration targets → pass/fail table
+│   └── report/               # calibration targets → pass/fail table; canon.go: C1–C4 over the batch (ODD §1.2)
 ├── scenarios/
 │   ├── baseline.yaml         # the complete default parameter set (part-2 modules off)
 │   ├── part2-off.yaml        # every part-2 module listed but off; must equal baseline (T7.5)
@@ -233,7 +233,7 @@ Floats are written with a fixed format so files diff cleanly: 4 decimals (`strco
 ```text
 silosim run    --scenario scenarios/baseline.yaml [--seed 42] [--years 200] [--out runs/]
 silosim batch  --scenario scenarios/baseline.yaml --seeds 1-100 [--workers 8] --out runs/batch-001
-silosim report --batch runs/batch-001            # calibration targets, pass/fail per pattern
+silosim report --batch runs/batch-001            # calibration targets, pass/fail per pattern; C1–C4 when the rebellion module was on
 ```
 
 A progress line in the terminal is enough.

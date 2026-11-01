@@ -53,6 +53,8 @@ type Seed struct {
 	// Information, not targets (T6.1).
 	FoodSurplus float64 // production / need − 1, from the drift of the food stock in days
 	HealthMin   float64 // lowest population-weighted average health: the stability margin
+
+	Canon *Canon // part 2 (ODD §1.2), only for runs with the rebellion module on
 }
 
 // Load reads every run folder in batch (one with a run.json), sorted by
@@ -88,6 +90,10 @@ func LoadRun(dir string) (Seed, error) {
 		Seed     uint64 `json:"seed"`
 		Finished bool   `json:"finished"`
 		Error    string `json:"error"`
+		Outcomes struct {
+			UnrestSpells  int     `json:"unrestSpells"`
+			CollapseCause *string `json:"collapseCause"`
+		} `json:"outcomes"`
 		Scenario struct {
 			WarmupYears int `json:"warmupYears"`
 			Output      struct {
@@ -121,7 +127,10 @@ func LoadRun(dir string) (Seed, error) {
 	if err := s.yearly(filepath.Join(dir, "yearly.csv"), warmup); err != nil {
 		return s, err
 	}
-	return s, s.events(filepath.Join(dir, "events.jsonl"), info.Scenario.WarmupYears*daysPerYear)
+	if err := s.events(filepath.Join(dir, "events.jsonl"), info.Scenario.WarmupYears*daysPerYear); err != nil {
+		return s, err
+	}
+	return s, s.canon(dir, info.Scenario.WarmupYears*daysPerYear, warmup, info.Outcomes.CollapseCause, info.Outcomes.UnrestSpells)
 }
 
 // table reads a CSV file into a column-name lookup and its rows after
@@ -361,6 +370,7 @@ func Write(out io.Writer, seeds []Seed) (bool, error) {
 		all = all && ok
 		fmt.Fprintf(tw, "%s\t%s\t%d/%d (%.0f%%)\t%s\n", t.Pattern, t.Rule, n, len(seeds), 100*float64(n)/float64(len(seeds)), mark(ok))
 	}
+	all = writeCanon(tw, seeds) && all
 	return all, tw.Flush()
 }
 
