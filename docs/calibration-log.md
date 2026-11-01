@@ -437,3 +437,41 @@ With all the changes, full size, σ = 0.05 (population 9,770–9,790 throughout)
 1,000-person silo, 100 years: at σ = 0.1 a third of the people are flagged, births to flagged parents are 1.9% of births, and the population never falls below 964. At σ = 0.3 two thirds are flagged, too few couples can have children, the population falls to about 735, Mechanical coverage drifts below 0.75 (staffing needs stay sized for 1,000), and power, water and air fail together in year 87. At σ = 1 so many workers are in prison that Farms fail: food runs out, and the silo starves in year 42.
 
 **What it means:** fear slows the spread of knowledge but does not stop it: the history still reaches 80% in 60 years, and the lottery secret, starting from the two implant doctors, spreads as fast. Holding knowledge down (C4) is π's and forgetting's job, to calibrate in T12.8, and the regime's responses' (M13). A crackdown can kill the silo two ways the baseline already allowed for: imprisoned workers starve it, and denied births shrink it below what its departments need. Both are results for Q3, not bugs. A collapse still ends a run with demography's "no household with an adult" error, once the last adults die; the collapse rule of §1.2 (T12.6) should stop the run first. Nothing was tuned.
+
+## 2026-11-01 — Point of no return P_min (T12.6)
+
+**Code:** `7293b6b` (T12.6: sabotage, stair repairs and collapse).
+**Setup:** `scenarios/baseline.yaml` with the baseline modules only (demography, health, work, resources, governance), so dissent plays no part. 50 warm-up years; on the first measured day (18,251) a scripted `cull` (ODD §6.1) kills a share of everyone, or of Mechanical's workers, drawn uniformly; then 50 measured years. 100 seeds per state (1–100).
+**Command:** `analysis/pmin.sh` (1,600 runs, about 4 hours on 8 cores).
+**Rule (ODD §1.2):** a seed *recovers* if the population is above 9,000 on some day of the 50 years; P\_min is the highest population at which fewer than 5% of seeds recover.
+
+Population cuts:
+
+| Cut | Population after (mean) | Recovered | Died out | Mean lowest | Mean final |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 10% | 8,794 | 100% | 1% | 8,694 | 9,683 |
+| 20% | 7,817 | 99% | 30% | 5,464 | 6,858 |
+| 25% | 7,328 | 80% | 49% | 3,730 | 5,001 |
+| 30% | 6,840 | 42% | 58% | 2,868 | 4,124 |
+| 35% | 6,351 | 22% | 78% | 1,395 | 2,162 |
+| 40% | 5,863 | 10% | 90% | 586 | 984 |
+| 50% | 4,885 | 0% | 100% | 0 | 0 |
+| 60–90% | 3,909–977 | 0% | 100% | 0 | 0 |
+
+Mechanical cuts (a robustness table, not part of P\_min; the population starts above 9,000, so "recovered" says nothing here):
+
+| Mechanical workers cut | Population after (mean) | Died out | Mean lowest | Mean final |
+| ---: | ---: | ---: | ---: | ---: |
+| 10% | 9,669 | 0% | 9,656 | 9,774 |
+| 20% | 9,568 | 4% | 9,170 | 9,384 |
+| 30% | 9,466 | 20% | 7,558 | 7,818 |
+| 40% | 9,364 | 44% | 5,231 | 5,473 |
+| 50% | 9,261 | 100% | 0 | 0 |
+
+**Result: P\_min = 4,900** (Adam, 2026-11-01): at 4,885 no seed recovers, at 5,863 10% do. The true value lies between the two; the grid was not refined. The recovery test of §1.2 is kept as written.
+
+**Observations**
+
+1. *The silo is far more fragile than its last few hundred people.* A cut of a fifth kills 30% of seeds within 50 years, half of Mechanical's workers (about 8% of the people) kills all of them. Every department's coverage need is fixed at its day-1 size (ODD §6.6), so a smaller silo can't staff Mechanical and Farms; power, food and air fall, health falls, and deaths outrun the lottery.
+2. *Above P\_min lies a wide risk zone the test does not catch.* Many seeds pass 9,000 again and still die out later (cut by 20%: 99% recover, 30% die). Those deaths end as extinction, which always ends a run (ODD §1.2), not as a collapse.
+3. *P\_min holds for a silo of 10,000.* Test silos of 1,000 set it to 0; another size needs its own measurement.

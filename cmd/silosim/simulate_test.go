@@ -546,6 +546,7 @@ func TestGrievanceRuns(t *testing.T) {
 	cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, 0, 30, golden.Population
 	cfg.Lottery.TargetPopulation = cfg.Population
 	cfg.Output.InvariantEvery = 30
+	cfg.Rebellion.PointOfNoReturn = 0 // P_min is for a silo of 10,000
 	cfg.Modules = append(cfg.Modules, "space", "network", "beliefs", "control", "rebellion")
 	cfg.Events = []config.Event{{Day: 20*365 + 100, Type: "cleaningFailure"}}
 	dir := mustSimulate(t, cfg)
@@ -593,6 +594,7 @@ func TestMechanicalStrikeCutsPower(t *testing.T) {
 	cfg.Lottery.TargetPopulation = cfg.Population
 	cfg.Output.InvariantEvery = 30
 	cfg.Rebellion.ScapegoatHardship = 0.5
+	cfg.Rebellion.PointOfNoReturn = 0 // P_min is for a silo of 10,000
 	cfg.Modules = append(cfg.Modules, "space", "network", "beliefs", "control", "rebellion")
 	shock := 20*365 - 35
 	cfg.Events = []config.Event{{Day: shock, Type: "cleaningFailure"}}

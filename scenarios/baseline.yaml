@@ -252,7 +252,7 @@ rebellion:                        # ODD §6.14 (part 2, draft); used only when `
   killedShare: 0.3                # p_kill: share of those put out who die; the rest are arrested (rebels) or wounded (officers); guess
   sabotageChance: 0.001           # p_sab: daily chance a violent rebel sabotages the generator, the pump or the stairs; guess
   stairRepairDays: 60             # D_stair: mean days to repair a broken segment at full Mechanical coverage; guess
-  pointOfNoReturn: 0              # P_min (§1.2): collapse below this population; 0 = off until measured (T12.6)
+  pointOfNoReturn: 4900           # P_min (§1.2): collapse below this population; measured in T12.6 (analysis/pmin.sh), for a silo of 10,000
   unrestShare: 0.01               # unrest: at least this share of adults active ... (ODD §1.2, decision D1)
   unrestDays: 3                   # ... on this many days in a row
   rebellionShare: 0.05            # rebellion: at least this share of adults active ...
