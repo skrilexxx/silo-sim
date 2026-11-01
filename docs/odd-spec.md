@@ -49,10 +49,10 @@ The answers are **conditional and comparative**. The agents follow rules, not hu
 - **Unrest:** at least 1% of adults active on 3 days in a row, without meeting the rebellion test. Its start day is the first of the 3 days. It ends when fewer than 1% of adults are active for 30 days in a row, its end day the first of those 30 (Adam, 2026-10-31). An unrest spell during which a rebellion starts is that rebellion's run-up, counted as the rebellion and not as unrest, and no unrest is tracked while a rebellion runs (Adam, 2026-10-31). Logged; not a rebellion.
 - **Rebellion:** starts when, on 7 days in a row, at least 5% of adults are active **and** at least one collective action (§6.14) is under way on one of those days: a strike in a critical department (Mechanical, Farms, Supply, Medical; at least a share q\_strike = 10% of its workers on strike), a fight with Judicial, or rebels holding a zone. Its start day is the first of the 7 days. It ends when fewer than 1% of adults are active for 30 days in a row, its end day the first of those 30, or at collapse. Only one rebellion runs at a time. The shares and day counts in these two definitions are scenario settings (`rebellion:`, §6.14).
 - **Trigger:** the scripted event (`events:` in the scenario, T7.4) that happened within the 365 days before the start, or "none". With no scripted events, every rebellion is "none", and Q1's trigger question is answered by experiments that script shocks.
-- **Endings** (one per rebellion; collapse takes precedence):
+- **Endings** (one per rebellion; when several hold on the same day, the first in this order: collapse, regime change, split, suppressed):
   - *Suppressed:* it ends with the regime still in place.
   - *Regime change:* rebels hold Up Top, the zone of the IT floors and the Mayor's office, for 30 days in a row (§6.14), the 30 a scenario setting (`rebellion.regimeDays`). The regime is replaced and the scenario's post-change policy applies (§6.15). The run continues.
-  - *Split:* a stair segment broken during the rebellion is still broken 90 days later, and at least 1,000 people live on each side of it.
+  - *Split:* a stair segment broken while the rebellion runs (from its start day, the run-up included; by sabotage or a scripted `breakStairs`) is still broken 90 days after it broke, the rebellion is still running, and at least 1,000 living people have their home on each side of it (the floors above and below the segment). The rebellion ends that day. The silo runs on as before: the segment is repaired like any other (§6.14), and a new rebellion can start later. The 90 days and 1,000 people are scenario settings (`rebellion.splitDays`, `rebellion.splitPeople`; Adam, 2026-11-01).
   - *Collapse:* see below.
 - **Collapse** (the silo is dead, and the run stops), on the first day any of these holds; the cause is recorded. It is checked only with the rebellion module on (§6.14), so the baseline never stops early:
   1. air or water below 0.2 for 30 days in a row;
@@ -769,7 +769,7 @@ Checked at load: σ, a, p\_find, p\_name, p\_fail and λ are in [0, 1]; R\_raid 
 
 *Answers Q1 and Q2.* The dissent half of the rebellion model, after Epstein's civil violence model (2002): a person turns against the regime when their grievance outweighs their fear of arrest, comes out with others once enough of the people they know have, and the angriest go on to fight and sabotage. The module needs the control module (§6.13), and through it the beliefs, network and space modules; strikes act through work (§6.5), sabotage through resources (§6.6).
 
-**State** (owned by this module; §2 is unchanged): for each person, their stage (below) and the day of their last loss; for each zone, whether rebels hold it and since when; the water pump, running or down until a day; the zone counts of the day before; the open unrest spell and rebellion, if any, with what the log needs (§1.2).
+**State** (owned by this module; §2 is unchanged): for each person, their stage (below) and the day of their last loss; for each zone, whether rebels hold it and since when; the water pump, running or down until a day; for each stair segment, the day it last broke; the zone counts of the day before; the open unrest spell and rebellion, if any, with what the log needs (§1.2).
 
 **Hardship.** H, 0–1, is how hard a person's life is. It is recomputed every day for every adult (worker age, 18, §6.5) from three sources, combined like independent chances, so that H stays within 0–1 without a clamp:
 
@@ -835,9 +835,9 @@ Effects:
 
 Each sabotage is the offence `sabotage` (§6.9).
 
-**Stair repairs.** Each day each broken segment, visited from 1 to 143, is repaired with chance mechanicalCoverage / D\_stair, unless a floor at either end lies in a held zone. Segments broken by scripted events are repaired the same way. A segment still broken 90 days after it broke in a rebellion is a split (§1.2).
+**Stair repairs.** Each day each broken segment, visited from 1 to 143, is repaired with chance mechanicalCoverage / D\_stair, unless a floor at either end lies in a held zone. Segments broken by scripted events are repaired the same way. A segment still broken 90 days after it broke, while the rebellion that saw it break still runs, is a split (§1.2).
 
-**Unrest, rebellion and endings.** At the end of the step the module applies the tests of §1.2 to the day's stages: unrest, the start and end of a rebellion, and its ending. A *collective action* is under way on a day with a critical department on strike, a fight in any zone, or a held zone. A rebellion's *starting zone* is the home zone of most of the adults active on its start day (on a tie, the first in the order Up Top, Mids, Down Deep).
+**Unrest, rebellion and endings.** At the end of the step the module applies the tests of §1.2 to the day's stages: unrest, the start and end of a rebellion, and its ending. A *collective action* is under way on a day with a critical department on strike, a fight in any zone, or a held zone. A split is checked each day while a rebellion runs: each segment broken since its start and broken for `splitDays` days, from 1 to 143, and the first with `splitPeople` on each side ends it. The collapse check runs before these tests, so a collapse ends a rebellion first, including one detected that day. A rebellion's *starting zone* is the home zone of most of the adults active on its start day (on a tie, the first in the order Up Top, Mids, Down Deep).
 
 **Collapse** (§1.2). Checked at the end of the step, and only with this module on, so a baseline run never stops early: air or water below 0.2 for 30 days in a row, or the population below P\_min (4,900, measured in T12.6; 0 switches the test off). The level and the days are §1.2 settings (`collapseLevel`, `collapseDays`). The Safeguard comes with §6.16. The first collapse is logged with its cause and ends a running rebellion with that ending; the run stops after that day, unless `output.runAfterCollapse` is true. Extinction always ends it (§1.2).
 
@@ -852,7 +852,7 @@ Each sabotage is the offence `sabotage` (§6.9).
 5. held zones;
 6. sabotage;
 7. stair repairs;
-8. unrest, rebellion and endings; collapse;
+8. collapse; unrest, rebellion and endings;
 9. the zone counts kept for tomorrow.
 
 **Scripted events** (§5):
@@ -865,7 +865,7 @@ Each sabotage is the offence `sabotage` (§6.9).
 - *daily.csv:* adults active, joined and violent; workers on strike; held zones; broken segments; pump down.
 - *yearly.csv:* mean H and G of adults by home zone; rebels killed and arrested in fights, officers killed and wounded; sabotage by target; stair repairs; unrest spells ended and rebellions started.
 - *events.jsonl:* `unrest` (start and end, logged at its end, once it is sure it never became a rebellion), `rebellionStart` (start) and `rebellionEnd` (start, end and ending), `zoneHeld` and `zoneFreed`, `sabotage` (person, target), `stairRepaired`, `collapse` (cause), `extinction`.
-- *rebellions.jsonl:* one line per rebellion that started on a measured day, written at its end, or at the end of the run as unfinished (T12.7). A rebellion's record covers its days from its start day, the run-up before it was detected included, up to its end day, or the day before when it is suppressed, as that end day is the first quiet one; a suppressed rebellion's 29 further quiet days are not part of it. Fields: `start`; `end` (null while unfinished); `days`, end − start (the days so far while unfinished); `trigger`, the type of the latest scripted event on a day d with start − 365 < d ≤ start (the later in the file on a tie), or `none`, and `triggerDay`, its day; `zone`, the starting zone (above); `peakActive`, the highest daily share of adults active or beyond; collective actions: `struck`, the critical departments on strike on any day, `fightDays`, the days with a fight, `held`, the zones held on any day; deaths: `rebelsKilled` and `officersKilled` in fights; arrests: `fightArrests`, rebels arrested in fights, and `arrests`, every arrest Judicial made, for any offence, fight arrests included (§6.13; Adam, 2026-11-01); damage: `segmentsBroken` (by sabotage, not by scripted events), `generatorSabotage`, `pumpSabotage`; and `ending`: `suppressed`, `regimeChange`, `collapse` or `unfinished`. A split (§1.2) is not detected yet.
+- *rebellions.jsonl:* one line per rebellion that started on a measured day, written at its end, or at the end of the run as unfinished (T12.7). A rebellion's record covers its days from its start day, the run-up before it was detected included, up to its end day, or the day before when it is suppressed, as that end day is the first quiet one; a suppressed rebellion's 29 further quiet days are not part of it. Fields: `start`; `end` (null while unfinished); `days`, end − start (the days so far while unfinished); `trigger`, the type of the latest scripted event on a day d with start − 365 < d ≤ start (the later in the file on a tie), or `none`, and `triggerDay`, its day; `zone`, the starting zone (above); `peakActive`, the highest daily share of adults active or beyond; collective actions: `struck`, the critical departments on strike on any day, `fightDays`, the days with a fight, `held`, the zones held on any day; deaths: `rebelsKilled` and `officersKilled` in fights; arrests: `fightArrests`, rebels arrested in fights, and `arrests`, every arrest Judicial made, for any offence, fight arrests included (§6.13; Adam, 2026-11-01); damage: `segmentsBroken` (by sabotage, not by scripted events), `generatorSabotage`, `pumpSabotage`; and `ending`: `suppressed`, `regimeChange`, `split`, `collapse` or `unfinished`.
 - *run.json:* `outcomes`, with `firstRebellionDay` (the start day of the first rebellion that started on a measured day), `rebellions` (started on measured days), `unrestSpells` (ended on measured days), and `collapseDay` and `collapseCause` (a collapse counts on any day, warm-up included). A day or cause is null when there was none: censored at the end of the run.
 - *frames.csv.gz:* per floor, the share of adults active and violent.
 
@@ -895,12 +895,14 @@ rebellion:                        # ODD §6.14; used only when `rebellion` is in
   rebellionDays: 7                # ... on this many days in a row, with a collective action on one of them
   quietDays: 30                   # both end after this many days in a row below unrestShare
   regimeDays: 30                  # regime change: rebels hold Up Top this many days in a row
+  splitDays: 90                   # split: a segment broken in a rebellion still broken this many days later ...
+  splitPeople: 1000               # ... with at least this many people living on each side; 0 = no people test
   collapseLevel: 0.2              # collapse: air or water below this level ...
   collapseDays: 30                # ... for this many days in a row
   pointOfNoReturn: 4900           # P_min (§1.2), measured in T12.6 for a silo of 10,000; 0 = off
 ```
 
-`output.runAfterCollapse` (default false) sits with the other output settings. Checked at load: ℓ, s\_DD, T, T\_v, p\_kill, p\_sab, q\_strike and both shares of §1.2 are in [0, 1], and T\_v ≥ T; the collapse level is in [0, 1]; the five day counts are integers ≥ 1; T\_loss, k and D\_stair are strictly greater than 0; e\_J and e\_R are ≥ 0; P\_min is an integer ≥ 0.
+`output.runAfterCollapse` (default false) sits with the other output settings. Checked at load: ℓ, s\_DD, T, T\_v, p\_kill, p\_sab, q\_strike and both shares of §1.2 are in [0, 1], and T\_v ≥ T; the collapse level is in [0, 1]; the six day counts are integers ≥ 1; `splitPeople` is an integer ≥ 0; T\_loss, k and D\_stair are strictly greater than 0; e\_J and e\_R are ≥ 0; P\_min is an integer ≥ 0.
 
 ## 7. Parameters
 

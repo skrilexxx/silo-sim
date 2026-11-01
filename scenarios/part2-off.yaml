@@ -76,5 +76,7 @@ rebellion:                # M12, off
   rebellionDays: 1
   quietDays: 1
   regimeDays: 1
+  splitDays: 1
+  splitPeople: 0
   collapseLevel: 1
   collapseDays: 1

@@ -78,7 +78,10 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	m.reach = make([]bool, len(w.Floors))
 	m.events, m.lastArrests = cfg.Events, w.Control.Tally.Arrests
 	w.Rebellion = &world.Rebellion{LastAction: world.None, UnrestStart: world.None, RebellionStart: world.None,
-		Collapsed: world.None, Striking: make([]int, len(w.Depts)), TriggerDay: world.None}
+		Collapsed: world.None, Striking: make([]int, len(w.Depts)), TriggerDay: world.None, BrokeOn: make([]world.Tick, len(w.Space.Broken))}
+	for i := range w.Rebellion.BrokeOn {
+		w.Rebellion.BrokeOn[i] = world.None
+	}
 	m.newcomers(w)
 	m.count(w)
 	return nil
@@ -98,8 +101,10 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 	m.fights(w, r)
 	m.sabotage(w, r)
 	m.repairs(w, r)
-	m.track(w, m.activeShare(w), m.action(w))
-	m.collapse(w)
+	share := m.activeShare(w)
+	m.log(w, share)
+	m.collapse(w) // first: a collapse takes precedence over every other ending (ODD §1.2)
+	m.track(w, share, m.action(w))
 	m.count(w)
 	return nil
 }
@@ -111,7 +116,7 @@ func (m *Module) EventTypes() []engine.EventType {
 		if ev.Segment < 1 || ev.Segment > len(w.Space.Broken) {
 			return fmt.Errorf("breakStairs: segment %d, must be 1 to %d", ev.Segment, len(w.Space.Broken))
 		}
-		w.Space.Broken[ev.Segment-1] = true
+		w.Space.Broken[ev.Segment-1], w.Rebellion.BrokeOn[ev.Segment-1] = true, w.Day
 		return nil
 	}}}
 }
@@ -138,7 +143,7 @@ func (m *Module) sabotage(w *world.World, r *rng.Stream) {
 		case mech && w.Day > b.PumpUntil && !b.PumpHit:
 			t, b.PumpHit = world.TargetPump, true
 		case f > lowest && !s.Broken[f-2]:
-			t, s.Broken[f-2], ev.Segment = world.TargetStairs, true, f-1
+			t, s.Broken[f-2], b.BrokeOn[f-2], ev.Segment = world.TargetStairs, true, w.Day, f-1
 		default:
 			continue
 		}
@@ -413,6 +418,28 @@ func (m *Module) end(w *world.World, end world.Tick, ending string) {
 	b.RebellionStart = world.None
 }
 
+// ODD §1.2, Split: a segment broken since the running rebellion's start
+// (by sabotage or a scripted event) has been broken for SplitDays days,
+// with at least SplitPeople people living on each side of it.
+func (m *Module) split(w *world.World) bool {
+	b := w.Rebellion
+	for seg, broken := range w.Space.Broken {
+		if d := b.BrokeOn[seg]; !broken || d < b.RebellionStart || w.Day-d < world.Tick(m.def.SplitDays) {
+			continue
+		}
+		above := 0 // segment seg+1 joins floors seg+1 and seg+2, so above it are floors 1 to seg+1
+		for _, id := range w.Alive {
+			if w.Households[w.People[id].Household].Floor <= seg+1 {
+				above++
+			}
+		}
+		if above >= m.def.SplitPeople && len(w.Alive)-above >= m.def.SplitPeople {
+			return true
+		}
+	}
+	return false
+}
+
 // trigger is the latest scripted event within the year up to the start,
 // the later in the file on a tie, or none (ODD §1.2).
 func (m *Module) trigger(b *world.Rebellion) {
@@ -437,7 +464,6 @@ func (m *Module) trigger(b *world.Rebellion) {
 // the count of held days starts again.
 func (m *Module) track(w *world.World, share float64, action bool) {
 	b, d := w.Rebellion, m.def
-	m.log(w, share)
 	if share >= d.UnrestShare {
 		b.Busy, b.Quiet = b.Busy+1, 0
 	} else {
@@ -457,6 +483,8 @@ func (m *Module) track(w *world.World, share float64, action bool) {
 	case b.RebellionStart != world.None && b.HeldDays[world.UpTop] >= d.RegimeDays:
 		m.end(w, w.Day, "regimeChange")
 		b.HeldDays[world.UpTop] = 0
+	case b.RebellionStart != world.None && m.split(w):
+		m.end(w, w.Day, "split")
 	case b.RebellionStart != world.None:
 		if b.Quiet >= d.QuietDays {
 			m.end(w, quietSince, "suppressed")
@@ -465,6 +493,9 @@ func (m *Module) track(w *world.World, share float64, action bool) {
 		b.RebellionStart, b.UnrestStart = w.Day-world.Tick(d.RebellionDays)+1, world.None
 		b.Rebellions++
 		m.trigger(b)
+		if b.Collapsed == w.Day { // it ran when the silo died
+			m.end(w, w.Day, "collapse")
+		}
 		w.Events = append(w.Events, world.RebellionEvent{EventHeader: head("rebellionStart"), Start: b.RebellionStart})
 	case b.UnrestStart != world.None:
 		if b.Quiet >= d.QuietDays {

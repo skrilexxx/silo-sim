@@ -38,6 +38,7 @@ type Rebellion struct {
 	// is down; acts by target and stair repairs since day 0.
 	GeneratorHit, PumpHit bool
 	PumpUntil             Tick
+	BrokeOn               []Tick // per stair segment, the day it last broke, or None (ODD §1.2, Split)
 	Sabotage              [NumTargets]int
 	Repairs               int
 

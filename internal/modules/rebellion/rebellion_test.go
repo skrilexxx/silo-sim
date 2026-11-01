@@ -712,8 +712,8 @@ func TestSabotage(t *testing.T) {
 	if !slices.Equal(got, []string{"generator", "pump", "stairs", "stairs"}) || b.Sabotage != [3]int{1, 1, 2} {
 		t.Errorf("sabotage %v, counts %v; want generator, pump, stairs, stairs", got, b.Sabotage)
 	}
-	if !b.GeneratorHit || !b.PumpHit || !w.Space.Broken[0] || !w.Space.Broken[1] {
-		t.Errorf("generator hit %v, pump hit %v, broken %v", b.GeneratorHit, b.PumpHit, w.Space.Broken)
+	if !b.GeneratorHit || !b.PumpHit || !w.Space.Broken[0] || !w.Space.Broken[1] || !slices.Equal(b.BrokeOn, []world.Tick{w.Day, w.Day}) {
+		t.Errorf("generator hit %v, pump hit %v, broken %v on %v", b.GeneratorHit, b.PumpHit, w.Space.Broken, b.BrokeOn)
 	}
 	n := 0
 	for _, a := range w.Control.Acts {
@@ -805,6 +805,15 @@ func TestCollapse(t *testing.T) {
 	if s.w.Rebellion.Collapsed != s.w.Day || s.w.Events[0].(world.CollapseEvent).Cause != "population" {
 		t.Errorf("1 person, P_min 2: events %v", s.w.Events)
 	}
+
+	// A rebellion detected on the day the silo collapsed was running when
+	// it died: it ends by the collapse, which comes first (ODD §1.2).
+	b := s.w.Rebellion
+	b.Rising = 6
+	s.m.track(s.w, 0.05, true)
+	if b.Rebellions != 1 || b.RebellionStart != world.None || len(b.Ended) != 1 || b.Ended[0].Ending != "collapse" {
+		t.Errorf("rebellion %d, records %+v; want one started and ended by the collapse", b.RebellionStart, b.Ended)
+	}
 }
 
 // ODD §6.14, Outputs: a rebellion's record covers its days from the first
@@ -822,6 +831,7 @@ func TestRebellionRecord(t *testing.T) {
 	b.Stage[id] = world.Active
 	day := func(share float64, action bool) {
 		w.Day++
+		s.m.log(w, share)
 		s.m.track(w, share, action)
 	}
 	day(0.05, false)
@@ -871,5 +881,39 @@ func TestRebellionRecord(t *testing.T) {
 	s.m.trigger(b)
 	if b.Trigger != "none" || b.TriggerDay != world.None {
 		t.Errorf("trigger %q on day %d, want none", b.Trigger, b.TriggerDay)
+	}
+}
+
+// ODD §1.2, Split: a segment broken since the rebellion started, still
+// broken 90 days later, with at least splitPeople living on each side,
+// ends the rebellion that day.
+func TestSplit(t *testing.T) {
+	s := newTiny(t)
+	s.add(30, 1, 1) // above segment 1 (floors 1–2)
+	s.add(30, 2, 1) // below it
+	s.cfg.Rebellion.SplitDays, s.cfg.Rebellion.SplitPeople = 90, 1
+	s.start()
+	w, b := s.w, s.w.Rebellion
+	b.RebellionStart, w.Space.Broken[0] = w.Day-200, true
+	for _, c := range []struct {
+		brokeOn world.Tick
+		people  int
+		want    bool
+	}{
+		{w.Day - 89, 1, false},  // 89 days
+		{w.Day - 90, 1, true},   // 90 days
+		{w.Day - 90, 2, false},  // one person on each side, 2 needed
+		{w.Day - 201, 1, false}, // broken before the rebellion started
+	} {
+		b.BrokeOn[0], s.m.def.SplitPeople = c.brokeOn, c.people
+		if got := s.m.split(w); got != c.want {
+			t.Errorf("broken since %d days, %d people needed: split %v, want %v", w.Day-c.brokeOn, c.people, got, c.want)
+		}
+	}
+	b.BrokeOn[0], s.m.def.SplitPeople = w.Day-90, 1
+	w.Events = nil
+	s.m.track(w, 0.2, true)
+	if b.RebellionStart != world.None || len(b.Ended) != 1 || b.Ended[0].Ending != "split" || *b.Ended[0].End != w.Day {
+		t.Errorf("rebellion %d, records %+v; want it ended today by a split", b.RebellionStart, b.Ended)
 	}
 }

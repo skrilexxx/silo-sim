@@ -272,6 +272,8 @@ type Rebellion struct {
 	RebellionDays  int     `yaml:"rebellionDays"`
 	QuietDays      int     `yaml:"quietDays"`
 	RegimeDays     int     `yaml:"regimeDays"`
+	SplitDays      int     `yaml:"splitDays"`
+	SplitPeople    int     `yaml:"splitPeople"`
 	CollapseLevel  float64 `yaml:"collapseLevel"`
 	CollapseDays   int     `yaml:"collapseDays"`
 }
