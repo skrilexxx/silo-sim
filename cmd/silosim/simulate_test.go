@@ -661,8 +661,8 @@ func TestCollapseAndExtinctionEndTheRun(t *testing.T) {
 
 // T11.4 done-when: flagged couples never conceive, so their share of the
 // births falls far below their share of the silo; logged as an outcome,
-// not tuned. 100 years of a 1,000-person silo with σ = 0.1, so couples
-// are flagged early. Over the last 50 years births to flagged parents
+// not tuned. 100 years of a 1,000-person silo with σ = 0.2, so couples
+// are flagged early (0.1 flagged too few once only doubters tell, T12.8). Over the last 50 years births to flagged parents
 // (only from pregnancies under way when flagged) are under a quarter of
 // the flagged share of the people, and the silo keeps its size: a denied
 // win uses up no permit. (At σ = 0.3 two thirds are flagged, too few
@@ -672,7 +672,7 @@ func TestFlaggedFamiliesShrink(t *testing.T) {
 	cfg := loadInto(t, "../../scenarios/baseline.yaml")
 	cfg.Seed, cfg.WarmupYears, cfg.Years, cfg.Population = golden.Seed, 0, 100, golden.Population
 	cfg.Lottery.TargetPopulation = cfg.Population
-	cfg.Control.Surveillance = 0.1
+	cfg.Control.Surveillance = 0.2
 	cfg.Output.InvariantEvery = 30
 	cfg.Modules = append(cfg.Modules, "space", "network", "beliefs", "control")
 	dir := mustSimulate(t, cfg)

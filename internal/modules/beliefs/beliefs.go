@@ -17,7 +17,7 @@ import (
 
 type Module struct {
 	edu, eduWeight float64
-	pass           float64      // π: chance a flag passes in a conversation, × (1 − L of the listener)
+	pass           float64      // π: chance a flag passes in a conversation, × (1 − L) of teller and listener
 	forgetHeard    float64      // daily chance of losing a flag known as heard
 	forgetLived    float64      // … as lived
 	shadowAge      world.Tick   // in days: who sees a scripted reveal
@@ -449,14 +449,16 @@ func (m *Module) forget(w *world.World, r *rng.Stream) {
 // ODD §6.12, Telling and believing: the day's knowers, in shuffled order,
 // ask of each tie whether it is used today (ODD §6.11); in a conversation
 // each flag the teller knew before today and the listener doesn't know
-// passes with chance π × (1 − L of the listener), whose L drops as they
-// learn. A dosed listener learns nothing, and one who has the flag hidden
+// passes with chance π × (1 − L of the teller) × (1 − L of the listener),
+// whose L drops as they learn: only doubters tell, and only doubters
+// believe. A dosed listener learns nothing, and one who has the flag hidden
 // may recall it instead (recall). Only knowers are visited, so the cost
 // follows them, not the population. With the control module on, each
 // telling (the slot lands, the listener doesn't know the flag, and the two
 // talk) is reported as an act, believed or not (ODD §6.13), and the Head of
 // IT tells nothing. Over a weak tie the teller dares to speak only with
-// chance 1 − F, the silo's fear; one who doesn't commits no act.
+// chance 1 − F, the silo's fear, and any teller wants to only with chance
+// 1 − L of their own; one who doesn't commits no act.
 //
 // The draws are made in the cheapest order, with the same chances. Every
 // pair of a teller's tie and a flag they tell is a slot; a slot is a real
@@ -492,6 +494,9 @@ func (m *Module) converse(w *world.World, r *rng.Stream) {
 				continue
 			}
 			if fear > 0 && t.Kind.Weak() && r.Float64() < fear { // ODD §6.12: fear silences talk with acquaintances
+				continue
+			}
+			if r.Float64() >= 1-b.L(k) { // ODD §6.12: only doubters tell
 				continue
 			}
 			pass := !b.Hidden[j].Has(f) && !b.Dosed(w, j) && r.Float64() < 1-b.L(j)

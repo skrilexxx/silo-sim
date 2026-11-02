@@ -153,7 +153,7 @@ beliefs:                          # ODD §6.12 (part 2, draft); used only when `
   taughtLegitimacy: 0.8           # L_edu: the legitimacy Education teaches; everyone's base on day 1; guess
   educationWeight: 0.5            # ε: Education's share of a young person's base, the rest from parents (and master); guess
   legitimacyCostPerFlag: 0.15     # δ: legitimacy lost per known flag; guess
-  passChance: 0.002               # π: chance a flag passes in a conversation, × (1 − L of the listener); guess, calibrated against C4 in T12.8
+  passChance: 0.002               # π: chance a flag passes in a conversation, × (1 − L) of teller and listener; guess, calibrated against C4 from M13 (§1.2)
   halfLifeHeardYears: 5           # T_heard: half of what was heard is forgotten in this time; guess
   halfLifeLivedYears: 20          # T_lived: the same for what was lived (seen, found, kept); guess
   relics: 100                     # N_relic: relics hidden on day 1, each on a random floor; guess

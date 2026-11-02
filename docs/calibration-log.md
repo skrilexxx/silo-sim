@@ -475,3 +475,69 @@ Mechanical cuts (a robustness table, not part of P\_min; the population starts a
 1. *The silo is far more fragile than its last few hundred people.* A cut of a fifth kills 30% of seeds within 50 years, half of Mechanical's workers (about 8% of the people) kills all of them. Every department's coverage need is fixed at its day-1 size (ODD §6.6), so a smaller silo can't staff Mechanical and Farms; power, food and air fall, health falls, and deaths outrun the lottery.
 2. *Above P\_min lies a wide risk zone the test does not catch.* Many seeds pass 9,000 again and still die out later (cut by 20%: 99% recover, 30% die). Those deaths end as extinction, which always ends a run (ODD §1.2), not as a collapse.
 3. *P\_min holds for a silo of 10,000.* Test silos of 1,000 set it to 0; another size needs its own measurement.
+
+## 2026-11-01 — First results: the canon scenario, 100 seeds (T12.8)
+
+**Code:** `8f0db73` (report with C1–C4), plus `scenarios/canon.yaml` and `analysis/canon.sh` (not yet committed).
+**Setup:** `scenarios/canon.yaml`: the baseline plus space, network, beliefs, control and rebellion, every setting at its default (the show's settings: the canon Pact, σ = 0.05); 50 warm-up and 300 measured years; one scripted `cleaningFailure` on day 73,000 (measured year 150) for C2 (Adam). Seeds 1–100.
+**Commands:** `bin/silosim batch --scenario scenarios/canon.yaml --seeds 1-100 --out runs/t12.8-canon`, then `bin/silosim report --batch runs/t12.8-canon` and `analysis/canon.sh runs/t12.8-canon`. About 3.4 hours on 8 cores: 17 minutes per run in the batch, 4 min 18 s for one run alone (the performance budget of `docs/architecture.md` is 3 minutes).
+
+**Result: C1–C4 all fail, because nothing rebels.** No rebellion in 30,000 silo-years; 96 unrest spells; no collapse. The §8 baseline targets all still hold (population 9,700–9,850).
+
+| Pattern | Measured | |
+| --- | --- | --- |
+| C1 rate 0.3–2 per century | 0 in 30,000 years | FAIL |
+| C2 ≥ 3× after a scripted failure | 0/100 after vs 0/5,703 without | FAIL (nothing to compare) |
+| C3 Down Deep, Mechanical strike | no rebellions | FAIL (nothing to judge) |
+| C4 < 10% know the history 40 years on | no suppressed rebellions | FAIL (nothing to judge); the history is known by 73% of adults in measured year 1 and 89% at the end |
+
+The peak share of the population active in a run: median 0.95%, highest 1.8% (about 1.3% and 2.5% of adults), against the rebellion line of 5% of adults. The peak usually falls on the day of the scripted failure. Almost nobody joins (at most 5 a day) and nobody turns violent.
+
+Means over the 100 runs, from yearly.csv:
+
+| Measured year | H Up Top / Mids / Down Deep | G Up Top / Mids / Down Deep | Fear F | Arrests a year | Know history | Mean L |
+| ---: | --- | --- | ---: | ---: | ---: | ---: |
+| 100 | 0.004 / 0.004 / 0.202 | 0.002 / 0.003 / 0.139 | 0.970 | 164 | 0.820 | 0.312 |
+| 149 | 0.004 / 0.004 / 0.204 | 0.003 / 0.003 / 0.144 | 0.972 | 167 | 0.825 | 0.290 |
+| 151 | 0.004 / 0.004 / 0.204 | 0.004 / 0.004 / 0.195 | 0.993 | 385 | 0.856 | 0.035 |
+| 200 | 0.006 / 0.005 / 0.204 | 0.005 / 0.005 / 0.199 | 0.996 | 295 | 0.882 | 0.017 |
+| 300 | 0.008 / 0.007 / 0.206 | 0.008 / 0.007 / 0.202 | 0.996 | 300 | 0.885 | 0.011 |
+
+Cleanings: 0.03 a year (0.01–0.08 by run), inside σ's plausibility band of 0–2 (ODD §7); 51 failed cleanings in the 100 runs.
+
+**Why nothing rebels (three rules, not numbers):**
+
+1. *Fear is saturated, so Epstein's tipping is switched off.* F sits at 0.97–1.0 all run: about 165 trials a year (300 after the failure) × φ = 0.01 × the rules' visibility, against a half-life of 1 year, adds more than 1 a year. The net risk N = R × (1 − (1 − P)(1 − F)) is then R whatever the patrol, so the arrest estimate P, the mechanism by which more actives make it safer to join (§6.14), does nothing. Most trials are for talk, because the history is endemic (point 3).
+2. *Grievance has nowhere to come from but the Down Deep.* In a fed silo H is 0 Up Top and in the Mids and s\_DD = 0.2 Down Deep (§6.14); losses are rare and rationing never happens. Even with L near 0 after the failure, G ≤ 0.2, so with N = R only Down Deep adults with R below about 0.1 are active: about a tenth of a fifth of the silo, 2% of adults at most. That is unrest, never the 5% a rebellion needs.
+3. *The history is endemic before any rebellion.* From 15 Flamekeepers and 100 relics on day 1, it is known by 73% of adults after the warm-up (each knower tells about 5 others before forgetting, R₀ ≈ 5; T10.3, T10.4). A rebellion teaches nobody anything (§6.14), so C4 would measure this background level, not the forgetting of a rebellion, and it can't pass while R₀ > 1. M13's regime responses alone can't hold it down: from 1% it regrows to near 80% within about 30 years (T10.4's growth).
+
+The three are linked: the endemic history keeps L low, but also keeps the talk offences coming, which keeps fear at its ceiling, which stops the low L from ever turning into a rebellion.
+
+**What it means:** at the show's settings the model gives a silo that doubts everything and never rises: the regime's fear, not legitimacy, keeps the peace. Per T12.8, the run stops here; the fix is a rule change in the spec (Adam), not a number. Nothing was tuned.
+
+## 2026-11-02 — Diagnostic: the canon scenario with fear off (T12.8)
+
+**Setup:** `scenarios/canon.yaml` with `control.fearPerTrial: 0` (φ = 0, so F stays 0), seeds 1–8. A diagnostic, not a calibration: it bounds what any change to fear could do.
+
+| | Canon (fear on) | Fear off |
+| --- | --- | --- |
+| Rebellions | 0 in 30,000 years | 0 in 2,400 years |
+| Peak share of the population active, before / after the failure | ~0.2% / ~1.0% | 0.16–0.23% / 0.8–1.1% |
+| Most joined on a day, most strikers on a day | 5, — | 35, 32 (a Mechanical strike needs about 95) |
+| Adults knowing the history, mean L, at the end | 0.885, 0.011 | 0.934, 0.004 |
+
+**Result:** fear is not what keeps the canon silo quiet. Without it the net risk is R × P, and P stays high because the Down Deep's patrol (about 90) outnumbers its actives (about 100): grievance is at most 0.2, and only Down Deep, so only its least risk-averse adults come out, too few to tip the patrol. The fear change drafted for T12.8 was withdrawn (Adam); the binding limits are hardship and an already-low legitimacy.
+
+## 2026-11-02 — Smoke run of the T12.8 rule changes, seed 1
+
+**Code:** uncommitted T12.8 rule changes (Adam, 2026-11-02): own hardship h\_own ~ U(0,1) in H (§6.14); only doubters tell, π × (1 − L\_teller) × (1 − L\_listener) (§6.12); everyone 14+ learns the history when a rebellion ends; C4 judged from M13 on. **Setup:** `scenarios/canon.yaml`, seed 1, 5.4 minutes.
+
+| | Before the changes | After |
+| --- | --- | --- |
+| Know history / mean L, measured years 1–149 | 0.73–0.83 / 0.54–0.29 | 0.01–0.02 / 0.80 |
+| Peak active before the failure | 0.2% | 0.4% |
+| Rebellions | none | 3: day 73,000 (the failure, 251 days, suppressed), day 73,281 (425 days, suppressed), day 113,071 (no trigger, 13 years, collapse by air) |
+| Fear, arrests a year before the failure | 0.97, 165 | 0.99, 170 |
+| Cleanings a year | 0.03 | 1.2 |
+
+Every rebellion started in the Mids (the largest zone), and no critical department struck: at most 295 strikers, spread over departments. The second rebellion was an *echo*: the first one's end taught everyone the history, L fell 0.15, and it started 30 days later. Adam moved the teaching rule to M13, to be settled with the memory wipe (T13.0). The third ended in the life-support spiral (T13.0), with 18,926 arrests over its 13 years.

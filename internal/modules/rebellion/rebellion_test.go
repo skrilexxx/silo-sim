@@ -19,7 +19,7 @@ const year = engine.DaysPerYear
 // floor 1. Its departments are general, judicial,
 // sheriff and mechanical; Judicial's and the Sheriff's Headcount stands
 // for the officers on duty. Everyone
-// has L = 0.8 until given a flag, and R = 0.5. The network, beliefs,
+// has L = 0.8 until given a flag, R = 0.5 and own hardship 0. The network, beliefs,
 // space and control states are sized to the people added; only this
 // module runs, and nobody moves.
 type tiny struct {
@@ -89,6 +89,7 @@ func (s *tiny) start() {
 	if err := s.m.Init(s.w, s.cfg, s.r); err != nil {
 		s.t.Fatal(err)
 	}
+	clear(s.w.Rebellion.Own) // own hardship 0 unless a test sets it
 }
 
 func (s *tiny) step() {
@@ -931,5 +932,35 @@ func TestSplit(t *testing.T) {
 	s.m.track(w, 0.2, true)
 	if b.RebellionStart != world.None || len(b.Ended) != 1 || b.Ended[0].Ending != "split" || *b.Ended[0].End != w.Day {
 		t.Errorf("rebellion %d, records %+v; want it ended today by a split", b.RebellionStart, b.Ended)
+	}
+}
+
+// ODD §6.14, Hardship: own hardship h_own is drawn uniformly on 0–1 for
+// each newcomer and combines with the other sources like an independent
+// chance: Down Deep with h_own = 0.5 in a fed silo, H = 1 − 0.5 × 0.8.
+func TestOwnHardship(t *testing.T) {
+	s := newTiny(t)
+	dd := s.add(30, 2, 1)
+	s.start()
+	w, b := s.w, s.w.Rebellion
+	b.Own[dd] = 0.5
+	s.m.hardship(w)
+	if !near(b.H[dd], 0.6) {
+		t.Errorf("H = %v, want 0.6", b.H[dd])
+	}
+	const n = 4000
+	for range n {
+		s.add(30, 1, 1)
+	}
+	s.m.newcomers(w, s.r)
+	sum := 0.0
+	for _, h := range b.Own[1:] {
+		if h < 0 || h >= 1 {
+			t.Fatalf("h_own %v outside 0–1", h)
+		}
+		sum += h
+	}
+	if mean := sum / n; math.Abs(mean-0.5) > 5*math.Sqrt(1.0/12/n) {
+		t.Errorf("mean h_own %v, want 0.5", mean)
 	}
 }

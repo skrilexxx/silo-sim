@@ -79,6 +79,8 @@ The answers are **conditional and comparative**. The agents follow rules, not hu
 - *C3:* over all rebellions in the batch: the share whose starting zone (§6.14) is the Down Deep, and among those the share with Mechanical on strike on any of its days (`struck` in `rebellions.jsonl`).
 - *C4:* each suppressed rebellion is judged at the first yearly snapshot at least 40 years after its end day, by the share of adults who know the history flag (`knowHistory`); one with no such snapshot is not judged. C4 holds when at least 90% of the judged rebellions are under 10%, the same bar as the §8 targets.
 
+**C4 is judged from M13 on** (Adam, 2026-11-02). Its sources (Freedom Day, lost records, Vitamin D+) are the regime's memory wipe (§6.15), which the model does not have before M13; until then `silosim report` prints C4 as information only.
+
 C1 bounds the rebellion rate, which is also what Q1 measures. That is deliberate but limited: C1 is a wide plausibility check (no constant revolts, no eternal peace), never a target to tune toward a point. Q1's answer is what *changes* the rate, read from comparisons between scenarios.
 
 **Outcome metrics**
@@ -597,10 +599,12 @@ Hardship is not part of L. It enters grievance, G = H × (1 − L) (§6.14), so 
 **Telling and believing.** In a conversation (§6.11), each flag the teller knows and the listener doesn't passes to the listener, who knows it from then on as *heard*, with chance
 
 ```latex
-\pi \times (1 - L_{listener})
+\pi \times (1 - L_{teller}) \times (1 - L_{listener})
 ```
 
-Either of the two can be the teller, so a tie between two knowers works both ways. The chance is the same for every flag and every tie kind: kin and households pass things on faster only because strong ties talk more often (§6.11). With the control module on, fear F (§6.13) silences talk with acquaintances: over a weak tie (coworker, neighbour, porter) the teller dares to tell only with chance 1 − F, so the chance becomes π × (1 − F) × (1 − L\_listener). Family is safe: over a strong tie fear changes nothing. People who believe the regime are hard to convince, and once someone doubts, the next fact is easier to believe, because every flag they learn lowers their L. A dosed listener learns nothing; a listener with the flag hidden may recall it instead (Vitamin D+, below). A flag learned today is passed on from the next day.
+Telling takes doubt as much as believing does: someone who still trusts the regime keeps what they heard to themself. With the listener's doubt alone, every knower told about five others before forgetting (R₀ ≈ 5, T10.3), so the history was known by three quarters of adults before any rebellion, mean L was 0.3, and steady trials for talk kept fear at its ceiling (T12.8). With the teller's doubt too, R₀ is about 1 at L\_edu, and it rises as the silo loses faith, so a shock can still make the history spread (Adam, 2026-11-02).
+
+Either of the two can be the teller, so a tie between two knowers works both ways. The chance is the same for every flag and every tie kind: kin and households pass things on faster only because strong ties talk more often (§6.11). With the control module on, fear F (§6.13) silences talk with acquaintances: over a weak tie (coworker, neighbour, porter) the teller dares to tell only with chance 1 − F, so the chance becomes π × (1 − F) × (1 − L\_teller) × (1 − L\_listener). Family is safe: over a strong tie fear changes nothing. People who believe the regime are hard to convince, and once someone doubts, the next fact is easier to believe, because every flag they learn lowers their L. A dosed listener learns nothing; a listener with the flag hidden may recall it instead (Vitamin D+, below). A flag learned today is passed on from the next day.
 
 Only conversations that involve a knower are drawn (§6.11): the step visits the people who know at least one flag, in an order shuffled each day. The chances are the ones above, but they are drawn rarest first: whether a flag would pass at π, then at 1 − L, and only then whether the tie is used today. Almost nothing passes on a given day, so most knowers are passed over without reading their ties, and the cost follows the knowers, not the population or their ties (T10.3: asking every tie cost 1 ms a day with 80% of the silo knowing a flag).
 
@@ -776,19 +780,21 @@ Checked at load: σ, a, p\_find, p\_name, p\_fail and λ are in [0, 1]; R\_raid 
 
 *Answers Q1 and Q2.* The dissent half of the rebellion model, after Epstein's civil violence model (2002): a person turns against the regime when their grievance outweighs their fear of arrest, comes out with others once enough of the people they know have, and the angriest go on to fight and sabotage. The module needs the control module (§6.13), and through it the beliefs, network and space modules; strikes act through work (§6.5), sabotage through resources (§6.6).
 
-**State** (owned by this module; §2 is unchanged): for each person, their stage (below) and the day of their last loss; for each zone, whether rebels hold it and since when; the water pump, running or down until a day; for each stair segment, the day it last broke; the zone counts of the day before; the open unrest spell and rebellion, if any, with what the log needs (§1.2).
+**State** (owned by this module; §2 is unchanged): for each person, their stage (below), their own hardship h\_own and the day of their last loss; for each zone, whether rebels hold it and since when; the water pump, running or down until a day; for each stair segment, the day it last broke; the zone counts of the day before; the open unrest spell and rebellion, if any, with what the log needs (§1.2).
 
-**Hardship.** H, 0–1, is how hard a person's life is. It is recomputed every day for every adult (worker age, 18, §6.5) from three sources, combined like independent chances, so that H stays within 0–1 without a clamp:
+**Hardship.** H, 0–1, is how hard a person's life is. It is recomputed every day for every adult (worker age, 18, §6.5) from four sources, combined like independent chances, so that H stays within 0–1 without a clamp:
 
 ```latex
-H = 1 - (1 - h_{food})(1 - h_{loss})(1 - h_{DD})
+H = 1 - (1 - h_{own})(1 - h_{food})(1 - h_{loss})(1 - h_{DD})
 ```
+
+- *Own:* h\_own, drawn uniformly on 0–1 at birth (on day 1 for the starting population) and never changed, as Epstein's hardship (2002). It stands for everything about a life the model does not track, from a cramped flat to a cruel supervisor. Like R (§6.12), it adds no parameter.
 
 - *Food:* h\_food = max(0, today's hardship of their home zone) (§6.7): 0 in a fed silo, 0.1 under rationing.
 - *Loss:* h\_loss = ℓ × 2^(−t / T\_loss), with t the years since their last loss, and 0 if they never had one. A loss is a family member (partner, household or kin, the first three tie kinds of §6.11) cleaned (§6.13, failed or not) or killed in a fight (below), or, for both partners, a denied lottery win (§6.13). The couple puts the denial down to infertility, but a child that never comes is a loss whatever its cause. A new loss starts the clock again; losses don't add up.
 - *Scapegoat:* h\_DD = s\_DD if their home is in the Down Deep, else 0. The regime blames the lowest class when trouble rises, as Mechanical learns in S2 (lore reference).
 
-In a fed silo with no losses H is 0 Up Top and in the Mids and s\_DD = 0.2 Down Deep.
+In a fed silo with no losses H is h\_own Up Top and in the Mids, and 0.2 + 0.8 h\_own Down Deep. Without h\_own, H was 0 for four fifths of the silo and G at most 0.2, so even with fear off and L near 0 at most 1% of the silo was ever active, and the canon silo never rebelled (T12.8; Adam, 2026-11-02).
 
 Health is not a source (Adam, 2026-10-31). H is hardship people blame on the regime, as in Epstein; illness and bad air are physical. With health in H, a strike spiralled: a strike cuts air (§6.6), bad air lowers health, higher H brings out more strikers. At the canon settings an ordinary generator outage, eight years after a cleaning failure, set it off, and every adult in a 1,000-person silo was dead within 100 days (T12.4). Rationing still feeds back, but it adds at most 0.1 and only after the food stock falls below 30 days.
 
@@ -844,7 +850,7 @@ Each sabotage is the offence `sabotage` (§6.9).
 
 **Stair repairs.** Each day each broken segment, visited from 1 to 143, is repaired with chance mechanicalCoverage / D\_stair, unless a floor at either end lies in a held zone. Segments broken by scripted events are repaired the same way. A segment still broken 90 days after it broke, while the rebellion that saw it break still runs, is a split (§1.2).
 
-**Unrest, rebellion and endings.** At the end of the step the module applies the tests of §1.2 to the day's stages: unrest, the start and end of a rebellion, and its ending. A *collective action* is under way on a day with a critical department on strike, a fight in any zone, or a held zone. A split is checked each day while a rebellion runs: each segment broken since its start and broken for `splitDays` days, from 1 to 143, and the first with `splitPeople` on each side ends it. The collapse check runs before these tests, so a collapse ends a rebellion first, including one detected that day. A rebellion's *starting zone* is the home zone of most of the adults active on its start day (on a tie, the first in the order Up Top, Mids, Down Deep).
+**Unrest, rebellion and endings.** At the end of the step the module applies the tests of §1.2 to the day's stages: unrest, the start and end of a rebellion, and its ending. A *collective action* is under way on a day with a critical department on strike, a fight in any zone, or a held zone. A rebellion teaches nobody anything here: what people learn from one they saw is settled in M13, together with the memory wipe that answers it (Adam, 2026-11-02). A split is checked each day while a rebellion runs: each segment broken since its start and broken for `splitDays` days, from 1 to 143, and the first with `splitPeople` on each side ends it. The collapse check runs before these tests, so a collapse ends a rebellion first, including one detected that day. A rebellion's *starting zone* is the home zone of most of the adults active on its start day (on a tie, the first in the order Up Top, Mids, Down Deep).
 
 **Collapse** (§1.2). Checked at the end of the step, and only with this module on, so a baseline run never stops early: air or water below 0.2 for 30 days in a row, or the population below P\_min (4,900, measured in T12.6; 0 switches the test off), its cause air or water if either is below the collapse level that day. The level and the days are §1.2 settings (`collapseLevel`, `collapseDays`). The Safeguard comes with §6.16. The first collapse is logged with its cause and ends a running rebellion with that ending; the run stops after that day, unless `output.runAfterCollapse` is true. Extinction always ends it (§1.2).
 
@@ -852,7 +858,7 @@ Each sabotage is the offence `sabotage` (§6.9).
 
 **Step.** The rebellion step (§3 step 10.9) runs after the control step, in this order:
 
-1. newcomers get their state; the losses reported today (cleanings, denied wins) are recorded;
+1. newcomers get their state, their h\_own drawn in the order of their IDs; the losses reported today (cleanings, denied wins) are recorded;
 2. hardship and grievance;
 3. stages, and the acts reported to control, which sees them at its next step;
 4. fights, zone by zone;
@@ -978,12 +984,12 @@ The table below is the frozen baseline set. Part-2 parameters are listed in thei
 | Walking per day H\_walk | 8 hours | Guess | 6.10 |
 | Office floors | Administration 1, Sheriff 1, Judicial 2–3, Medical 12, Education 20, IT 33–34, Supply 72 | Guess; Up Top for the first six, Mids for Supply (§6.5 zones). Sheriff and the Mayor's office near the cafeteria at the top \[Likely\] | 6.10 |
 | Weak ties per kind k | 5 | Guess: a few close neighbours and workmates out of about 90 people on a floor | 6.11 |
-| Strong tie daily chance p\_s | 0.5 | Guess: family and close work ties talk on about every other day; sets how fast news travels, so it is checked against C4 (§1.2) in T12.8 | 6.11 |
+| Strong tie daily chance p\_s | 0.5 | Guess: family and close work ties talk on about every other day; sets how fast news travels, so it is checked against C4 (§1.2) from M13 | 6.11 |
 | Weak tie strength w\_weak | 0.3 | Guess: a weak tie is used about a third as often as a strong one (0.15 a day) | 6.11 |
 | Taught legitimacy L\_edu | 0.8 | Guess: most people believe the Pact | 6.12 |
 | Education weight ε | 0.5 | Guess: school and home count equally | 6.12 |
 | Legitimacy cost per flag δ | 0.15 | Guess: all five flags take L from 0.8 to 0.05 | 6.12 |
-| Pass chance π | 0.002 per flag and conversation, × (1 − L) | Guess; calibrated against C4 (§1.2) in T12.8, together with p\_s (§6.11) | 6.12 |
+| Pass chance π | 0.002 per flag and conversation, × (1 − L) of teller and listener | Guess; calibrated against C4 (§1.2) from M13, together with p\_s (§6.11) | 6.12 |
 | Half-life of heard knowledge T\_heard | 5 years | Guess | 6.12 |
 | Half-life of lived knowledge T\_lived | 20 years | Guess: most witnesses keep it for decades, few for life | 6.12 |
 | Hiding while dosed d | 0.01 per flag and day | Guess: a year of water dosing hides 97% of a flag, past the 90% T10.6 asks for | 6.12 |

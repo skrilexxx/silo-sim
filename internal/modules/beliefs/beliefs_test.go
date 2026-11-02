@@ -207,9 +207,11 @@ func TestNeedsNetwork(t *testing.T) {
 }
 
 // ODD §6.12, Telling and believing: a flag passes in a conversation with
-// chance π × (1 − L of the listener). With π = 0.5, a listener who knows
-// nothing (L 0.8) learns on a day with chance 0.1; one with L 0.65 (as if
-// they knew a flag), with chance 0.175. 2,000 listeners in each group.
+// chance π × (1 − L of the teller) × (1 − L of the listener). With π =
+// 0.5 and tellers who know one flag (L 0.65), a listener who knows nothing
+// (L 0.8) learns on a day with chance 0.1 × 0.35 = 0.035; one with L 0.65
+// (as if they knew a flag), with chance 0.175 × 0.35 = 0.06125. 2,000
+// listeners in each group.
 func TestPassChanceFallsWithListenersL(t *testing.T) {
 	s := newTiny(t)
 	const each = 2000
@@ -232,7 +234,7 @@ func TestPassChanceFallsWithListenersL(t *testing.T) {
 	for _, g := range []struct {
 		who  []world.PersonID
 		want float64
-	}{{groupA, 0.1}, {groupB, 0.175}} {
+	}{{groupA, 0.1 * 0.35}, {groupB, 0.175 * 0.35}} {
 		got := 0
 		for _, id := range g.who {
 			if bl.Known[id].Has(world.FlagHistory) {
@@ -375,7 +377,7 @@ func TestRevealHistory(t *testing.T) {
 	if b.Known[child] != 0 || b.Known[dead] != 0 {
 		t.Errorf("child knows %b, the dead %b; want nothing, not even from a conversation today", b.Known[child], b.Known[dead])
 	}
-	b.Base[child] = 0 // convinced by anything (after today's recompute)
+	b.Base[child], b.Base[adult] = 0, 0 // convinced by anything (after today's recompute); a teller who always tells
 	s.step()
 	if !b.Known[child].Has(world.FlagHistory) || b.Lived[child] != 0 {
 		t.Errorf("next day the child knows %b (lived %b); want the history, heard", b.Known[child], b.Lived[child])
@@ -1028,7 +1030,7 @@ func TestActsReported(t *testing.T) {
 	s.w.Control = &world.Control{Head: world.None, Successor: world.None}
 	s.startWith(1)
 	b := s.w.Beliefs
-	b.Base[convinced], b.Base[loyal] = 0, 1 // always and never convinced
+	b.Base[convinced], b.Base[loyal], b.Base[teller] = 0, 1, 0 // always and never convinced; a teller who always tells
 	b.Learn(teller, world.FlagScreen, false)
 	s.m.teach(b, knows, world.FlagScreen, false) // learned today: not passed on before tomorrow
 	s.step()
@@ -1077,7 +1079,7 @@ func TestFearSilencesAcquaintances(t *testing.T) {
 		n.Weak[teller] = []world.Tie{{Other: coworker, Kind: world.TieCoworker}}
 		n.Weak[coworker] = []world.Tie{{Other: teller, Kind: world.TieCoworker}}
 		n.Forget(s.w, []world.PersonID{teller, coworker}, nil)
-		b.Base[mate], b.Base[coworker] = 0, 0
+		b.Base[mate], b.Base[coworker], b.Base[teller] = 0, 0, 0
 		b.Learn(teller, world.FlagSilos, false)
 		s.step()
 		heard := b.Known[coworker].Has(world.FlagSilos)

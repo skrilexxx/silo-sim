@@ -82,7 +82,7 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	for i := range w.Rebellion.BrokeOn {
 		w.Rebellion.BrokeOn[i] = world.None
 	}
-	m.newcomers(w)
+	m.newcomers(w, r)
 	m.count(w)
 	return nil
 }
@@ -93,7 +93,7 @@ func (m *Module) Steps() []engine.Step {
 
 // ODD §6.14 / §3 step 10.9.
 func (m *Module) step(w *world.World, r *rng.Stream) error {
-	m.newcomers(w)
+	m.newcomers(w, r)
 	m.losses(w)
 	m.hardship(w)
 	m.strikes(w)
@@ -214,10 +214,13 @@ func (m *Module) collapse(w *world.World) {
 	w.Over = w.Over || !m.runAfter
 }
 
-func (m *Module) newcomers(w *world.World) {
+// newcomers get their state, and their own hardship h_own drawn in the
+// order of their IDs (ODD §6.14, Hardship).
+func (m *Module) newcomers(w *world.World, r *rng.Stream) {
 	b := w.Rebellion
 	for len(b.LossDay) < len(w.People) {
 		b.LossDay, b.H, b.G = append(b.LossDay, world.None), append(b.H, 0), append(b.G, 0)
+		b.Own = append(b.Own, r.Float64())
 		b.Stage = append(b.Stage, world.Calm)
 	}
 }
@@ -254,8 +257,8 @@ func (m *Module) grieve(w *world.World, id world.PersonID) {
 	}
 }
 
-// ODD §6.14, Hardship and Grievance: H combines food, loss and the Down
-// Deep like independent chances, so it stays within 0–1 without a clamp;
+// ODD §6.14, Hardship and Grievance: H combines own hardship, food, loss
+// and the Down Deep like independent chances, so it stays within 0–1 without a clamp;
 // G = H × (1 − L). Children have neither. Health is left out: with it, a
 // strike that cut air brought out more strikers until the silo died.
 func (m *Module) hardship(w *world.World) {
@@ -267,7 +270,7 @@ func (m *Module) hardship(w *world.World) {
 			continue
 		}
 		zone := w.Floors[w.Households[p.Household].Floor-1].Zone
-		calm := 1 - max(0, 1-w.Silo.Intake[zone])
+		calm := (1 - b.Own[id]) * (1 - max(0, 1-w.Silo.Intake[zone]))
 		if d := b.LossDay[id]; d != world.None {
 			calm *= 1 - m.loss*math.Exp2(-float64(w.Day-d)/m.lossDays)
 		}

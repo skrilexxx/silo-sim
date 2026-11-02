@@ -15,6 +15,7 @@ const (
 // the module is off. Per-person slices are indexed by PersonID.
 type Rebellion struct {
 	LossDay []Tick       // day of the person's last loss in the family, or None
+	Own     []float64    // h_own: own hardship, drawn at birth (ODD §6.14, Hardship)
 	H, G    []float64    // today's hardship and grievance; 0 for children
 	Stage   []RebelStage // today's stage
 

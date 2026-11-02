@@ -1,0 +1,11 @@
+# Canon scenario (ODD §1.2): Silo 18 with every part-2 module built so far on, at the
+# show's settings, which are baseline.yaml's defaults (the canon Pact, σ = 0.05). The
+# canon patterns C1–C4 are checked on 100 seeds of it with `silosim report` (T12.8).
+extends: baseline.yaml
+name: canon
+years: 300                        # 50 warm-up + 300 measured years (ODD §1.2, decision D11)
+modules: [demography, health, work, resources, governance, space, network, beliefs, control, rebellion]
+events:
+  # C2 (ODD §1.2): one scripted cleaning failure per run, in the middle of the measured
+  # years (50 + 150 years), leaving 150 years either side for C1 and C4 (Adam, 2026-11-01).
+  - { day: 73000, type: cleaningFailure }
