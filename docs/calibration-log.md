@@ -541,3 +541,22 @@ The three are linked: the endemic history keeps L low, but also keeps the talk o
 | Cleanings a year | 0.03 | 1.2 |
 
 Every rebellion started in the Mids (the largest zone), and no critical department struck: at most 295 strikers, spread over departments. The second rebellion was an *echo*: the first one's end taught everyone the history, L fell 0.15, and it started 30 days later. Adam moved the teaching rule to M13, to be settled with the memory wipe (T13.0). The third ended in the life-support spiral (T13.0), with 18,926 arrests over its 13 years.
+
+## 2026-11-02 — Second canon batch, after the rule changes (T12.8)
+
+**Code:** `79bae6c` (own hardship, doubting tellers, C4 from M13), plus the report fix for runs that collapse in warm-up. **Setup:** `scenarios/canon.yaml`, seeds 1–100, `runs/t12.8-canon-2`; about 3.5 hours (953 s per run in the batch). **Commands:** as the first batch.
+
+| Pattern | Measured | |
+| --- | --- | --- |
+| C1 0.3–2 rebellions per century | 0.92 (223 in 24,292 measured years) | PASS |
+| C2 ≥ 3× after a scripted failure | 98/98 windows after vs 22/3,997 without (182×) | PASS |
+| C3 ≥ 60% start Down Deep | 0/223: every one starts in the Mids; a critical department struck in 16 (Mechanical 11) | FAIL |
+| C4 (information until M13) | 83 of 108 judged under 10% (77%) | — |
+
+**The peace breaks once and doesn't come back.** Before the scripted failure: 2 rebellions in 14,832 silo-years (0.013 per century), L 0.80, the history known by 1–2%. After it: 221 in 9,461 (2.3 per century), L 0.50 then about 0.6, as failed cleanings (652 in the batch, mostly after the shock) keep teaching the outside and the screen. C1's pooled 0.92 is the average of the two, not a long peace with rare revolts.
+
+**Three silos in four die.** 74 collapses (air 66, water 7; one in warm-up year 23, seed 32, before any measured day), at a median measured year of 224, about 75 years after the failure; 26 runs reach year 300. 61 rebellions end in collapse, all but 3 of them later ones with no trigger. A rebellion lasts a median 245 days (90th percentile 1,485, longest 10,569) with about 2,750 arrests: workers held by Judicial take Mechanical below the air line, the spiral parked for M13 (T13.0). The §8 targets now fail on population (27%) and rationing (26%) for the same reason.
+
+**Why C3 fails:** h\_own is the same everywhere, so the Down Deep's grievance is only 1.2 times the Mids' (G 0.30 vs 0.25 right after the failure), while the Mids have twice as many adults. The starting zone counts heads, so the Mids win every time.
+
+Unrest: 6,644 spells, about 66 a run. Fear stays at 0.99. Cleanings 0.52 a year (0–1.13), inside σ's band. Nothing was tuned.

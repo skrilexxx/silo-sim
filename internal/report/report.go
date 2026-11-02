@@ -92,6 +92,7 @@ func LoadRun(dir string) (Seed, error) {
 		Error    string `json:"error"`
 		Outcomes struct {
 			UnrestSpells  int     `json:"unrestSpells"`
+			CollapseDay   *int    `json:"collapseDay"`
 			CollapseCause *string `json:"collapseCause"`
 		} `json:"outcomes"`
 		Scenario struct {
@@ -114,6 +115,12 @@ func LoadRun(dir string) (Seed, error) {
 		if s.Crashed == "" {
 			s.Crashed = "did not finish"
 		}
+		return s, nil
+	}
+	// A silo that died in warm-up has no measured days: it fails every
+	// target, like a run that stopped early (ODD §1.2).
+	if o := info.Outcomes; o.CollapseDay != nil && *o.CollapseDay <= info.Scenario.WarmupYears*daysPerYear && !info.Scenario.Output.LogWarmup {
+		s.Crashed = fmt.Sprintf("collapsed in warm-up on day %d (%s)", *o.CollapseDay, *o.CollapseCause)
 		return s, nil
 	}
 	warmup := 0 // rows on or before this day are warm-up (written only with logWarmup)

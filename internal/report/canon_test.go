@@ -106,3 +106,15 @@ func TestCanonReport(t *testing.T) {
 		}
 	}
 }
+
+// A silo that collapsed in warm-up wrote no measured rows: it is listed
+// as failing every target, and the report goes on.
+func TestCollapsedInWarmup(t *testing.T) {
+	dir := fake(t)
+	os.WriteFile(filepath.Join(dir, "run.json"), []byte(`{"seed":7,"finished":true,"outcomes":{"collapseDay":200,"collapseCause":"air"},"scenario":{"warmupYears":1}}`), 0o644)
+	os.WriteFile(filepath.Join(dir, "daily.csv"), []byte("day,population\n"), 0o644)
+	s, err := LoadRun(dir)
+	if err != nil || s.Crashed != "collapsed in warm-up on day 200 (air)" {
+		t.Fatalf("got %q, %v", s.Crashed, err)
+	}
+}
