@@ -39,6 +39,8 @@ control:                  # M11, off
   findChance: 1
   nameChance: 1
   minesFloor: 100
+  prisonPlaces: 1
+  minesPlaces: 1
   cleaningFailChance: 1
   cleaningLift: 1
   liftHalfLifeYears: 10

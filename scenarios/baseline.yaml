@@ -171,6 +171,8 @@ control:                          # ODD §6.13 (part 2, draft); used only when `
   findChance: 0.2                 # p_find: a search finds a held relic; guess (relics are hidden well)
   nameChance: 0.3                 # p_name: an arrested Flamekeeper names one other member, drawn uniformly; guess
   minesFloor: 144                 # where mines sentences are served; lore: the mines lie at the bottom [Likely]
+  prisonPlaces: 50                # ODD §6.13, Places: prison cells, at most this many held at once; 0 = no limit; guess (lore: a few cells)
+  minesPlaces: 100                # ... and the mines' labour crew; 0 = no limit; guess
   cleaningFailChance: 0.05        # p_fail: a cleaner refuses and walks out of sight; guess
   cleaningLift: 0.05              # λ: lift of everyone's L from a cleaning seen by all (× the rule's visibility); guess
   liftHalfLifeYears: 1            # T_S: the lift halves in this time; guess

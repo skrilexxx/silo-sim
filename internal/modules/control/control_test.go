@@ -742,3 +742,61 @@ func TestNoArrestInHeldZone(t *testing.T) {
 		t.Errorf("zone freed: hold %d, want custody", c.Hold[a])
 	}
 }
+
+// ODD §6.13, Places: with one prison place, the second convict tried waits
+// at home, free, and their new case waits too; when the first is released
+// the second takes the place, with a walk to the court, for their full 90
+// days, losing a Flamekeeper seat taken while waiting. The mines (0 = no
+// limit) take everyone. A waiting convict put out
+// in a fight leaves the queue for custody.
+func TestPlaces(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Control.PrisonPlaces = 1
+	a, b, v := s.on(3), s.on(3), s.on(3)
+	s.start()
+	c, sp := s.w.Control, s.w.Space
+	s.offend(a, world.TradeRelic)
+	s.offend(b, world.TradeRelic)
+	s.offend(v, world.Violence)
+	s.days(2) // arrested, then tried
+	if c.Hold[a] != world.Prison || c.Hold[b] != world.Free || !s.m.waiting[b] || len(s.m.queue[0]) != 1 || c.Hold[v] != world.Mines {
+		t.Fatalf("hold a %d, b %d (waiting %v, queue %v), v %d; want a in prison, b waiting free, v in the mines",
+			c.Hold[a], c.Hold[b], s.m.waiting[b], s.m.queue[0], c.Hold[v])
+	}
+	s.days(2)
+	s.offend(b, world.TradeRelic)
+	s.step()
+	if sp.Location[b] != 3 || c.Held(b) || len(c.Cases) != 1 {
+		t.Fatalf("waiting: b at floor %d, held %v, cases %v; want home, free, the new case waiting", sp.Location[b], c.Held(b), c.Cases)
+	}
+	bl := s.w.Beliefs
+	bl.IsMember[b], bl.Members = true, []world.PersonID{b} // took a Flamekeeper seat while waiting
+	for c.Hold[a] == world.Prison {
+		s.step()
+	}
+	admitted := s.w.Day
+	if bl.IsMember[b] || len(bl.Members) != 0 {
+		t.Errorf("admitted: member %v, members %v; want the seat lost", bl.IsMember[b], bl.Members)
+	}
+	if c.Hold[b] != world.Prison || c.Until[b] != admitted+90 || s.m.waiting[b] || len(s.m.queue[0]) != 0 {
+		t.Fatalf("day a was released: b hold %d until %d (want %d), waiting %v", c.Hold[b], c.Until[b], admitted+90, s.m.waiting[b])
+	}
+	s.step()
+	if sp.Location[b] != 2 || len(c.Cases) != 1 {
+		t.Errorf("b at floor %d, cases %v; want in prison on the court floor, the new case still waiting", sp.Location[b], c.Cases)
+	}
+
+	s = newTiny(t)
+	s.cfg.Control.PrisonPlaces = 1
+	a, b = s.on(3), s.on(3)
+	s.start()
+	c = s.w.Control
+	s.offend(a, world.TradeRelic)
+	s.offend(b, world.TradeRelic)
+	s.days(3)
+	c.Seized = []world.PersonID{b}
+	s.step()
+	if c.Hold[b] != world.Custody || s.m.waiting[b] || len(s.m.queue[0]) != 0 {
+		t.Errorf("seized while waiting: hold %d, waiting %v, queue %v; want custody, out of the queue", c.Hold[b], s.m.waiting[b], s.m.queue[0])
+	}
+}

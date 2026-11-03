@@ -240,6 +240,8 @@ type Control struct {
 	FindChance         float64 `yaml:"findChance"`
 	NameChance         float64 `yaml:"nameChance"`
 	MinesFloor         int     `yaml:"minesFloor"`
+	PrisonPlaces       int     `yaml:"prisonPlaces"`
+	MinesPlaces        int     `yaml:"minesPlaces"`
 	CleaningFailChance float64 `yaml:"cleaningFailChance"`
 	CleaningLift       float64 `yaml:"cleaningLift"`
 	LiftHalfLifeYears  float64 `yaml:"liftHalfLifeYears"`

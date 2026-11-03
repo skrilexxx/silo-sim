@@ -31,9 +31,30 @@ type Module struct {
 	find, name     float64 // p_find, p_name
 	held, homeward []world.PersonID
 
+	// ODD §6.13, Places: prison and mines places (0 = no limit), the
+	// convicts waiting for one in the order of their trials, and who is
+	// waiting.
+	places  [2]int
+	queue   [2][]waiting
+	waiting []bool
+
 	fail, lift, fear   float64 // p_fail, λ, φ
 	liftKeep, fearKeep float64 // the share of S and F kept each day
 	condemned          []cleaning
+}
+
+// waiting is a convict waiting for a place, and the days of their sentence.
+type waiting struct {
+	id   world.PersonID
+	days int
+}
+
+// place is a detention's index into places and queue: prison 0, mines 1.
+func place(h world.Hold) int {
+	if h == world.Mines {
+		return 1
+	}
+	return 0
 }
 
 // cleaning is a cleaner sentenced today, for tomorrow's control step.
@@ -75,6 +96,7 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	}
 	m.perOfficer, m.raid = cfg.Control.ArrestsPerOfficer, cfg.Control.RaidsPerYear/engine.DaysPerYear
 	m.find, m.name, m.mines = cfg.Control.FindChance, cfg.Control.NameChance, cfg.Control.MinesFloor
+	m.places = [2]int{cfg.Control.PrisonPlaces, cfg.Control.MinesPlaces}
 	m.fail, m.lift, m.fear = cfg.Control.CleaningFailChance, cfg.Control.CleaningLift, cfg.Control.FearPerTrial
 	m.liftKeep = math.Exp2(-1 / (cfg.Control.LiftHalfLifeYears * engine.DaysPerYear))
 	m.fearKeep = math.Exp2(-1 / (cfg.Control.FearHalfLifeYears * engine.DaysPerYear))
@@ -117,6 +139,7 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 	m.implantDoctors(w)
 	m.detect(w, r)
 	m.releases(w)
+	m.admit(w, r)
 	m.seize(w, r)
 	m.cleanings(w, r)
 	m.trials(w)
@@ -188,6 +211,7 @@ func (m *Module) newcomers(w *world.World) {
 		c.Charges, c.Convicted = append(c.Charges, 0), append(c.Convicted, 0)
 		c.Hold, c.Until, c.Flagged = append(c.Hold, world.Free), append(c.Until, 0), append(c.Flagged, false)
 		c.DeniedWins, c.DeniedUntil = append(c.DeniedWins, 0), append(c.DeniedUntil, 0)
+		m.waiting = append(m.waiting, false)
 	}
 	if start == 0 {
 		return // day 1: the starting population was not born today
@@ -213,6 +237,18 @@ func (m *Module) drop(w *world.World) {
 	c.Cases = slices.DeleteFunc(c.Cases, dead)
 	m.held = slices.DeleteFunc(m.held, dead)
 	m.homeward = slices.DeleteFunc(m.homeward, dead)
+	for k := range m.queue {
+		m.queue[k] = slices.DeleteFunc(m.queue[k], func(q waiting) bool { return m.unqueue(q.id, !w.People[q.id].Alive) })
+	}
+}
+
+// unqueue clears the waiting mark of someone leaving a queue and reports
+// leave, for slices.DeleteFunc.
+func (m *Module) unqueue(id world.PersonID, leave bool) bool {
+	if leave {
+		m.waiting[id] = false
+	}
+	return leave
 }
 
 // headOfIT: ODD §6.13, Head of IT. The post ends only with death. An
@@ -373,6 +409,11 @@ func (m *Module) seize(w *world.World, r *rng.Stream) {
 		}
 		m.charge(c, id, rule)
 		c.Cases = slices.DeleteFunc(c.Cases, func(x world.PersonID) bool { return x == id })
+		if m.waiting[id] { // ODD §6.13, Places: the new trial decides what they serve
+			for k := range m.queue {
+				m.queue[k] = slices.DeleteFunc(m.queue[k], func(q waiting) bool { return m.unqueue(q.id, q.id == id) })
+			}
+		}
 		c.Hold[id] = world.Custody
 		c.Tally.Arrests++
 		m.held = append(m.held, id)
@@ -463,18 +504,82 @@ func (m *Module) try(w *world.World, id world.PersonID) {
 		m.condemned = append(m.condemned, cleaning{id, worstRule})
 	case worst.Mines > 0:
 		c.Tally.Mines++
-		c.Hold[id], c.Until[id] = world.Mines, w.Day+world.Tick(worst.Mines)
-		_ = w.Space.StartTrip(id, w.Day, m.mines) // with the stairs broken, they serve it in the court's prison
+		m.detain(w, id, world.Mines, worst.Mines)
 	case worst.Prison > 0:
 		c.Tally.Prisons++
-		c.Hold[id], c.Until[id] = world.Prison, w.Day+world.Tick(worst.Prison)
+		m.detain(w, id, world.Prison, worst.Prison)
 	default:
 		c.Tally.Warnings++
-		c.Hold[id] = world.Free
-		m.held = slices.DeleteFunc(m.held, func(x world.PersonID) bool { return x == id })
-		if !m.walkHome(w, id) {
-			m.homeward = append(m.homeward, id)
+		m.free(w, id)
+	}
+}
+
+// free lets someone tried go: they walk home.
+func (m *Module) free(w *world.World, id world.PersonID) {
+	w.Control.Hold[id] = world.Free
+	m.held = slices.DeleteFunc(m.held, func(x world.PersonID) bool { return x == id })
+	if !m.walkHome(w, id) {
+		m.homeward = append(m.homeward, id)
+	}
+}
+
+// detain starts a detention at the court, or, with no free place or
+// others already waiting for one, sends the convict home free to wait in
+// the queue (ODD §6.13, Places). Mines start with the trip there; with the
+// stairs broken they serve it in the court's prison.
+func (m *Module) detain(w *world.World, id world.PersonID, h world.Hold, days int) {
+	k := place(h)
+	if len(m.queue[k]) > 0 || m.full(w, k) {
+		m.queue[k] = append(m.queue[k], waiting{id, days})
+		m.waiting[id] = true
+		m.free(w, id)
+		return
+	}
+	w.Control.Hold[id], w.Control.Until[id] = h, w.Day+world.Tick(days)
+	if h == world.Mines {
+		_ = w.Space.StartTrip(id, w.Day, m.mines)
+	}
+}
+
+// full reports whether every place of a kind is taken; never with no limit.
+func (m *Module) full(w *world.World, k int) bool {
+	if m.places[k] == 0 {
+		return false
+	}
+	n := 0
+	for _, id := range m.held {
+		if h := w.Control.Hold[id]; (h == world.Prison || h == world.Mines) && place(h) == k {
+			n++
 		}
+	}
+	return n >= m.places[k]
+}
+
+// admit: ODD §6.13, Places. The first waiting convicts of each queue take
+// the places freed, in order: their detention starts today, with a trip
+// to the nearest court they can reach (prison) or to the mines floor
+// (mines; the court's prison if the stairs there are broken). One who
+// can't start the trip, being on the stairs, cut off from every court or
+// in a zone the rebels hold, keeps their place for a later day. A
+// Flamekeeper seat taken while waiting is lost, as on an arrest.
+func (m *Module) admit(w *world.World, r *rng.Stream) {
+	c, s := w.Control, w.Space
+	for k, h := range []world.Hold{world.Prison, world.Mines} {
+		m.queue[k] = slices.DeleteFunc(m.queue[k], func(q waiting) bool {
+			f := s.Location[q.id]
+			if m.full(w, k) || f == 0 || w.Rebellion.Holds(w, f) {
+				return false
+			}
+			started := h == world.Mines && s.StartTrip(q.id, w.Day, m.mines) == nil
+			if court := m.court(w, f); !started && (court == 0 || s.StartTrip(q.id, w.Day, court) != nil) {
+				return false
+			}
+			c.Hold[q.id], c.Until[q.id] = h, w.Day+world.Tick(q.days)
+			m.unseat(w, r, q.id)
+			m.held = append(m.held, q.id)
+			m.homeward = slices.DeleteFunc(m.homeward, func(x world.PersonID) bool { return x == q.id })
+			return m.unqueue(q.id, true)
+		})
 	}
 }
 
@@ -547,7 +652,7 @@ func (m *Module) arrests(w *world.World, r *rng.Stream) {
 	for i := 0; i < len(c.Cases) && capacity > 0; {
 		id := c.Cases[i]
 		court := 0
-		if s.Location[id] != 0 && !c.Held(id) {
+		if s.Location[id] != 0 && !c.Held(id) && !m.waiting[id] { // ODD §6.13, Places: a waiting convict's new case waits
 			court = m.court(w, s.Location[id])
 		}
 		if court == 0 || w.Rebellion.Holds(w, s.Location[id]) || s.StartTrip(id, w.Day, court) != nil { // ODD §6.14: no arrests in a held zone

@@ -721,6 +721,8 @@ where σ is the surveillance level (a policy lever, §6.15), c\_IT is IT's cover
 
 People in custody or detained have no conversations (§6.11) and can't use their relics; detained people are away (§6.10), so they don't work. They keep their household, department, skill and partner. On the release day they are free and start a trip home; if the stairs are broken they stay where they are, free, and try again each day. Arrests don't take officers away from work: capacity is abstract.
 
+**Places.** Prison and the mines hold at most `prisonPlaces` and `minesPlaces` people at once, counted by where they were sentenced to (a mines sentence served in the court's prison, with the stairs broken, still takes a mines place); 0 means no limit. A detention with no free place *waits*: the convict walks home free and keeps working, talking and holding their relics, and joins the queue for that place in the order of their trials. Each day, after the releases, the first in each queue take the places that freed: their detention starts that day, for the days of their sentence, with a trip to the nearest court they can reach (prison) or to the mines floor (mines; the court's prison if the stairs to it are broken). One who can't start the trip (on the stairs, cut off from every court, or in a zone the rebels hold, §6.14) keeps their place in the queue until a later day. A Flamekeeper seat taken while waiting is lost on admission, as on an arrest. While waiting, a new case against them waits as it would during the sentence. A rebel put out in a fight (§6.14) is taken into custody as usual and leaves the queue; the new trial decides what they serve. Custody before trial and cleaning take no place. The show has a few cells in the Sheriff's and Judicial offices and a labour crew in the mines (lore reference). Unlimited detention held 755 people at once after a cleaning failure, 7.5% of the silo, more than the baseline's 5% food margin, so the food stock ran out and any generator failure became a famine that killed the silo (T12.8, Adam, 2026-11-03).
+
 **Searches.** A search is of one flat: each relic held by someone living there is found with chance p\_find, because relics are hidden well (§6.12). A found relic is confiscated and its holder is charged with `holdRelic`. Flats are searched on every arrest, and in *raids*: each day, with chance R\_raid / 365, Judicial raids one residential floor drawn uniformly and searches every flat on it. Relics hidden in the floors themselves, not yet found by anyone, are never found by the regime.
 
 **Cleaning.** The condemned stays in custody overnight and goes out the next day: they die at that day's deaths step (§3 step 7), handled as any death (§6.1: partner, orphans, job vacancy, and counted for the lottery). At that day's control step, with chance p\_fail the cleaning turns out to have *failed*: the cleaner refused, walked out of sight and never came back, which the silo records as a death too. With v the visibility of the rule they were sentenced under (§6.9):
@@ -737,7 +739,7 @@ People in custody or detained have no conversations (§6.11) and can't use their
 1. newcomers get their state;
 2. Head of IT: the post filled if empty, the successor named; empty implant doctor posts filled;
 3. detection of the acts reported since the last step;
-4. releases; then the rebels arrested in yesterday's fights (§6.14) taken into custody, with their searches and naming;
+4. releases; then the waiting convicts take the freed places; then the rebels arrested in yesterday's fights (§6.14) taken into custody, with their searches and naming;
 5. cleanings of those who died at today's deaths step: their effects; then trials of those who reached the court today, each raising F;
 6. a raid, perhaps;
 7. arrests, with their searches and naming;
@@ -755,7 +757,7 @@ People in custody or detained have no conversations (§6.11) and can't use their
 
 **Off and null.** With the module off, nothing of this exists and the lottery is fair. With it on, σ = 0, no raids and no scripted events, nobody is seen, arrested, flagged or cleaned. The only changes are the Head of IT, who knows all five flags, and the IT shadow a Head takes on as successor. That shadow's new master shifts the work module's later draws (§6.5: free masters are drawn), so the run's files differ from a run without the module by chance, though nobody is charged and no rule of the baseline acts differently (T11.1).
 
-**Parameters:** surveillance σ, arrests per officer a, raids R\_raid, find chance p\_find, naming p\_name, the mines floor, failed cleaning p\_fail, cleaning lift λ and its half-life T\_S, fear per trial φ and its half-life T\_F, implant doctors N\_doc and tries N\_try, in §7 (M11 done, 2026-10-31); the Pact table's weights, penalties and visibilities are in §6.9. In the scenario file they are the `control:` section:
+**Parameters:** surveillance σ, arrests per officer a, raids R\_raid, find chance p\_find, naming p\_name, the mines floor, prison and mines places, failed cleaning p\_fail, cleaning lift λ and its half-life T\_S, fear per trial φ and its half-life T\_F, implant doctors N\_doc and tries N\_try, in §7 (M11 done, 2026-10-31); the Pact table's weights, penalties and visibilities are in §6.9. In the scenario file they are the `control:` section:
 
 ```yaml
 control:                          # ODD §6.13; used only when `control` is in modules
@@ -765,6 +767,8 @@ control:                          # ODD §6.13; used only when `control` is in m
   findChance: 0.2                 # p_find: per held relic and search
   nameChance: 0.3                 # p_name: an arrested Flamekeeper names one other member
   minesFloor: 144
+  prisonPlaces: 50                # prison cells held at once; 0 = no limit
+  minesPlaces: 100                # mines places; 0 = no limit
   cleaningFailChance: 0.05        # p_fail
   cleaningLift: 0.05              # λ: lift of L from a cleaning seen by all (× visibility)
   liftHalfLifeYears: 1            # T_S
@@ -774,7 +778,7 @@ control:                          # ODD §6.13; used only when `control` is in m
   deniedTries: 3                  # N_try: denied lottery wins before a flagged couple stops entering
 ```
 
-Checked at load: σ, a, p\_find, p\_name, p\_fail and λ are in [0, 1]; R\_raid is in [0, 365]; φ is in [0, 1]; T\_S and T\_F are strictly greater than 0; N\_try is an integer ≥ 1; N\_doc is an integer ≥ 0; the mines floor is in the silo. That it is a Down Deep floor, and that Judicial has office floors, is checked when the module starts.
+Checked at load: σ, a, p\_find, p\_name, p\_fail and λ are in [0, 1]; R\_raid is in [0, 365]; φ is in [0, 1]; T\_S and T\_F are strictly greater than 0; N\_try is an integer ≥ 1; N\_doc and both place counts are integers ≥ 0; the mines floor is in the silo. That it is a Down Deep floor, and that Judicial has office floors, is checked when the module starts.
 
 ### 6.14 Grievance and rebellion (draft)
 
@@ -1005,6 +1009,8 @@ The table below is the frozen baseline set. Part-2 parameters are listed in thei
 | Find chance p\_find | 0.2 per held relic and search | Guess: relics are hard to find (Adam, T10.4) | 6.13 |
 | Naming p\_name | 0.3 per arrested member | Guess | 6.13 |
 | Mines floor | 144 | Lore: the mines lie below Mechanical, at the bottom \[Likely\] | 6.13 |
+| Prison places | 50 | Guess; lore: a few cells in the Sheriff's and Judicial offices. With mines places, 1.5% of a 10,000 silo, under the 5% food margin (T12.8) | 6.13 |
+| Mines places | 100 | Guess; lore: forced labour in the mines \[Certain\], the crew's size unknown | 6.13 |
 | Failed cleaning p\_fail | 0.05 | Guess; experiments script the C2 shock instead | 6.13 |
 | Cleaning lift λ | 0.05 × visibility | Guess | 6.13 |
 | Lift half-life T\_S | 1 year | Guess | 6.13 |

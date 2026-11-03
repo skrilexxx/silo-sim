@@ -560,3 +560,19 @@ Every rebellion started in the Mids (the largest zone), and no critical departme
 **Why C3 fails:** h\_own is the same everywhere, so the Down Deep's grievance is only 1.2 times the Mids' (G 0.30 vs 0.25 right after the failure), while the Mids have twice as many adults. The starting zone counts heads, so the Mids win every time.
 
 Unrest: 6,644 spells, about 66 a run. Fear stays at 0.99. Cleanings 0.52 a year (0–1.13), inside σ's band. Nothing was tuned.
+
+## 2026-11-03 — Detention places, smoke runs of seeds 1 and 53 (T12.8)
+
+**Code:** detention places (ODD §6.13, Places; Adam, 2026-11-03): prison 50 and mines 100 places, a conviction with no free place waits free in a queue. **Why:** in the second batch, unlimited detention held 755 people after the failure (7.5% of the silo, against the 5% food margin of T6.1); rationing ran on 42% of days, and any generator failure became a famine: in seed 53, hardship rose from 0.12 to 0.77 on the outage day, 254 joined and 72 turned violent the next, and the silo was dead in 28 days. **Setup:** `scenarios/canon.yaml`, seeds 1 and 53, one run each.
+
+| | Seed 1 before / with places | Seed 53 before / with places |
+| --- | --- | --- |
+| Collapse | air, measured year ~175 / none in 300 years | air, year ~123 / none |
+| Held, before / after the failure (mean) | — / 108, 122 (max 153) | 1,000 at the end / 102, 116 (max 155) |
+| Rationing after the failure | — / 0% of days | — / 0% |
+| Rebellions | 2 / 4: one in year 66, before any shock; then 17,644, 36,834 and 28,796+ days | 2 / 4: the failure's (8 days), then 4,024, 23,246, 24,540+ days |
+| Measured time in a rebellion | — / 76% | — / 47% |
+
+**Result: the silos live, but rebellions stop ending.** During them 3.6–5.8% of adults are active (10th–90th percentile, median 4.8%): own hardship gives a chronic few percent at canon L, and with 150 places detention can no longer take them out, so activity never falls below 1% for the 30 days an ending needs. The places sit below the pre-shock detention (about 174), so they bind even before the failure; seed 1 rose in year 66 with no shock. A standing rebellion is the regime's problem to answer (Q3); Adam took it to M13 without another batch (T13.0). Nothing was tuned.
+
+**T12.8 closed with:** C1 and C2 passing on the second batch (before the places), C3 failing (every rebellion starts in the Mids), C4 judged from M13, and the standing rebellion open. All three are carried into M13 (Adam, 2026-11-03).
