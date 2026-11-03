@@ -37,13 +37,13 @@ Each one is settled in the spec task named. Decided ones point to the spec; for 
 | D4 | Beliefs: one number or several | T10.0 | **Decided 2026-10-31:** legitimacy L (0–1) = an upbringing base minus a cost per known flag; five knowledge flags; no free-text beliefs; hardship enters grievance, not L (ODD §6.12) |
 | D5 | Vitamin D+ in the water: can memories come back? | T10.0 | **Decided 2026-10-31:** dosing hides flags; after it stops, a hidden flag comes back with a chance per cue (a held relic, or a conversation with someone who knows it); hidden flags never fade on their own (ODD §6.12) |
 | D6 | How rebels and Judicial fight | T12.0 | **Decided 2026-10-31:** per zone, no marching: violent rebels fight the zone's abstract patrol by Lanchester's square law; those put out are killed or arrested; rebels hold a zone they outnumber its patrol in (ODD §6.14) |
-| D7 | Regime behaviour | T13.0 | [fixed response strategy per scenario (an experimental factor), not a learning regime] |
+| D7 | Regime behaviour | T13.0 | **Decided 2026-11-03:** a fixed playbook per scenario (an experimental factor), not a learning regime: policy changes on rebellion triggers, held for a set time, written in YAML; strategies are scenario files (ODD §6.15) |
 | D8 | Silo 1 as agents or as a rule set | T14.0 | [a rule set with three settings: `off`, `watch`, `full`; no second simulated population] |
 | D9 | Several silos at once | — | [no; only as optional work after M15] |
 | D10 | The Pact: prose or rules | T7.1 | **Decided 2026-10-30:** a rule table in the scenario file, no prose (ODD §6.9) |
 | D11 | Run length and seeds for part 2 | T7.1 | **Decided 2026-10-30:** 50 + 300 years; 100 seeds for calibration, 1,000 for the final experiments (ODD §1.2) |
 | D12 | Viewer technology | T16.0 | [`silosim serve`: Go's standard HTTP server with the page embedded in the binary, plus one vendored JavaScript chart library; read-only] |
-| D13 | The Head of IT as a role | T11.0 (role, succession), T13.0 (decisions), T14.0 (Silo 1's link) | **Role and succession decided 2026-10-31:** one IT worker, for life (only death ends it); knows all five flags, never dosed, never tells, can't be arrested; their shadow succeeds them, else the most skilled IT worker (ODD §6.13). Decisions (T13.0) and Silo 1's link (T14.0) still open |
+| D13 | The Head of IT as a role | T11.0 (role, succession), T13.0 (decisions), T14.0 (Silo 1's link) | **Role and succession decided 2026-10-31:** one IT worker, for life (only death ends it); knows all five flags, never dosed, never tells, can't be arrested; their shadow succeeds them, else the most skilled IT worker (ODD §6.13). **Decisions settled 2026-11-03:** the playbook is the Head's, and a vacant post starts no response (ODD §6.15). Silo 1's link (T14.0) still open |
 
 **D13, the Head of IT (raised by Adam, 2026-10-31).** The Head of IT is the most powerful person in the silo, not the Mayor: they know almost everything about it, and Silo 1 speaks to them, and only them, through the Algorithm in the vault on the IT floors, which nobody else can enter (lore reference, Season 3). The model has no such role yet: the baseline has a Mayor (§6.8) and an IT department, nothing more. Before it is built, the specs must settle:
 
@@ -170,7 +170,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
 
 *Answers Q3.* What the regime does during and after a rebellion, and which choice keeps the silo alive.
 
-- [ ] **T13.0 Spec: policy and response (ODD §6.15).** Decision D7.
+- [x] **T13.0 Spec: policy and response (ODD §6.15).** (2026-11-03; D7 decided: YAML playbooks; everyone learns the history at a rebellion's end; The Order raises s\_DD for C3; emergency staffing for the spiral; travelPermits and curfew left out; λ\_elect proposed) Decision D7.
   - **Policy vector:** surveillance, punishment severity, cleaning rate, ration weights (§6.7), relic confiscation, Vitamin D+ (targeted or water), governance mode and term (§6.8), lottery fairness.
   - **The Order** (S2) as the default playbook: blame Mechanical, raids, propaganda.
   - **Response strategies:** crackdown, reform (raise L, lower hardship, elections), memory wipe (water dosing plus relic destruction), mixed.
@@ -179,10 +179,11 @@ Questions, definitions and the plumbing every later module needs. No model behav
   - **The standing rebellion (found in T12.8, Adam, 2026-11-03).** With detention places (§6.13), Judicial can no longer take the chronic few percent of actives out, so rebellions last decades (47–76% of measured time in seeds 1 and 53) and never fall below the 1% an ending needs. The response strategies must be what ends them; check the share of time in a rebellion as well as C1's count.
   - **C3 still fails (T12.8).** All 223 rebellions of the second batch started in the Mids: own hardship is the same in every zone, so the Down Deep's grievance is only 1.2× the Mids', against twice the adults. The Order's "blame Mechanical" (S2) is the regime's lever here; decide whether it, s\_DD, or the starting-zone rule (heads vs share of a zone's adults) carries C3.
   - **The life-support spiral (found in T12.7, left for M13 by Adam, 2026-11-01).** Health balances at air = 1 − recoveryRate × medicalCoverage / airDamage = 0.8; below it, lower health lowers Mechanical's output (skill × health), so power and air, so health again. A rebellion that takes away about a quarter of Mechanical's output (arrests, deaths) plus one sabotaged generator puts the silo under the line, and nothing reacts: in a harsh test (s\_DD 0.9, T\_v 0.15) the silo slid for 100 days after the rebellion was suppressed, then about 9,000 people died on one day, as everyone's health is the same and health 0 is certain death. Decide whether the regime responds to it (moving workers to Mechanical, rations), and whether the one-day cliff is acceptable.
-- [ ] **T13.1 Policy vector and scheduled policy changes.**
-- [ ] **T13.2 Response strategies,** triggered by rebellion state.
+- [ ] **T13.1 Policy vector and scheduled policy changes.** The `regime` module and its RNG stream, the levers, entries and their holding, the `policy` event, emergency staffing, the election lift, and the teaching rule in the rebellion step.
+  - *Done when:* empty playbook = byte-identical to the same scenario without the module; a `policy` event sets and reverts a lever on the right days; emergency staffing releases detained Mechanical workers when air is below the line (test).
+- [ ] **T13.2 Response strategies,** triggered by rebellion state. Playbook triggers; the strategy scenario files (none, The Order, crackdown, reform, memory wipe, mixed) with their values; The Order in `scenarios/canon.yaml`; the share of time in a rebellion in `silosim report`; C3 and C4 judged on the canon batch.
 - [ ] **T13.3 Memory-wipe strategy,** using T10.4 and T10.6.
-- [ ] **T13.4 Pact rewrites** (ODD §6.9): rows switched, penalties changed, `travelPermits` and `curfew` added, and their effect on L.
+- [ ] **T13.4 Pact rewrites** (ODD §6.9, §6.15): rows switched, penalties changed or added through `pact` in an entry, and their legitimacy cost or benefit through `lift` (S may go negative). `travelPermits` and `curfew` are left out (T13.0).
   - *Milestone done when:* each strategy runs on 100 seeds, and the survival curves differ by more than seed noise (or the report says plainly that they don't; that's a result too).
 
 ## Milestone 14: Silo 1

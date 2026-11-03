@@ -51,7 +51,7 @@ The answers are **conditional and comparative**. The agents follow rules, not hu
 - **Trigger:** the scripted event (`events:` in the scenario, T7.4) that happened within the 365 days before the start, or "none". With no scripted events, every rebellion is "none", and Q1's trigger question is answered by experiments that script shocks.
 - **Endings** (one per rebellion; when several hold on the same day, the first in this order: collapse, regime change, split, suppressed):
   - *Suppressed:* it ends with the regime still in place.
-  - *Regime change:* rebels hold Up Top, the zone of the IT floors and the Mayor's office, for 30 days in a row (§6.14), the 30 a scenario setting (`rebellion.regimeDays`). The regime is replaced and the scenario's post-change policy applies (§6.15). The run continues.
+  - *Regime change:* rebels hold Up Top, the zone of the IT floors and the Mayor's office, for 30 days in a row (§6.14), the 30 a scenario setting (`rebellion.regimeDays`). The regime is replaced: the old playbook ends and only the scenario's `regimeChange` entries apply (§6.15); with none, the silo runs on at its peacetime settings. The run continues.
   - *Split:* a stair segment broken while the rebellion runs (from its start day, the run-up included; by sabotage or a scripted `breakStairs`) is still broken 90 days after it broke, the rebellion is still running, and at least 1,000 living people have their home on each side of it (the floors above and below the segment). The rebellion ends that day. The silo runs on as before: the segment is repaired like any other (§6.14), and a new rebellion can start later. The 90 days and 1,000 people are scenario settings (`rebellion.splitDays`, `rebellion.splitPeople`; Adam, 2026-11-01).
   - *Collapse:* see below.
 - **Collapse** (the silo is dead, and the run stops), on the first day any of these holds; the cause is recorded. It is checked only with the rebellion module on (§6.14), so the baseline never stops early:
@@ -79,14 +79,14 @@ The answers are **conditional and comparative**. The agents follow rules, not hu
 - *C3:* over all rebellions in the batch: the share whose starting zone (§6.14) is the Down Deep, and among those the share with Mechanical on strike on any of its days (`struck` in `rebellions.jsonl`).
 - *C4:* each suppressed rebellion is judged at the first yearly snapshot at least 40 years after its end day, by the share of adults who know the history flag (`knowHistory`); one with no such snapshot is not judged. C4 holds when at least 90% of the judged rebellions are under 10%, the same bar as the §8 targets.
 
-**C4 is judged from M13 on** (Adam, 2026-11-02). Its sources (Freedom Day, lost records, Vitamin D+) are the regime's memory wipe (§6.15), which the model does not have before M13; until then `silosim report` prints C4 as information only.
+**C4 is judged from M13 on** (Adam, 2026-11-02). Its sources (Freedom Day, lost records, Vitamin D+) are the regime's memory wipe (§6.15), which the model does not have before M13; `silosim report` prints C4 as information only until `scenarios/canon.yaml` carries The Order's playbook (T13.2). Since T13.0 everyone who lived through a rebellion learns the history at its end (§6.15), so C4 measures how a silo forgets a rebellion everyone saw.
 
 C1 bounds the rebellion rate, which is also what Q1 measures. That is deliberate but limited: C1 is a wide plausibility check (no constant revolts, no eternal peace), never a target to tune toward a point. Q1's answer is what *changes* the rate, read from comparisons between scenarios.
 
 **Outcome metrics**
 
 - *Per run:* time to first rebellion (censored at the end of the run if none); number of rebellions and unrest spells; for each rebellion, its start, trigger, starting zone, peak share of active adults, duration, collective actions, deaths, arrests, damage, and ending; time and cause of collapse (censored if none).
-- *Across seeds:* survival curves (Kaplan–Meier) for time to first rebellion and time to collapse; rebellions per century and the share of each ending, with 95% confidence intervals.
+- *Across seeds:* survival curves (Kaplan–Meier) for time to first rebellion and time to collapse; rebellions per century and the share of each ending, with 95% confidence intervals; the share of measured days spent in a rebellion, which tells rare long rebellions from frequent short ones (the standing rebellion of T12.8; §6.15).
 
 **Run settings for part 2.** 50 warm-up years plus **300 measured years**. Rebellions are rare by design, so longer runs and more seeds are the price of saying anything about how they end. Calibration uses 100 seeds; the final experiments (T15.5) use **1,000 seeds per scenario**. `scenarios/baseline.yaml` keeps its 200 measured years.
 
@@ -191,6 +191,7 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 10.7. **Beliefs** *(part 2, draft)* — upbringing, forgetting, Vitamin D+, relics, the day's conversations that pass knowledge on, Flamekeepers (6.12)
 10.8. **Control** *(part 2, draft)* — Head of IT, detection, releases, trials and cleanings, raids, arrests (6.13)
 10.9. **Rebellion** *(part 2, draft)* — hardship and grievance, stages, fights, sabotage, stair repairs, unrest and rebellion, collapse (6.14)
+10.95. **Regime** *(part 2, draft)* — the playbook's entries lapse and start, policy events, emergency staffing (6.15)
 11. **Logging** — daily metrics written (8)
 
 ### Every 30 days
@@ -434,12 +435,12 @@ Each row says what is forbidden, which offences break it, how hard it is to see,
 
 Detection weights, penalties and visibilities are guesses, to be checked by the sensitivity analysis (T15.3). Forbidden talk flags the family only on a repeat offence: flagging it on the first warning flagged 51% of a full silo within 56 years (T11.3), which would leave most couples childless once covert denial runs (Adam, 2026-10-31). Calibration (C1–C5) may tune them as a group, never row by row toward a wanted outcome.
 
-**Rewriting the Pact** is a change to rows: a rule switched on or off, a penalty raised or lowered, or a new rule added. It happens through a scripted event (`events:` in the scenario, T7.4) or a regime response (§6.15). Season 3's rewrite under Camille is the canon example. Rules the regime may add, off in the canon Pact:
+**Rewriting the Pact** is a change to rows: a rule switched on or off, a penalty raised or lowered, or a new rule added. It happens through a scripted `policy` event or a playbook entry (§6.15), which can carry a legitimacy cost or benefit (its `lift`). Season 3's rewrite under Camille is the canon example. Two rules the show suggests the regime could add are *left out* (Adam, 2026-11-03): no research question needs them, and each would need new offences and new effects on conversations (§6.11):
 
-| id | Forbids | Effect | Penalty |
-| --- | --- | --- | --- |
-| travelPermits | Crossing zones without a permit | Fewer cross-zone contacts (§6.11), slower rebel gathering | warning / prison(30) |
-| curfew | Being away from one's home floor at night | Fewer contacts outside the household | warning / prison(30) |
+| id | Forbids | Effect it would have |
+| --- | --- | --- |
+| travelPermits | Crossing zones without a permit | Fewer cross-zone contacts (§6.11), slower rebel gathering |
+| curfew | Being away from one's home floor at night | Fewer contacts outside the household |
 
 **In the scenario file** (keys fixed in T11.0), one entry per row under `pact:`:
 
@@ -594,7 +595,7 @@ base = \varepsilon \times L_{edu} + (1 - \varepsilon) \times \text{mean } L \tex
 
 with base = L\_edu when none of them is alive. A newborn starts with base = L\_edu until the next recompute. At worker age the base is fixed for life, at its last recomputed value. Upbringing is slow, so a month's lag changes nothing measured; recomputing it daily cost about 3% of a run's time (T10.1). L\_edu is the legitimacy the regime teaches, in Education and on Freedom Day: its propaganda level, a policy lever (§6.15). Everyone alive on day 1 starts with base = L\_edu, so with nothing known, L = L\_edu for everyone, for ever; the rule itself never drifts. Doubt runs in families: a child whose parents know something grows up with a lower base before learning anything, and the effect shrinks by the share ε with each generation that learns nothing.
 
-Hardship is not part of L. It enters grievance, G = H × (1 − L) (§6.14), so it isn't counted twice. Later modules shift L silo-wide only through S, and say so in their own sections: cleanings (§6.13), perhaps Pact rewrites (§6.15).
+Hardship is not part of L. It enters grievance, G = H × (1 − L) (§6.14), so it isn't counted twice. Later modules shift L silo-wide only through S, and say so in their own sections: cleanings (§6.13), and a playbook's lifts, Pact rewrites and elections (§6.15). L\_edu itself is a policy lever (§6.15).
 
 **Telling and believing.** In a conversation (§6.11), each flag the teller knows and the listener doesn't passes to the listener, who knows it from then on as *heard*, with chance
 
@@ -655,7 +656,7 @@ Relics are not lost or destroyed in this module. The regime can find and take th
 
 **Scripted events** (§5):
 
-- `revealHistory`: everyone alive aged 14 or more and not dosed learns the history as lived; someone who had only heard it now knows it as lived. It stands in for a crushed rebellion that everyone saw, so pattern C4 can be measured before the rebellion modules exist (T10.3).
+- `revealHistory`: everyone alive aged 14 or more and not dosed learns the history as lived; someone who had only heard it now knows it as lived. It stands in for a crushed rebellion that everyone saw, so pattern C4 can be measured before the rebellion modules exist (T10.3). Since T13.0 a real rebellion's ending teaches the same (§6.15).
 - `waterDosing`: water dosing, above.
 
 **Outputs** (only when the module is on):
@@ -681,7 +682,7 @@ Relics are not lost or destroyed in this module. The regime can find and take th
 - *The first Head* is chosen on day 1: the most skilled IT worker, ties to the lower ID, as for the department heads of §6.8.
 - *Successor.* The Head trains their own. A Head without a successor names their shadow (§6.5), the older of two (lower ID on a tie). A Head with no shadow takes one if they can be a master (§6.5): the youngest IT shadow (lower ID on a tie), whose master becomes the Head. The successor keeps the role after becoming a worker. It lapses if they die, retire or are arrested; a new Head starts without one.
 - *Leaving office:* only death (Adam, 2026-10-31). The Head keeps the post through sick leave and past retirement age, can't be charged with any offence, and so is never arrested; a relic found in their flat is still taken. The post is filled at the next control step by the successor, whatever their stage, even a shadow; with none, by the most skilled IT worker. With no IT worker it stays empty and is retried each day. A Head who has stopped working (retired, or on sick leave) can't take on a new shadow, as no such person can be a master (§6.5).
-- *What the Head decides.* In this module, nothing yet: surveillance, raids and the Pact are scenario settings. They become the Head's levers in §6.15, and Silo 1 speaks to the Head in §6.16.
+- *What the Head decides.* In this module, nothing: surveillance, raids and the Pact are scenario settings. With the regime module, the playbook that changes them is the Head's, and a vacant post starts no response (§6.15); Silo 1 speaks to the Head in §6.16.
 
 **Offences.** An offence is an *act* by one person, reported by the module where it happens, under the active Pact rule that lists it; an act no active rule lists is not an offence. Acts by children under 14 (shadow age, §6.5) are not offences. With this milestone, three exist:
 
@@ -753,7 +754,7 @@ People in custody or detained have no conversations (§6.11) and can't use their
 - *yearly.csv:* over the year, acts seen, arrests, trials by penalty served (warning, prison, mines, cleaning), failed cleanings, relics confiscated, raids, denied wins and children born to flagged parents (an outcome, T11.4); at the snapshot, people in custody or detained, flagged people alive, open cases, S and F.
 - *events.jsonl:* `cleaning` (person, rule, failed or not) and `headOfIT` (person, whether they were the successor).
 
-**Invariants** (§8): the Head of IT, if any, is a living IT worker who knows all five flags and holds no Flamekeeper seat; every implant doctor is a living Medical worker; everyone in custody or detained is alive and holds no seat; every open case is against a living person; relics hidden, held and taken add up to N\_relic; S ≥ 0.
+**Invariants** (§8): the Head of IT, if any, is a living IT worker who knows all five flags and holds no Flamekeeper seat; every implant doctor is a living Medical worker; everyone in custody or detained is alive and holds no seat; every open case is against a living person; relics hidden, held and taken add up to N\_relic; S ≥ 0 unless a playbook lift was negative (§6.15).
 
 **Off and null.** With the module off, nothing of this exists and the lottery is fair. With it on, σ = 0, no raids and no scripted events, nobody is seen, arrested, flagged or cleaned. The only changes are the Head of IT, who knows all five flags, and the IT shadow a Head takes on as successor. That shadow's new master shifts the work module's later draws (§6.5: free masters are drawn), so the run's files differ from a run without the module by chance, though nobody is charged and no rule of the baseline acts differently (T11.1).
 
@@ -796,7 +797,7 @@ H = 1 - (1 - h_{own})(1 - h_{food})(1 - h_{loss})(1 - h_{DD})
 
 - *Food:* h\_food = max(0, today's hardship of their home zone) (§6.7): 0 in a fed silo, 0.1 under rationing.
 - *Loss:* h\_loss = ℓ × 2^(−t / T\_loss), with t the years since their last loss, and 0 if they never had one. A loss is a family member (partner, household or kin, the first three tie kinds of §6.11) cleaned (§6.13, failed or not) or killed in a fight (below), or, for both partners, a denied lottery win (§6.13). The couple puts the denial down to infertility, but a child that never comes is a loss whatever its cause. A new loss starts the clock again; losses don't add up.
-- *Scapegoat:* h\_DD = s\_DD if their home is in the Down Deep, else 0. The regime blames the lowest class when trouble rises, as Mechanical learns in S2 (lore reference).
+- *Scapegoat:* h\_DD = s\_DD if their home is in the Down Deep, else 0. The regime blames the lowest class when trouble rises, as Mechanical learns in S2 (lore reference). s\_DD is a policy lever: The Order raises it while unrest runs (§6.15).
 
 In a fed silo with no losses H is h\_own Up Top and in the Mids, and 0.2 + 0.8 h\_own Down Deep. Without h\_own, H was 0 for four fifths of the silo and G at most 0.2, so even with fear off and L near 0 at most 1% of the silo was ever active, and the canon silo never rebelled (T12.8; Adam, 2026-11-02).
 
@@ -810,7 +811,7 @@ Health is not a source (Adam, 2026-10-31). H is hardship people blame on the reg
 P = 1 - \exp\left(-k \times \frac{O_z}{A_z + 1}\right), \qquad O_z = officers \times \frac{a_z}{a}
 ```
 
-A\_z is the number of adults whose stage was active or beyond yesterday and whose day location was in zone z; the +1 is the person themselves, as in Epstein. O\_z is the zone's *patrol*: the officers on duty (§6.13: Judicial and Sheriff workers not off work) spread over the silo in proportion to adults, where a\_z is the number of adults whose day location yesterday was in z, on a floor connected to a court floor (§6.13), and a the same count over the whole silo. An adult on a floor cut off from every court has O = 0 and so P = 0: the regime can't reach them, and they know it. With k = 2.3, P = 0.9 when the patrol equals the actives plus one (Epstein's choice). As P falls when unrest grows faster than the patrol, a few more actives can tip many others: Epstein's outbursts. The zone rule has one balance point for each number of officers, so a steady fall in officers gives a steep tip, not a jump (T12.2: 1,000 doubters, officers cut from 200 to 0 one a day, a quarter of the rise within 10 days); outbursts that come and go need arrests and releases (§6.13). Patrols are not people on floors: like arrest capacity (§6.13) they are abstract, and no officer moves. Here the patrol follows the adults; the regime's share per zone becomes a policy lever in §6.15.
+A\_z is the number of adults whose stage was active or beyond yesterday and whose day location was in zone z; the +1 is the person themselves, as in Epstein. O\_z is the zone's *patrol*: the officers on duty (§6.13: Judicial and Sheriff workers not off work) spread over the silo in proportion to adults, where a\_z is the number of adults whose day location yesterday was in z, on a floor connected to a court floor (§6.13), and a the same count over the whole silo. An adult on a floor cut off from every court has O = 0 and so P = 0: the regime can't reach them, and they know it. With k = 2.3, P = 0.9 when the patrol equals the actives plus one (Epstein's choice). As P falls when unrest grows faster than the patrol, a few more actives can tip many others: Epstein's outbursts. The zone rule has one balance point for each number of officers, so a steady fall in officers gives a steep tip, not a jump (T12.2: 1,000 doubters, officers cut from 200 to 0 one a day, a quarter of the rise within 10 days); outbursts that come and go need arrests and releases (§6.13). Patrols are not people on floors: like arrest capacity (§6.13) they are abstract, and no officer moves. The patrol follows the adults; no policy lever moves it (§6.15).
 
 **Stages.** Each day every adult takes one *stage*: calm, active, joined or violent, each needing the one before. Calm are all who are not eligible: officers on duty, the Head of IT, people held by Judicial (§6.13) and people on the stairs (§6.10). Fear F (§6.13) raises the felt danger of arrest the way the sources of hardship combine, so the *net risk* is
 
@@ -836,7 +837,7 @@ rebels\ out = \min(B_z,\; e_J \times O_z), \qquad officers\ out = \min(O_z,\; e_
 
 A loss that is not a whole number is rounded down, plus one with a chance equal to the fraction. The rebels put out are drawn uniformly from the B\_z; the officers uniformly from all officers on duty, since patrols are abstract. Each one put out is killed with chance p\_kill: they die at the next day's deaths step (§3 step 7) with the cleaners, handled as any death (§6.1), and their family, a rebel's or an officer's, has a loss (above). A rebel not killed is arrested: control takes them into custody at its next step, charged with `violence` with no detection draw and using no arrest capacity, and tries them like anyone arrested (§6.13); with no active rule listing violence there is nothing to charge them with, and they stay free. A rebel put out is calm from then on. An officer not killed is wounded: a work injury (§6.2). Officers are armed and rebels are not, so e\_J > e\_R: at the defaults a patrol beats up to √(e\_J / e\_R) ≈ 2.2 times its number.
 
-**Held zones.** Rebels *hold* a zone on a day when its violent rebels, wherever they are in it, outnumber its patrol. Judicial arrests nobody whose day location is in a held zone (§6.13); their cases wait. Holding Up Top, where the IT floors and the Mayor's office are, for 30 days in a row is a regime change (§1.2). It ends the rebellion that day and is logged, and the count of held days starts again; what the new regime does comes with §6.15, so until then the silo runs on as before. Rebels don't march, so only Up Top's own people can hold it: in 19 seeds × 30 years of a 1,000-person silo with a cleaning failure and s\_DD up to 0.6, rebels held the Down Deep 4 times and Up Top never (T12.5).
+**Held zones.** Rebels *hold* a zone on a day when its violent rebels, wherever they are in it, outnumber its patrol. Judicial arrests nobody whose day location is in a held zone (§6.13); their cases wait. Holding Up Top, where the IT floors and the Mayor's office are, for 30 days in a row is a regime change (§1.2). It ends the rebellion that day and is logged, and the count of held days starts again; what the new regime does is the scenario's `regimeChange` playbook (§6.15). Rebels don't march, so only Up Top's own people can hold it: in 19 seeds × 30 years of a 1,000-person silo with a cleaning failure and s\_DD up to 0.6, rebels held the Down Deep 4 times and Up Top never (T12.5).
 
 **Sabotage.** Each violent rebel sabotages with daily chance p\_sab, visited in the tick's shuffled order (§3). The target follows from their day location:
 
@@ -854,7 +855,7 @@ Each sabotage is the offence `sabotage` (§6.9).
 
 **Stair repairs.** Each day each broken segment, visited from 1 to 143, is repaired with chance mechanicalCoverage / D\_stair, unless a floor at either end lies in a held zone. Segments broken by scripted events are repaired the same way. A segment still broken 90 days after it broke, while the rebellion that saw it break still runs, is a split (§1.2).
 
-**Unrest, rebellion and endings.** At the end of the step the module applies the tests of §1.2 to the day's stages: unrest, the start and end of a rebellion, and its ending. A *collective action* is under way on a day with a critical department on strike, a fight in any zone, or a held zone. A rebellion teaches nobody anything here: what people learn from one they saw is settled in M13, together with the memory wipe that answers it (Adam, 2026-11-02). A split is checked each day while a rebellion runs: each segment broken since its start and broken for `splitDays` days, from 1 to 143, and the first with `splitPeople` on each side ends it. The collapse check runs before these tests, so a collapse ends a rebellion first, including one detected that day. A rebellion's *starting zone* is the home zone of most of the adults active on its start day (on a tie, the first in the order Up Top, Mids, Down Deep).
+**Unrest, rebellion and endings.** At the end of the step the module applies the tests of §1.2 to the day's stages: unrest, the start and end of a rebellion, and its ending. A *collective action* is under way on a day with a critical department on strike, a fight in any zone, or a held zone. On the day an ending is detected, everyone alive aged 14 or more and not dosed learns the history as lived (§6.15, What a rebellion teaches; Adam, 2026-11-03). A split is checked each day while a rebellion runs: each segment broken since its start and broken for `splitDays` days, from 1 to 143, and the first with `splitPeople` on each side ends it. The collapse check runs before these tests, so a collapse ends a rebellion first, including one detected that day. A rebellion's *starting zone* is the home zone of most of the adults active on its start day (on a tie, the first in the order Up Top, Mids, Down Deep).
 
 **Collapse** (§1.2). Checked at the end of the step, and only with this module on, so a baseline run never stops early: air or water below 0.2 for 30 days in a row, or the population below P\_min (4,900, measured in T12.6; 0 switches the test off), its cause air or water if either is below the collapse level that day. The level and the days are §1.2 settings (`collapseLevel`, `collapseDays`). The Safeguard comes with §6.16. The first collapse is logged with its cause and ends a running rebellion with that ending; the run stops after that day, unless `output.runAfterCollapse` is true. Extinction always ends it (§1.2).
 
@@ -869,7 +870,7 @@ Each sabotage is the offence `sabotage` (§6.9).
 5. held zones;
 6. sabotage;
 7. stair repairs;
-8. collapse; unrest, rebellion and endings;
+8. collapse; unrest, rebellion and endings, and what an ending teaches;
 9. the zone counts kept for tomorrow.
 
 **Scripted events** (§5):
@@ -920,6 +921,111 @@ rebellion:                        # ODD §6.14; used only when `rebellion` is in
 ```
 
 `output.runAfterCollapse` (default false) sits with the other output settings. Checked at load: ℓ, s\_DD, T, T\_v, p\_kill, p\_sab, q\_strike and both shares of §1.2 are in [0, 1], and T\_v ≥ T; the collapse level is in [0, 1]; the six day counts are integers ≥ 1; `splitPeople` is an integer ≥ 0; T\_loss, k and D\_stair are strictly greater than 0; e\_J and e\_R are ≥ 0; P\_min is an integer ≥ 0.
+
+### 6.15 Regime policy and response (draft)
+
+*Answers Q3.* What the regime does during and after unrest and rebellion, and so which response keeps the silo alive. Following decision D7 (Adam, 2026-11-03), the regime does not learn. Each scenario gives it a fixed *playbook*: a list of policy changes, each started by a rebellion event and held for a set time. A response strategy (crackdown, reform, memory wipe, mixed, The Order) is a playbook written in a scenario file. The code holds no strategy logic and no numbers, so strategies are compared by running the same seeds with different files. The module needs the control and rebellion modules (§6.13, §6.14), and through them the beliefs, network and space modules.
+
+**Who decides** (decision D13). The playbook is the Head of IT's (§6.13). While the post is vacant, no new entry starts, and entries already running run on. An entry missed this way is not started later. The Mayor (§6.8) stays a figurehead. Silo 1's orders reach the silo through the Head in §6.16.
+
+**State** (owned by this module; §2 is unchanged): the running entries, each with the day it started and the day it lapses, if any; whether the regime has changed (§1.2).
+
+**The policy vector.** The levers are settings the model already has. Each one's value in the scenario is its *peacetime* value, and an entry overrides it while it runs:
+
+| Lever | Setting it overrides | § |
+| --- | --- | --- |
+| surveillance | σ | 6.13 |
+| arrestsPerOfficer | a | 6.13 |
+| raidsPerYear, findChance | R\_raid, p\_find: relic confiscation. A relic taken leaves the silo for good, so this is also relic destruction | 6.13 |
+| prisonPlaces, minesPlaces | detention places | 6.13 |
+| taughtLegitimacy | L\_edu, the regime's propaganda in Education and on Freedom Day. It moves the base of people still being raised, so it acts over a generation, not at once (§6.12) | 6.12 |
+| rationWeights | the zones' ration weights w\_z | 6.7 |
+| scapegoatHardship | s\_DD: how hard the regime blames the Down Deep (The Order, below) | 6.14 |
+| denial | covert lottery denial: `false` makes the lottery fair. People are still flagged, but a flagged couple wins and conceives like anyone | 6.13 |
+| doseConvicts | targeted Vitamin D+: every convict is dosed for this many days from their trial, whatever their penalty; 0 = none | 6.12, 6.13 |
+| governance, mayorTerm | how the Mayor is chosen, and the term. A changed mode ends the sitting Mayor's term at the next governance step, so the new way of choosing is used at once | 6.8 |
+| emergencyAir | the air line for emergency staffing (below); 0 = off | 6.15 |
+
+A lever's value must pass the same load checks as the setting it overrides. The cleaning rate has no lever of its own: cleanings come only from sentences, so it changes through the Pact's cleaning penalties (a rewrite, below). Patrols follow the adults in every zone (§6.14). No lever moves them, since no strategy needs one.
+
+**Entries.** A playbook entry, and the scripted event `policy` (below), have the same parts:
+
+- `on`: the trigger that starts the entry, one of
+  - `unrestStart`: the day the unrest test of §1.2 first holds (the 3rd day in a row at the unrest share), whether or not the spell becomes a rebellion;
+  - `rebellionStart`: the day the rebellion test of §1.2 holds (its 7th day);
+  - `suppressed`, `split`, `regimeChange`: the day that ending is detected (§1.2, §6.14).
+- `hold`: how long it runs. Either a number of days (an integer ≥ 1), `forever`, or `quiet`: until the unrest spell or rebellion that started it ends. A spell that becomes a rebellion is its run-up (§1.2), so an entry started by unrest and held `quiet` runs until the rebellion ends. `quiet` is allowed only on `unrestStart` and `rebellionStart`.
+- `set`: levers and their values while it runs.
+- `pact`: Pact rows (§6.9) while it runs, each a full row. A row with an existing id replaces that row, and a new id adds a rule. This is a **Pact rewrite**. Convictions are kept by rule id, so a rewritten rule still counts earlier convictions as repeats.
+- `lift`: added to the lift S (§6.13) once, on the day the entry starts, and decaying with S. It is the rewrite's legitimacy *benefit* (positive) or *cost* (negative), or a propaganda campaign. S may therefore be negative, and L stays within 0–1 by its own clamp (§6.12).
+- `waterDosing`: if true, starts a water dosing of §6.12 from the next day, as the scripted event does (the Flamekeepers' warning included).
+
+A lever, or a Pact row, takes the value of the most recently started running entry that sets it. With none, it takes its peacetime value. When an entry lapses, every lever and row it set falls back the same way. Entries started on the same day count in file order, the later one as more recent. Playbook entries come before the day's `policy` events. A `lift` and a dosing are done once they are applied, so a lapse doesn't undo them.
+
+**Rebellion state as trigger.** At the regime step, the module reads that day's results of the rebellion step (§6.14) and starts the entries for each trigger that fired, in the order of the list above. On a regime change, every running entry ends, and the old playbook is gone: from then on only its `regimeChange` entries apply, held for good whatever their `hold`. A scenario with none of these runs on at its peacetime settings and makes no response, which is what the new regime does by default.
+
+**What a rebellion teaches** (Adam, 2026-11-03). On the day a rebellion's ending is detected, whatever the ending, everyone alive aged 14 or more and not dosed learns the history as lived, as in `revealHistory` (§6.12). They lived through it. This happens at the rebellion step (§6.14), before the regime step, so a dosing the playbook starts that day can't stop it: the wipe works on what people have already learned. Learning lowers L by δ for most of the silo, and the next rebellion can follow soon after. In the T12.8 smoke run, it started 30 days later. That *echo* is a result of the response, not a defect to remove: a regime that wipes, tells its story (a `lift`) or reforms answers it, and one that does nothing doesn't. Comparing these is Q3.
+
+**Emergency staffing** (Adam, 2026-11-03). Health balances where air = 1 − r × medicalCoverage / d\_air = 0.8 (§6.2). Below that line, lower health lowers Mechanical's output (§6.5), and so power and air, and so health again. A rebellion that removes about a quarter of Mechanical's output can push the silo under the line, and without a response it slides to death (T12.7). Each day at the regime step, if today's air is below `emergencyAir`:
+
+1. every Mechanical worker or shadow detained in prison or the mines is released: their sentence ends, and they walk home as on a release day (§6.13). While air stays below the line, Mechanical workers in the queues for places are passed over;
+2. General workers are retrained into Mechanical by the §6.5 rule, but every day and up to 100% of Mechanical's target, not 80%. General still keeps at least 80% of its own target. Strikers still count as workers (§6.14), so strikes are not replaced.
+
+At the canon setting `emergencyAir` is the balance line 0.8 itself. The value is derived, not guessed. Retrained workers start at skill 0.2, so the released workers carry most of the effect. Whether it is enough is a result. The mass death on a single day that ends a slide comes from the baseline's health rule: every adult's health follows the same path, and health 0 is certain death (§6.1). The baseline is frozen, so this stays and is reported as part of the result.
+
+**Elections** *(proposed; Adam to approve)*. With this module on, each Mayor chosen by election (§6.8) adds λ\_elect to the lift S, as a cleaning does (§6.13). Appointment adds nothing. Without this rule the Mayor's office changes nothing, and experiment E5 (appointment vs election) would have no mechanism to compare.
+
+**The strategies.** Each one is a scenario file built on `scenarios/canon.yaml`. The values are guesses, set in T13.2 and counted there:
+
+| Strategy | Playbook |
+| --- | --- |
+| None | Empty: the control group |
+| **The Order** (canon) | On `unrestStart`, held `quiet`: s\_DD raised ("blame Mechanical", S2; lore reference) and raids raised. On `suppressed`: a `lift` (the Freedom Day story), a water dosing and a raid surge, the wipe that followed the Rebellion (lore reference: lost records, memory drugs \[Likely\]) |
+| Crackdown | On `rebellionStart`, held `quiet`: σ, a, raids and places raised; harsher rows for `organise` and `violence` |
+| Reform | On `rebellionStart`: s\_DD to 0, ration weights toward the Down Deep, elections, and a rewrite with a positive `lift` |
+| Memory wipe | On `rebellionStart`, held `quiet`: `doseConvicts`. On every ending: a water dosing and a raid surge |
+| Mixed | Crackdown while it runs, reform after |
+
+The Order is the canon regime. It is also meant to carry pattern C3 (Adam, 2026-11-03): with own hardship the same in every zone, the Down Deep's grievance was only 1.2 times the Mids', and every rebellion started in the Mids (T12.8). Blaming Mechanical while unrest builds concentrates grievance where the show puts it. It is a lever, so reform can switch it off.
+
+**Scripted events** (§5): `policy`, an entry run on its day, at the regime step, with a `hold` of days or `forever` (no `on`). It is how experiments impose a policy at a fixed day, such as a Pact rewrite like Season 3's under Camille (§6.9). It applies whether or not the Head of IT's post is filled, and after a regime change too, since the experimenter imposes it, not the regime.
+
+**Step.** The regime step (§3 step 10.95) runs after the rebellion step, in this order:
+
+1. entries whose hold ran out lapse;
+2. the triggers that fired today start their entries, then the day's `policy` events;
+3. emergency staffing.
+
+The levers set today are read by the steps that run after this one, so in practice from tomorrow. The step draws from its own random stream (only retraining draws).
+
+**Outputs** (only when the module is on):
+
+- *events.jsonl:* `policy` (trigger or `scripted`, entry, levers and rows set, lift, dosing) when an entry starts; `policyEnd` when it lapses; `emergency` on each day emergency staffing acts (released, retrained).
+- *yearly.csv:* days in the year with emergency staffing; entries running at the snapshot.
+- Q3's standing-rebellion check, the **share of measured days in a rebellion**, is computed by `silosim report` from `rebellions.jsonl` (`days`), alongside C1's count (§1.2).
+
+**Invariants** (§8): every running entry's trigger has fired, and every running entry since a regime change is a `regimeChange` entry or a `policy` event; every lever's value passes its setting's load check; the Pact in force passes the checks of §6.9.
+
+**Off and null.** With the module off, nothing of this exists. With it on, an empty playbook, `emergencyAir` 0, no `policy` events and λ\_elect 0, it changes nothing and draws nothing, so the files are byte-identical to the same scenario without it.
+
+**Parameters:** the emergency air line and the election lift λ\_elect. In the scenario file they are the `regime:` section; the playbook's values are each strategy's own:
+
+```yaml
+regime:                           # ODD §6.15; used only when `regime` is in modules
+  emergencyAir: 0                 # air line for emergency staffing; 0 = off. Canon: 0.8, the health balance line (§6.2, T12.7)
+  electionLift: 0.05              # λ_elect: lift of L from each Mayor chosen by election; guess (proposed)
+  playbook:                       # empty = no response; strategies fill it (T13.2)
+    - on: unrestStart             # unrestStart | rebellionStart | suppressed | split | regimeChange
+      hold: quiet                 # quiet | forever | days ≥ 1
+      set: { scapegoatHardship: 0.5, raidsPerYear: 24 }
+      pact:
+        - { id: noOrganising, active: true, offences: [organise], detection: 0.6,
+            first: { mines: 365 }, repeat: { cleaning: true }, enforcer: judicial, visibility: 0.7 }
+      lift: 0.1                   # once, either sign
+      waterDosing: true
+```
+
+The entry shown is an example of the shape, not a default: `baseline.yaml` has an empty playbook. Checked at load: `emergencyAir` and λ\_elect are in [0, 1]; each `on` is one of the five triggers; `hold` is `quiet` (only on `unrestStart` and `rebellionStart`), `forever` or an integer ≥ 1; `lift` is in [−1, 1]; every lever passes its setting's checks; the scenario's Pact with any one entry's rows applied passes the checks of §6.9. A combination of running entries that breaks those checks stops the run with an error on the day the later entry would start. A `policy` event takes no `on` and no `quiet`.
 
 ## 7. Parameters
 
