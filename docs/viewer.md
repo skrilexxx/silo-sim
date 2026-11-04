@@ -1,6 +1,6 @@
-# Results viewer — spec (T16.0, draft for Adam)
+# Results viewer — spec (T16.0)
 
-Nov 4, 2026 · decision D12 · Milestone 16
+Nov 4, 2026 · decision D12, approved by Adam · Milestone 16
 
 The viewer is how a run is *seen*: a rebellion spreading through the floors, a silo sliding to collapse, strategies side by side. It answers no research question by itself (`docs/tasks-part2.md`, M16), so it adds no model code and changes no run.
 

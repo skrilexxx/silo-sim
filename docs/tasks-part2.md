@@ -42,7 +42,7 @@ Each one is settled in the spec task named. Decided ones point to the spec; for 
 | D9 | Several silos at once | — | [no; only as optional work after M15] |
 | D10 | The Pact: prose or rules | T7.1 | **Decided 2026-10-30:** a rule table in the scenario file, no prose (ODD §6.9) |
 | D11 | Run length and seeds for part 2 | T7.1 | **Decided 2026-10-30:** 50 + 300 years; 100 seeds for calibration, 1,000 for the final experiments. **Revised 2026-11-04 (lean plan):** experiments 50 + 150 years, 30 seeds per scenario with common random numbers (ODD §1.2) |
-| D12 | Viewer technology | T16.0 | [`silosim serve`: Go's standard HTTP server with the page embedded in the binary, plus one vendored JavaScript chart library; read-only] |
+| D12 | Viewer technology | T16.0 | **Decided 2026-11-04:** `silosim serve`, Go's standard HTTP server with the page embedded, uPlot 1.6.31 vendored; read-only, localhost (`docs/viewer.md`) |
 | D13 | The Head of IT as a role | T11.0 (role, succession), T13.0 (decisions), T14.0 (Silo 1's link) | **Role and succession decided 2026-10-31:** one IT worker, for life (only death ends it); knows all five flags, never dosed, never tells, can't be arrested; their shadow succeeds them, else the most skilled IT worker (ODD §6.13). **Decisions settled 2026-11-03:** the playbook is the Head's, and a vacant post starts no response (ODD §6.15). Silo 1's link (T14.0) still open |
 
 **D13, the Head of IT (raised by Adam, 2026-10-31).** The Head of IT is the most powerful person in the silo, not the Mayor: they know almost everything about it, and Silo 1 speaks to them, and only them, through the Algorithm in the vault on the IT floors, which nobody else can enter (lore reference, Season 3). The model has no such role yet: the baseline has a Mayor (§6.8) and an IT department, nothing more. Before it is built, the specs must settle:
@@ -217,8 +217,8 @@ All experiments: 50 + 150 years, 30 seeds per scenario, the same seeds in every 
 
 A UI for looking at results. It answers no research question by itself, but it's how you'll *see* a rebellion happen, and it makes the thesis defence far easier. It only reads files from `runs/` (the viewer rule in T7.2), so it can be built any time after T7.6. **Start it after T12.8**, when there's something worth looking at.
 
-- [ ] **T16.0 Spec: views and data contract.** Decision D12. Which files each view reads, which metrics and colours; no simulation code. (drafted 2026-11-04 in `docs/viewer.md`, for Adam's approval)
-- [ ] **T16.1 `silosim serve --runs runs/`.** Go standard HTTP server, page embedded in the binary, one vendored chart library (an agreed exception to the dependency rule). Lists runs and batches.
+- [x] **T16.0 Spec: views and data contract.** Decision D12. Which files each view reads, which metrics and colours; no simulation code. (2026-11-04, approved: `docs/viewer.md`)
+- [x] **T16.1 `silosim serve --runs runs/`.** (2026-11-04; runs and batches listed newest first, the file endpoint with path checks, checked in Chrome) Go standard HTTP server, page embedded in the binary, one vendored chart library (an agreed exception to the dependency rule). Lists runs and batches.
 - [ ] **T16.2 Run replay.** The silo as a 144-floor cross-section, each floor coloured by a chosen metric (population, legitimacy, active rebels, arrests, damage); a time slider with play and pause; rebellions and events marked on the timeline; broken stair segments drawn.
 - [ ] **T16.3 Run dashboard.** Time series from `daily.csv` (population, health, power, food, hardship and legitimacy by zone) with events overlaid.
 - [ ] **T16.4 Experiment view.** For a batch or a sweep: survival curves, rebellions per century and endings with confidence intervals, scenarios side by side.
