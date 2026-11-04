@@ -44,6 +44,7 @@ Each one is settled in the spec task named. Decided ones point to the spec; for 
 | D11 | Run length and seeds for part 2 | T7.1 | **Decided 2026-10-30:** 50 + 300 years; 100 seeds for calibration, 1,000 for the final experiments. **Revised 2026-11-04 (lean plan):** experiments 50 + 150 years, 30 seeds per scenario with common random numbers (ODD §1.2) |
 | D12 | Viewer technology | T16.0 | **Decided 2026-11-04:** `silosim serve`, Go's standard HTTP server with the page embedded, uPlot 1.6.31 vendored; read-only, localhost (`docs/viewer.md`) |
 | D13 | The Head of IT as a role | T11.0 (role, succession), T13.0 (decisions), T14.0 (Silo 1's link) | **Role and succession decided 2026-10-31:** one IT worker, for life (only death ends it); knows all five flags, never dosed, never tells, can't be arrested; their shadow succeeds them, else the most skilled IT worker (ODD §6.13). **Decisions settled 2026-11-03:** the playbook is the Head's, and a vacant post starts no response (ODD §6.15). Silo 1's link (T14.0) still open |
+| D14 | The narrator's dependency | T17.0 | **Decided 2026-11-04:** the official Anthropic Go SDK, a second agreed exception to the dependency rule, imported only by `internal/narrate`; people by role, never by name (`docs/narrator.md`) |
 
 **D13, the Head of IT (raised by Adam, 2026-10-31).** The Head of IT is the most powerful person in the silo, not the Mayor: they know almost everything about it, and Silo 1 speaks to them, and only them, through the Algorithm in the vault on the IT floors, which nobody else can enter (lore reference, Season 3). The model has no such role yet: the baseline has a Mayor (§6.8) and an IT department, nothing more. Before it is built, the specs must settle:
 
@@ -225,12 +226,20 @@ A UI for looking at results. It answers no research question by itself, but it's
 - [x] **T16.5 Viewer polish.** (2026-11-04; checked in Chrome on every view) The control-room theme and the menu (Runs, Batches, Compare; Dashboard and Replay on a run), `docs/viewer.md`, Page and Menu.
   - *Milestone done when:* a run with frames on can be replayed from start to collapse or end; the experiment view shows the same numbers as `silosim report --outcomes`. (Done 2026-11-04.)
 
+## Milestone 17: Chronicle and narrator (optional)
+
+The story of one run: a deterministic chronicle of its facts, and a story Claude writes from it (`docs/narrator.md`). Optional work that answers no research question; Adam chose to build it before running M15 (2026-11-04). It reads run files only and changes no run.
+
+- [ ] **T17.0 Spec: chronicle, narrator and the Story tab.** Decision D14. `docs/narrator.md`; no code.
+- [ ] **T17.1 Chronicle.** `internal/chronicle`, `silosim chronicle --run DIR`, `/api/chronicle`, the Story tab with the chronicle.
+- [ ] **T17.2 Narrator.** The Anthropic Go SDK, `internal/narrate`, `silosim narrate --run DIR`, `story.md` in the Story tab.
+  - *Milestone done when:* a canon run's chronicle and story read correctly from start to end, and every number in the story can be found in the chronicle.
+
 ## Optional, after M15
 
 None of these answers Q1–Q4, so none of them goes in before the experiments are done.
 
 - A live terminal viewer (Bubble Tea) that reads `frames` while a run is going
-- An LLM narrator that turns `events.jsonl` and `rebellions.jsonl` into a story of one run
 - Several silos at once (Silo 17 and 18 as populations, Silo 1 as an agent)
 - The hidden elevator, goods logistics for Porters, chits and a black-market economy
 
