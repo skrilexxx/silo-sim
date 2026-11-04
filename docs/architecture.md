@@ -239,7 +239,7 @@ silosim report --batch runs/batch-001            # calibration targets, pass/fai
 
 A progress line in the terminal is enough.
 
-**Viewer rule.** Everything a UI shows is written to files during the run. No viewer, live or after the fact, reads the simulation's memory or changes a run: `silosim serve` (M16) and any later terminal viewer read only files under `runs/`. A run with a viewer open is therefore the same run as one without.
+**Viewer rule** (the viewer's spec is `docs/viewer.md`). Everything a UI shows is written to files during the run. No viewer, live or after the fact, reads the simulation's memory or changes a run: `silosim serve` (M16) and any later terminal viewer read only files under `runs/`. A run with a viewer open is therefore the same run as one without.
 
 ## Testing
 

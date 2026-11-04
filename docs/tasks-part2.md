@@ -217,7 +217,7 @@ All experiments: 50 + 150 years, 30 seeds per scenario, the same seeds in every 
 
 A UI for looking at results. It answers no research question by itself, but it's how you'll *see* a rebellion happen, and it makes the thesis defence far easier. It only reads files from `runs/` (the viewer rule in T7.2), so it can be built any time after T7.6. **Start it after T12.8**, when there's something worth looking at.
 
-- [ ] **T16.0 Spec: views and data contract.** Decision D12. Which files each view reads, which metrics and colours; no simulation code.
+- [ ] **T16.0 Spec: views and data contract.** Decision D12. Which files each view reads, which metrics and colours; no simulation code. (drafted 2026-11-04 in `docs/viewer.md`, for Adam's approval)
 - [ ] **T16.1 `silosim serve --runs runs/`.** Go standard HTTP server, page embedded in the binary, one vendored chart library (an agreed exception to the dependency rule). Lists runs and batches.
 - [ ] **T16.2 Run replay.** The silo as a 144-floor cross-section, each floor coloured by a chosen metric (population, legitimacy, active rebels, arrests, damage); a time slider with play and pause; rebellions and events marked on the timeline; broken stair segments drawn.
 - [ ] **T16.3 Run dashboard.** Time series from `daily.csv` (population, health, power, food, hardship and legitimacy by zone) with events overlaid.
