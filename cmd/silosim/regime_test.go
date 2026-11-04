@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -127,5 +128,68 @@ func TestPolicyEventPullsLevers(t *testing.T) {
 	}
 	if strings.Contains(events, `"policyEnd"`) {
 		t.Error("an entry held forever ended")
+	}
+}
+
+// regimeAs is regimeSilo with a strategy file's playbook.
+func regimeAs(t *testing.T, strategy string, years int) *config.Scenario {
+	t.Helper()
+	cfg := regimeSilo(t, true, years)
+	cfg.Regime.Playbook = loadInto(t, "../../scenarios/"+strategy+".yaml").Regime.Playbook
+	return cfg
+}
+
+// T13.3, ODD §6.15: the memory wipe in a 1,000-person silo. While a
+// rebellion runs, convicts are dosed; once it ends, the water is, and the
+// history its ending taught everyone is hidden from most adults at the
+// next snapshot.
+func TestMemoryWipe(t *testing.T) {
+	dir := mustSimulate(t, regimeAs(t, "strategy-wipe", 15))
+	ev := string(readFile(t, filepath.Join(dir, "events.jsonl")))
+	if !strings.Contains(ev, `"type":"policy","trigger":"rebellionStart"`) {
+		t.Fatal("no rebellion started the wipe")
+	}
+	ended := strings.Contains(ev, `"type":"policy","trigger":"suppressed"`) || strings.Contains(ev, `"type":"policy","trigger":"split"`)
+	dosed, hidden := column(t, dir, "dosed"), floats(t, dir, "hiddenAny")
+	most, peak := 0, 0.0
+	for y := range dosed {
+		most, peak = max(most, dosed[y]), max(peak, hidden[y])
+	}
+	t.Logf("ended %v; most dosed at a snapshot %d, highest share with a hidden flag %.3f", ended, most, peak)
+	if most == 0 {
+		t.Error("nobody dosed at any snapshot")
+	}
+	if ended && peak < 0.5 {
+		t.Errorf("after a wipe, at most %.3f of adults had a flag hidden; want most", peak)
+	}
+}
+
+// T13.4, ODD §6.9, §6.15: a Pact rewrite by policy event. Switching off the
+// rule against forbidden talk stops trials for it: with surveillance
+// raised so talk is seen, the year after the rewrite has no warnings; a
+// rewrite that costs legitimacy (lift −0.1) shows as a lower lift S at
+// the next snapshot.
+func TestPactRewrite(t *testing.T) {
+	run := func(active bool, lift float64) string {
+		cfg := regimeSilo(t, true, 8)
+		cfg.Events = nil
+		i := slices.IndexFunc(cfg.Pact, func(r config.Rule) bool { return r.ID == "noForbiddenTalk" })
+		row := cfg.Pact[i]
+		row.Active = active
+		sigma := 1.0
+		cfg.Events = []config.Event{{Day: 5*365 + 10, Type: "revealHistory"},
+			{Day: 5*365 + 20, Type: "policy", Hold: "forever", Set: config.Levers{Surveillance: &sigma}, Pact: []config.Rule{row}, Lift: lift}}
+		return mustSimulate(t, cfg)
+	}
+	on, off := run(true, 0), run(false, 0)
+	if w := column(t, on, "warnings")[6]; w == 0 {
+		t.Fatalf("with the rule in force and σ = 1, no warnings in year 7; the test sees nothing")
+	}
+	if w := column(t, off, "warnings")[6]; w != 0 {
+		t.Errorf("rule switched off: %d warnings in year 7, want 0", w)
+	}
+	cost := run(false, -0.1)
+	if l0, l1 := floats(t, off, "lift")[5], floats(t, cost, "lift")[5]; l1 > l0-0.03 {
+		t.Errorf("lift at the snapshot: %.3f without the cost, %.3f with −0.1; want it clearly lower", l0, l1)
 	}
 }
