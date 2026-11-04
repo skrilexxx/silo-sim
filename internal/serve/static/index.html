@@ -8,8 +8,12 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header><a href="#/">Silo viewer</a> <span id="crumb"></span></header>
-<main id="view"><p>Loading…</p></main>
+<header>
+  <a class="plate" href="#/"><b>▓</b> SILO 18 · RECORDS</a>
+  <nav><a href="#/" data-tab="runs">Runs</a><a href="#/batches" data-tab="batches">Batches</a><a href="#/compare" data-tab="compare">Compare</a></nav>
+  <span id="crumb"></span>
+</header>
+<main><div id="sub"></div><div id="view"><p>Loading…</p></div></main>
 <script src="vendor/uplot/uPlot.iife.min.js"></script>
 <script type="module" src="app.js"></script>
 </body>

@@ -67,7 +67,11 @@ export async function dashboard(view, path, file) {
       <span class="key"><i style="background:rgba(204,121,167,0.35)"></i> rebellion <i class="dash"></i> scripted event <i class="solid"></i> collapse</span></div>
     <div id="panels"></div>`;
   const host = view.querySelector("#panels");
-  const width = () => Math.max(320, host.clientWidth);
+  // A chart fills its screen panel's content box, inside the panel's padding.
+  const width = () => {
+    const box = host.firstElementChild, cs = box && getComputedStyle(box);
+    return Math.max(320, box ? box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) : host.clientWidth);
+  };
   const plots = [];
   let syncing = false;
 

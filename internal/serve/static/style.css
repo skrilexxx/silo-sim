@@ -1,31 +1,99 @@
-/* docs/viewer.md, Colours: Okabe–Ito, light background. */
+/* docs/viewer.md, Colours and Page: the control room. Dark concrete page,
+   steel header, amber accent; charts, tables and the floor column on light
+   "screen" panels, so the Okabe–Ito and viridis colours draw on light. */
 :root {
   --upTop: #0072B2; --mids: #009E73; --downDeep: #D55E00; --total: #000;
-  --rebellion: #CC79A7; --ink: #1a1a1a; --muted: #666; --line: #ddd; --bg: #fff;
+  --rebellion: #CC79A7;
+  --amber: #F0A531; --amber-dim: #8a5d17;
+  --concrete: #16181b; --steel: #22262b; --steel-line: #3a4047;
+  --ink: #d8d2c4; --muted: #8f8a80; --line: #3a4047;
+  --screen: #F3F0E8; --screen-ink: #1a1a1a; --screen-muted: #666; --screen-line: #d9d4c8; --screen-link: #8a4f00;
+  --mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
 }
 * { box-sizing: border-box; }
-body { margin: 0; font: 14px/1.4 system-ui, sans-serif; color: var(--ink); background: var(--bg); }
-header { padding: 10px 16px; border-bottom: 1px solid var(--line); font-weight: 600; }
-header a { color: inherit; text-decoration: none; }
-#crumb { color: var(--muted); font-weight: 400; margin-left: 8px; }
+body {
+  margin: 0; font: 14px/1.45 system-ui, sans-serif; color: var(--ink);
+  background-color: var(--concrete);
+  /* concrete: two fine speckle grids over a faint top-to-bottom shade */
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    radial-gradient(rgba(0, 0, 0, 0.35) 1px, transparent 1px),
+    linear-gradient(#1c1f23, #121417);
+  background-size: 3px 3px, 7px 7px, 100% 100%;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+a { color: var(--amber); }
+a:hover { color: #ffc766; }
+
+/* Header: steel bar, the silo's name plate and the menu. */
+header {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; padding: 0 16px;
+  background: linear-gradient(#2a2f35, var(--steel)); border-bottom: 2px solid #0c0d0f;
+  box-shadow: 0 1px 0 var(--steel-line) inset, 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.plate { font: 600 13px/1 var(--mono); letter-spacing: 0.18em; color: var(--ink); text-decoration: none; padding: 14px 0; white-space: nowrap; }
+.plate b { color: var(--amber); }
+nav { display: flex; gap: 2px; }
+nav a, .tabs a, .tabs span {
+  font: 500 12px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none;
+  color: var(--muted); padding: 15px 12px 13px; border-bottom: 2px solid transparent;
+}
+nav a:hover, .tabs a:hover { color: var(--ink); }
+nav a.on, .tabs a.on { color: var(--amber); border-bottom-color: var(--amber); }
+#crumb { font: 12px var(--mono); color: var(--muted); margin-left: auto; overflow-wrap: anywhere; }
+.tabs { display: flex; gap: 2px; margin: -16px 0 14px; border-bottom: 1px solid var(--line); }
+.tabs span { opacity: 0.4; cursor: not-allowed; }
+
 main { padding: 16px; max-width: 1200px; }
-h2 { font-size: 16px; margin: 20px 0 8px; }
-table { border-collapse: collapse; width: 100%; }
-th, td { text-align: left; padding: 4px 16px 4px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
-th { color: var(--muted); font-weight: 500; }
-th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+h2 { font: 600 13px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--amber); margin: 22px 0 8px; }
+h2:first-child { margin-top: 4px; }
 .empty { color: var(--muted); }
-.wrap { overflow-x: auto; }
-.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px; }
-#slider { width: 100%; }
-.timeline { width: 100%; display: block; border: 1px solid var(--line); margin: 4px 0 12px; cursor: pointer; }
-.replay { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
-.zl { font-size: 11px; fill: var(--muted); }
-#totals td { padding: 2px 16px 2px 0; }
-.panel { margin-bottom: 18px; }
-.panel h3 { font-size: 13px; font-weight: 600; margin: 0 0 4px; }
 .key { color: var(--muted); }
 .key i { display: inline-block; width: 18px; height: 10px; margin: 0 4px 0 10px; vertical-align: middle; }
-.key i.dash { border-top: 2px dashed #555; height: 0; }
-.key i.solid { border-top: 2px solid #000; height: 0; }
+/* line keys follow the ink: dark on a screen, light on the concrete */
+.key i.dash { border-top: 2px dashed var(--muted); height: 0; }
+.key i.solid { border-top: 2px solid var(--ink); height: 0; }
+
+/* The banner on the home page. */
+.banner { font: 12px/1 var(--mono); color: var(--amber); margin: 4px 0 8px; white-space: pre; overflow-x: auto; overflow-y: hidden; text-shadow: 0 0 6px rgba(240, 165, 49, 0.35); }
+.banner span { color: var(--muted); text-shadow: none; }
+
+/* Screens: everything drawn sits on a light panel. Their variables switch
+   to dark ink so the views' own colours and labels stay as specified. */
+.wrap, .panel, .replay, .timeline, .chart-card {
+  --ink: var(--screen-ink); --muted: var(--screen-muted); --line: var(--screen-line);
+  color: var(--ink); background: var(--screen);
+  border: 1px solid #0c0d0f; border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--steel-line), inset 0 0 18px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+.wrap a, .panel a, .replay a { color: var(--screen-link); }
+.wrap { overflow-x: auto; padding: 4px 12px; margin-bottom: 12px; }
+.panel { margin-bottom: 16px; padding: 10px 12px 6px; }
+.panel h3 { font: 600 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--screen-muted); margin: 0 0 6px; }
+.replay { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; padding: 12px; }
+.timeline { width: 100%; display: block; margin: 4px 0 12px; cursor: pointer; }
+
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 5px 16px 5px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+th { color: var(--muted); font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.wrap tr:hover td { background: rgba(240, 165, 49, 0.12); }
+
+/* Controls on the concrete. */
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 10px; }
+button, select {
+  font: 12px var(--mono); color: var(--ink); background: var(--steel);
+  border: 1px solid var(--steel-line); border-radius: 3px; padding: 5px 10px; cursor: pointer;
+}
+button:hover, select:hover { border-color: var(--amber); }
+button.go { color: #1a1a1a; background: var(--amber); border-color: var(--amber); font-weight: 600; }
+button.go:disabled { opacity: 0.4; cursor: not-allowed; }
+input[type="checkbox"], input[type="range"] { accent-color: var(--amber); }
+#slider { width: 100%; }
+#when { font: 12px var(--mono); color: var(--muted); }
+
+.zl { font-size: 11px; fill: var(--muted); }
+#totals td { padding: 2px 16px 2px 0; }
 .chart text { font-size: 12px; }

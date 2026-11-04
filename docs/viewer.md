@@ -48,7 +48,9 @@ PATH is relative to `--runs`; one that is absolute, contains `..`, or resolves o
 
 ## Views
 
-**1. Runs (home).** Batches and loose runs in two tables, newest first: name, seeds, years, collapses, frames yes/no. A click opens a run's dashboard, a batch's experiment view; a "replay" link on runs with frames.
+**Menu** (T16.5). The header holds three tabs: *Runs*, *Batches*, *Compare*. A run's pages add two sub-tabs, *Dashboard* and *Replay*; Replay is greyed out for a run without frames.
+
+**1. Runs (home).** The silo banner, then the runs outside batches, newest first: name, seed, years, collapse, frames yes/no. A click opens the run's dashboard. *Batches* lists the batches the same way; a click opens the batch's experiment view. *Compare* lists the batches with a tick box each and opens the experiment view for the ticked ones.
 
 **2. Run dashboard (T16.3).** Stacked time-series panels sharing one time axis (measured years), zoom by dragging, a cursor read-out of every series:
 
@@ -79,7 +81,9 @@ Every number is the one `silosim report --outcomes` prints for that batch.
 
 ## Colours
 
-Colour-blind safe, the same in every view (Okabe–Ito): Up Top `#0072B2` (blue), Mids `#009E73` (green), Down Deep `#D55E00` (vermillion); total `#000000`. Rebellion bands `#CC79A7` at 15% opacity; events dark grey dashed, collapse and Safeguard solid black. Batches in the experiment view: Okabe–Ito in order (`#E69F00`, `#56B4E9`, `#009E73`, `#F0E442`, `#0072B2`, `#D55E00`, `#CC79A7`). Endings (T16.4): suppressed `#0072B2`, regimeChange `#D55E00`, split `#CC79A7`, collapse `#000000`, unfinished `#BBBBBB`. Floor scales: viridis. Light background; no dark mode.
+Colour-blind safe, the same in every view (Okabe–Ito): Up Top `#0072B2` (blue), Mids `#009E73` (green), Down Deep `#D55E00` (vermillion); total `#000000`. Rebellion bands `#CC79A7` at 15% opacity; events dark grey dashed, collapse and Safeguard solid black. Batches in the experiment view: Okabe–Ito in order (`#E69F00`, `#56B4E9`, `#009E73`, `#F0E442`, `#0072B2`, `#D55E00`, `#CC79A7`). Endings (T16.4): suppressed `#0072B2`, regimeChange `#D55E00`, split `#CC79A7`, collapse `#000000`, unfinished `#BBBBBB`. Floor scales: viridis.
+
+**Page: the control room** (T16.5, Adam, 2026-11-04). Dark concrete background with a CSS texture (no images), a steel header, amber `#F0A531` for the active tab, links and buttons, monospace headings. Every chart, table, timeline and the floor column sits on a light *screen* panel (`#F3F0E8`), so the colours above are drawn on light as before. One theme; no light/dark switch.
 
 ## Code
 
@@ -105,4 +109,4 @@ internal/report/outcomes.go   # the outcome numbers as a struct, rendered as tex
 
 ## Left out
 
-Live viewing of a running simulation; editing or starting runs from the page; dark mode; mobile layout beyond a readable single column; any chart library besides uPlot.
+Live viewing of a running simulation; editing or starting runs from the page; a light/dark switch; mobile layout beyond a readable single column; any chart library besides uPlot.
