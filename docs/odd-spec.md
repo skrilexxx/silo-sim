@@ -190,6 +190,7 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 10.5. **Network** *(part 2, draft)* — weak ties ended and drawn again; the connected runs of floors for the day's conversations (6.11)
 10.7. **Beliefs** *(part 2, draft)* — upbringing, forgetting, Vitamin D+, relics, the day's conversations that pass knowledge on, Flamekeepers (6.12)
 10.8. **Control** *(part 2, draft)* — Head of IT, detection, releases, trials and cleanings, raids, arrests (6.13)
+10.85. **Silo 1** *(part 2, draft)* — escapes counted, orders sent, the Safeguard scheduled (6.16)
 10.9. **Rebellion** *(part 2, draft)* — hardship and grievance, stages, fights, sabotage, stair repairs, unrest and rebellion, collapse (6.14)
 10.95. **Regime** *(part 2, draft)* — the playbook's entries lapse and start, policy events, the emergency declared or lifted (6.15)
 11. **Logging** — daily metrics written (8)
@@ -857,7 +858,7 @@ Each sabotage is the offence `sabotage` (§6.9).
 
 **Unrest, rebellion and endings.** At the end of the step the module applies the tests of §1.2 to the day's stages: unrest, the start and end of a rebellion, and its ending. A *collective action* is under way on a day with a critical department on strike, a fight in any zone, or a held zone. On the day an ending is detected, everyone alive aged 14 or more and not dosed learns the history as lived (§6.15, What a rebellion teaches; Adam, 2026-11-03). A split is checked each day while a rebellion runs: each segment broken since its start and broken for `splitDays` days, from 1 to 143, and the first with `splitPeople` on each side ends it. The collapse check runs before these tests, so a collapse ends a rebellion first, including one detected that day. A rebellion's *starting zone* is the home zone with the highest share of its adults active on its start day (on a tie, the first in the order Up Top, Mids, Down Deep). It counted heads until T13.2, which gave the Mids every rebellion: they hold twice the Down Deep's adults, and the Down Deep's grievance was only about 1.2 times theirs. The zone where revolt is most widespread is where it starts (Adam, 2026-11-04).
 
-**Collapse** (§1.2). Checked at the end of the step, and only with this module on, so a baseline run never stops early: air or water below 0.2 for 30 days in a row, or the population below P\_min (4,900, measured in T12.6; 0 switches the test off), its cause air or water if either is below the collapse level that day. The level and the days are §1.2 settings (`collapseLevel`, `collapseDays`). The Safeguard comes with §6.16. The first collapse is logged with its cause and ends a running rebellion with that ending; the run stops after that day, unless `output.runAfterCollapse` is true. Extinction always ends it (§1.2).
+**Collapse** (§1.2). Checked at the end of the step, and only with this module on, so a baseline run never stops early: the Safeguard going off today (§6.16), its cause `safeguard`, before any other test; air or water below 0.2 for 30 days in a row, or the population below P\_min (4,900, measured in T12.6; 0 switches the test off), its cause air or water if either is below the collapse level that day. The level and the days are §1.2 settings (`collapseLevel`, `collapseDays`). The Safeguard comes with §6.16. The first collapse is logged with its cause and ends a running rebellion with that ending; the run stops after that day, unless `output.runAfterCollapse` is true. Extinction always ends it (§1.2).
 
 **Nobody says "I want to go out" yet.** No question needs it before Silo 1, where walking out is a contact attempt (§6.16), so this module reports no `askToGoOut`, and the `goingOut` rule has no effect for now.
 
@@ -1028,6 +1029,38 @@ regime:                           # ODD §6.15; used only when `regime` is in mo
 ```
 
 The entry shown is an example of the shape, not a default: `baseline.yaml` has an empty playbook. Checked at load: `emergencyAir` and λ\_elect are in [0, 1]; `doseConvicts` is an integer ≥ 0; each `on` is one of the five triggers; `hold` is `quiet` (only on `unrestStart` and `rebellionStart`), `forever` or an integer ≥ 1; `lift` is in [−1, 1]; every lever passes its setting's checks; the scenario's Pact with any one entry's rows applied passes the checks of §6.9. A combination of running entries that breaks those checks stops the run with an error on the day the later entry would start. A `policy` event takes no `on` and no `quiet`.
+
+### 6.16 Silo 1 (draft, lean)
+
+*Answers Q2 and Q4.* Silo 1 is the outside controller of Season 3: it watches Silo 18 through the Head of IT, gives orders through them, and can kill the silo with the Safeguard, gas through a pipe (lore reference). Its trigger is escape, not unrest as such. The lean plan (Adam, 2026-11-04; decision D8) keeps only what Q4 and C5 need: two settings, `off` (the module is not listed) and `full` (it is); escapes as the only contact; orders; the Safeguard. Radio, digging toward other silos, capping the pipe, drones and the deal of S3E10 are left out. The module needs the regime module (§6.15), which carries out the orders, and through it every module before.
+
+**Escapes.** Every failed cleaning is an escape (Adam, 2026-11-04): a sentenced cleaning that fails, the cleaner walking out of sight (§6.13), and the scripted `cleaningFailure`, which stands in for one. Juliette's walk over the hill (S1E10) is the canon case. Control counts them; Silo 1 reads the count at its step.
+
+**Orders.** On the day of each escape, Silo 1 orders a response through the Head of IT, who always complies (no compliance chance in the lean plan): the `silo1.orders` entry, an entry of §6.15 with the trigger `escape`, which the regime module starts at its step that day, whatever its own playbook and whether or not the regime has changed. With the Head's post vacant, no order arrives. The canon order, by the factor of 2 of §6.15: surveillance 2× and a water dosing (S3: more surveillance, a doubled dose of Vitamin D+), held 365 days. Orders can make the silo quieter (Q4: more stable) as the Safeguard makes it more fragile.
+
+**The Safeguard.** When a new escape brings the escapes within the last `windowYears` to `safeguardEscapes` or more, and none is pending, Silo 1 sets the Safeguard off `safeguardDelayDays` days later. Nothing in the silo can stop it in the lean plan. On that day the rebellion step records a collapse with cause `safeguard` (§1.2, §6.14), before its other tests; everyone alive dies at the next deaths step (§3 step 7), gassed, which matters only for runs that go on after a collapse (`output.runAfterCollapse`).
+
+**Step.** The Silo 1 step (§3 step 10.85) runs after the control step, where cleanings fail: it records the day's new escapes, flags an order for the regime step, and schedules the Safeguard if the test above holds.
+
+**Outputs:** *events.jsonl:* `escape` (the day of each), `safeguard` (the day it is set off and the day it goes off); orders appear as `policy` events with trigger `silo1` (§6.15); the collapse as `collapse` with cause `safeguard`. *run.json:* the collapse cause `safeguard`.
+
+**Off and null.** With the module off, nothing of this exists. With it on and no escape, nothing happens.
+
+**Parameters:** in the scenario file, the `silo1:` section. Three guesses, covered by the ±50% check of T15.2:
+
+```yaml
+silo1:                            # ODD §6.16; used only when `silo1` is in modules (the setting full)
+  safeguardEscapes: 2             # escapes within the window that set off the Safeguard; guess (Adam, 2026-11-04)
+  windowYears: 5                  # the window; guess
+  safeguardDelayDays: 30          # from the decision to the gas; guess
+  orders:                         # through the Head of IT after each escape; factor 2 of §6.15
+    on: escape
+    hold: 365
+    set: { surveillance: 0.1 }
+    waterDosing: true
+```
+
+Checked at load: `safeguardEscapes` and `safeguardDelayDays` are integers ≥ 1; `windowYears` is > 0; `orders.on` is `escape`, its hold not `quiet`, and it passes the checks of a §6.15 entry.
 
 ## 7. Parameters
 
