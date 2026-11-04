@@ -137,7 +137,7 @@ func LoadRun(dir string) (Seed, error) {
 	if err := s.events(filepath.Join(dir, "events.jsonl"), info.Scenario.WarmupYears*daysPerYear); err != nil {
 		return s, err
 	}
-	return s, s.canon(dir, info.Scenario.WarmupYears*daysPerYear, warmup, info.Outcomes.CollapseCause, info.Outcomes.UnrestSpells)
+	return s, s.canon(dir, info.Scenario.WarmupYears*daysPerYear, warmup, info.Outcomes.CollapseCause, info.Outcomes.CollapseDay, info.Outcomes.UnrestSpells)
 }
 
 // table reads a CSV file into a column-name lookup and its rows after

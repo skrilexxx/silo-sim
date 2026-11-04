@@ -200,7 +200,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
 
 All experiments: 50 + 150 years, 30 seeds per scenario, the same seeds in every scenario (common random numbers), so differences come from the factor, not noise (D11, revised 2026-11-04).
 
-- [ ] **T15.1 Outcome report.** `silosim report --outcomes`: per seed and across seeds, with confidence intervals: time to first rebellion, rebellions per century, endings, causes of death, survival curves (Kaplan–Meier), share of time in a rebellion.
+- [x] **T15.1 Outcome report.** (2026-11-04; Kaplan–Meier with Greenwood intervals, Wilson for endings, Poisson (Bartlett) for the rate, a normal interval for the time in a rebellion; runs dead in warm-up listed and left out) `silosim report --outcomes`: per seed and across seeds, with confidence intervals: time to first rebellion, rebellions per century, endings, causes of death, survival curves (Kaplan–Meier), share of time in a rebellion.
 - [ ] **T15.2 Sensitivity.** One at a time, about 6 key part-2 parameters at ±50% (e.g. L\_edu, δ, π, T, s\_DD, p\_fail) on the canon scenario, 30 seeds each. Which move the outcomes? Replaces Morris screening and `silosim sweep`.
 - [ ] **T15.3 Canon validation.** C1–C5 on the canon scenario's 30 seeds, reported pass or fail; C3's strike half and C4 reported as they are.
 - [ ] **T15.4 Experiments.** Write each one down before running it: question, scenarios, seeds, the metric that answers it.

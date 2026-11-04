@@ -86,7 +86,7 @@ C1 bounds the rebellion rate, which is also what Q1 measures. That is deliberate
 **Outcome metrics**
 
 - *Per run:* time to first rebellion (censored at the end of the run if none); number of rebellions and unrest spells; for each rebellion, its start, trigger, starting zone, peak share of active adults, duration, collective actions, deaths, arrests, damage, and ending; time and cause of collapse (censored if none).
-- *Across seeds:* survival curves (Kaplan–Meier) for time to first rebellion and time to collapse; rebellions per century and the share of each ending, with 95% confidence intervals; the share of measured days spent in a rebellion, which tells rare long rebellions from frequent short ones (the standing rebellion of T12.8; §6.15).
+- *Across seeds* (`silosim report --outcomes`, T15.1; time in measured years from the first measured day, censored at the run's last measured day): survival curves (Kaplan–Meier, Greenwood intervals) for time to first rebellion and time to collapse; rebellions per century and the share of each ending, with 95% confidence intervals; the share of measured days spent in a rebellion, which tells rare long rebellions from frequent short ones (the standing rebellion of T12.8; §6.15).
 
 **Run settings for part 2.** The canon scenario runs 50 warm-up years plus 300 measured years. The experiments (T15.4) run **50 + 150 years with 30 seeds per scenario**, the same seeds in every scenario, so comparisons rest on common random numbers rather than on large samples (Adam, 2026-11-04: the plan's 1,000 seeds, at about 8 minutes a run, needed a day of computing per scenario). Confidence intervals are wide and reported as such; claims are comparative (above). `scenarios/baseline.yaml` keeps its 200 measured years.
 

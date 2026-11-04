@@ -32,6 +32,7 @@ type Canon struct {
 	Failures    []int // days of every cleaning failure, scripted or sentenced
 	History     [][2]float64
 	Collapse    string // cause, or "" if none
+	CollapseDay int    // 0 if none
 	Unrest      int
 }
 
@@ -47,7 +48,7 @@ type Rebellion struct {
 
 // canon reads the run's rebellions, cleaning failures and yearly share of
 // adults knowing the history. warmupDays places the measured days.
-func (s *Seed) canon(dir string, warmupDays, warmup int, collapse *string, unrest int) error {
+func (s *Seed) canon(dir string, warmupDays, warmup int, collapse *string, collapseDay *int, unrest int) error {
 	data, err := os.ReadFile(filepath.Join(dir, "rebellions.jsonl"))
 	if os.IsNotExist(err) {
 		return nil
@@ -58,6 +59,9 @@ func (s *Seed) canon(dir string, warmupDays, warmup int, collapse *string, unres
 	c := &Canon{First: warmupDays + 1, Last: warmupDays + s.Days, Unrest: unrest}
 	if collapse != nil {
 		c.Collapse = *collapse
+	}
+	if collapseDay != nil {
+		c.CollapseDay = *collapseDay
 	}
 	for line := range bytes.Lines(data) {
 		var r Rebellion

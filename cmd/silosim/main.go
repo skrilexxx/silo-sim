@@ -16,7 +16,7 @@ import (
 const usage = `usage:
   silosim run    --scenario FILE [--seed N] [--dry-run]
   silosim batch  --scenario FILE --seeds FIRST-LAST --out DIR [--workers N]
-  silosim report --batch DIR`
+  silosim report --batch DIR [--outcomes]`
 
 func main() {
 	if len(os.Args) < 2 {
@@ -77,10 +77,12 @@ func run(args []string) error {
 	return nil
 }
 
-// reportCmd checks a batch folder against the ODD §8 calibration targets.
+// reportCmd checks a batch folder against the ODD §8 calibration targets,
+// or with --outcomes prints the part-2 outcome metrics (ODD §1.2, T15.1).
 func reportCmd(args []string) error {
 	fs := flag.NewFlagSet("report", flag.ContinueOnError)
 	dir := fs.String("batch", "", "batch folder written by silosim batch")
+	outcomes := fs.Bool("outcomes", false, "print the outcome metrics of ODD §1.2 with 95% intervals instead of the calibration targets")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -90,6 +92,9 @@ func reportCmd(args []string) error {
 	seeds, err := report.Load(*dir)
 	if err != nil {
 		return err
+	}
+	if *outcomes {
+		return report.WriteOutcomes(os.Stdout, seeds)
 	}
 	ok, err := report.Write(os.Stdout, seeds)
 	if err != nil {
