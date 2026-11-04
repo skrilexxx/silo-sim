@@ -28,3 +28,4 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .key i { display: inline-block; width: 18px; height: 10px; margin: 0 4px 0 10px; vertical-align: middle; }
 .key i.dash { border-top: 2px dashed #555; height: 0; }
 .key i.solid { border-top: 2px solid #000; height: 0; }
+.chart text { font-size: 12px; }

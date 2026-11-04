@@ -51,18 +51,137 @@ func WriteOutcomes(out io.Writer, seeds []Seed) error {
 	if err := tw.Flush(); err != nil {
 		return err
 	}
-	if len(runs) == 0 {
-		return fmt.Errorf("no run has a part-2 record (rebellions.jsonl)")
+	o, err := outcomes(runs)
+	if err != nil {
+		return err
 	}
 
-	n, years := 0, 0.0
+	fmt.Fprintf(out, "\noutcomes across %d runs (ODD §1.2), 95%% intervals\n", o.Runs)
+	r := o.PerCentury
+	fmt.Fprintf(out, "rebellions per century: %.2f (%.2f–%.2f), %d in %.0f measured years\n", r.Value, r.Lo, r.Hi, o.Rebellions, o.Years)
+	r = o.InRebellion
+	fmt.Fprintf(out, "share of measured time in a rebellion: %.1f%% (%.1f–%.1f%%), mean over runs\n", 100*r.Value, 100*r.Lo, 100*r.Hi)
+	var e []string
+	for _, end := range o.Endings {
+		e = append(e, fmt.Sprintf("%s %d (%.0f%%, %.0f–%.0f%%)", end.Name, end.Count, 100*end.Share, 100*end.Lo, 100*end.Hi))
+	}
+	fmt.Fprintf(out, "endings of %d rebellions: %s\n", o.Rebellions, strings.Join(e, "; "))
+	var k []string
+	for _, c := range o.Causes {
+		k = append(k, fmt.Sprintf("%s %d", c.Name, c.Count))
+	}
+	c := o.Collapses
+	fmt.Fprintf(out, "collapses: %d of %d runs (%.0f–%.0f%%): %s\n", c.Count, o.Runs, 100*c.Lo, 100*c.Hi, strings.Join(k, ", "))
+
+	for _, curve := range o.Curves {
+		median := "not reached"
+		if curve.Median != nil {
+			median = fmt.Sprintf("%.1f years", *curve.Median)
+		}
+		fmt.Fprintf(out, "\nsurvival to %s (Kaplan–Meier, Greenwood 95%%): median %s\n", curve.Name, median)
+		tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(tw, "year\tat risk\tS(t)\t95%\t")
+		for t := 0.0; t <= o.Last; t += curveStepYears {
+			st := at(curve.steps, t)
+			fmt.Fprintf(tw, "%.0f\t%d\t%.3f\t%.3f–%.3f\t\n", t, atRisk(curve.obs, t), st.s, max(0, st.s-z95*st.se), min(1, st.s+z95*st.se))
+		}
+		if err := tw.Flush(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Outcomes are the across-seed numbers of WriteOutcomes, which prints
+// them; the viewer gets them as JSON (docs/viewer.md, T16.4).
+type Outcomes struct {
+	Runs        int       `json:"runs"`       // runs counted, left-out ones not
+	LeftOut     []LeftOut `json:"leftOut"`    // runs without a part-2 record, or stopped in warm-up
+	Rebellions  int       `json:"rebellions"` // in all counted runs
+	Years       float64   `json:"years"`      // measured years of all counted runs
+	Last        float64   `json:"last"`       // the longest run's measured years
+	PerCentury  Interval  `json:"perCentury"`
+	InRebellion Interval  `json:"inRebellion"` // share of measured time, mean over runs
+	Endings     []Ending  `json:"endings"`     // share of rebellions
+	Collapses   Ending    `json:"collapses"`   // share of runs
+	Causes      []Ending  `json:"causes"`      // collapses by cause; counts only
+	Curves      []Curve   `json:"curves"`      // to the first rebellion, to collapse
+}
+
+// LeftOut is a run not counted, and why.
+type LeftOut struct {
+	Seed uint64 `json:"seed"`
+	Why  string `json:"why"`
+}
+
+// Interval is a value with its 95% interval.
+type Interval struct {
+	Value float64 `json:"value"`
+	Lo    float64 `json:"lo"`
+	Hi    float64 `json:"hi"`
+}
+
+// Ending is a count, its share and the share's Wilson 95% interval.
+type Ending struct {
+	Name  string  `json:"name"`
+	Count int     `json:"count"`
+	Share float64 `json:"share"`
+	Lo    float64 `json:"lo"`
+	Hi    float64 `json:"hi"`
+}
+
+// Curve is a Kaplan–Meier curve: S from each step's time on, with the
+// Greenwood 95% band clipped to 0–1.
+type Curve struct {
+	Name   string   `json:"name"`
+	Median *float64 `json:"median"` // first time S ≤ ½, nil if not reached
+	Steps  []KMStep `json:"steps"`
+	steps  []step
+	obs    []obs
+}
+
+// KMStep is one step of a Curve.
+type KMStep struct {
+	T  float64 `json:"t"`
+	S  float64 `json:"s"`
+	Lo float64 `json:"lo"`
+	Hi float64 `json:"hi"`
+}
+
+// OutcomesOf is the across-seed outcomes of a batch, the runs
+// WriteOutcomes leaves out listed in LeftOut.
+func OutcomesOf(seeds []Seed) (Outcomes, error) {
+	var runs []*Canon
+	var left []LeftOut
+	for _, s := range seeds {
+		switch {
+		case s.Crashed != "":
+			left = append(left, LeftOut{s.Seed, s.Crashed})
+		case s.Canon == nil:
+			left = append(left, LeftOut{s.Seed, "no rebellion module"})
+		default:
+			runs = append(runs, s.Canon)
+		}
+	}
+	o, err := outcomes(runs)
+	o.LeftOut = left
+	return o, err
+}
+
+// outcomes computes the across-seed numbers of the counted runs.
+func outcomes(runs []*Canon) (Outcomes, error) {
+	if len(runs) == 0 {
+		return Outcomes{}, fmt.Errorf("no run has a part-2 record (rebellions.jsonl)")
+	}
+	o := Outcomes{Runs: len(runs)}
 	var shares []float64
-	endings := map[string]int{} // printed in a fixed order, never ranged over
+	endings := map[string]int{} // read in a fixed order, never ranged over
 	causes := map[string]int{}
 	var toRebellion, toCollapse []obs
 	for _, c := range runs {
-		n += len(c.Rebellions)
-		years += c.span()
+		o.Rebellions += len(c.Rebellions)
+		o.Years += c.span()
+		o.Last = max(o.Last, c.span())
 		shares = append(shares, c.inRebellion())
 		for _, r := range c.Rebellions {
 			endings[r.Ending]++
@@ -80,45 +199,34 @@ func WriteOutcomes(out io.Writer, seeds []Seed) error {
 		}
 	}
 
-	fmt.Fprintf(out, "\noutcomes across %d runs (ODD §1.2), 95%% intervals\n", len(runs))
+	n := o.Rebellions
 	lo, hi := poisson(n)
-	fmt.Fprintf(out, "rebellions per century: %.2f (%.2f–%.2f), %d in %.0f measured years\n", float64(n)/years*100, lo/years*100, hi/years*100, n, years)
+	o.PerCentury = Interval{float64(n) / o.Years * 100, lo / o.Years * 100, hi / o.Years * 100}
 	m, h := meanCI(shares)
-	fmt.Fprintf(out, "share of measured time in a rebellion: %.1f%% (%.1f–%.1f%%), mean over runs\n", 100*m, 100*max(0, m-h), 100*min(1, m+h))
-	var e []string
+	o.InRebellion = Interval{m, max(0, m-h), min(1, m+h)}
 	for _, end := range []string{"suppressed", "regimeChange", "split", "collapse", "unfinished"} {
 		l, u := wilson(endings[end], n)
-		e = append(e, fmt.Sprintf("%s %d (%.0f%%, %.0f–%.0f%%)", end, endings[end], 100*share(endings[end], n), 100*l, 100*u))
+		o.Endings = append(o.Endings, Ending{end, endings[end], share(endings[end], n), l, u})
 	}
-	fmt.Fprintf(out, "endings of %d rebellions: %s\n", n, strings.Join(e, "; "))
-	var k []string
 	for _, cause := range []string{"air", "water", "population", "safeguard"} {
-		k = append(k, fmt.Sprintf("%s %d", cause, causes[cause]))
+		o.Causes = append(o.Causes, Ending{Name: cause, Count: causes[cause]})
 	}
-	l, u := wilson(len(runs)-causes[""], len(runs))
-	fmt.Fprintf(out, "collapses: %d of %d runs (%.0f–%.0f%%): %s\n", len(runs)-causes[""], len(runs), 100*l, 100*u, strings.Join(k, ", "))
+	k := len(runs) - causes[""]
+	l, u := wilson(k, len(runs))
+	o.Collapses = Ending{"collapse", k, share(k, len(runs)), l, u}
 
-	last := 0.0
-	for _, c := range runs {
-		last = max(last, c.span())
-	}
 	for _, curve := range []struct {
 		name string
 		obs  []obs
 	}{{"first rebellion", toRebellion}, {"collapse", toCollapse}} {
-		steps := kaplanMeier(curve.obs)
-		fmt.Fprintf(out, "\nsurvival to %s (Kaplan–Meier, Greenwood 95%%): median %s\n", curve.name, median50(steps))
-		tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(tw, "year\tat risk\tS(t)\t95%\t")
-		for t := 0.0; t <= last; t += curveStepYears {
-			st := at(steps, t)
-			fmt.Fprintf(tw, "%.0f\t%d\t%.3f\t%.3f–%.3f\t\n", t, atRisk(curve.obs, t), st.s, max(0, st.s-z95*st.se), min(1, st.s+z95*st.se))
+		c := Curve{Name: curve.name, steps: kaplanMeier(curve.obs), obs: curve.obs}
+		c.Median = median(c.steps)
+		for _, st := range c.steps {
+			c.Steps = append(c.Steps, KMStep{st.t, st.s, max(0, st.s-z95*st.se), min(1, st.s+z95*st.se)})
 		}
-		if err := tw.Flush(); err != nil {
-			return err
-		}
+		o.Curves = append(o.Curves, c)
 	}
-	return nil
+	return o, nil
 }
 
 // span is the run's measured length in years.
@@ -209,14 +317,15 @@ func atRisk(o []obs, t float64) int {
 	return n
 }
 
-// median50 is the first time the curve is at or below one half.
-func median50(steps []step) string {
+// median is the first time the curve is at or below one half, nil if
+// never.
+func median(steps []step) *float64 {
 	for _, st := range steps {
 		if st.s <= 0.5 {
-			return fmt.Sprintf("%.1f years", st.t)
+			return &st.t
 		}
 	}
-	return "not reached"
+	return nil
 }
 
 // wilson is the Wilson score 95% interval of k successes in n.

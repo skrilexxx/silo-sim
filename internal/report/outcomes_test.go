@@ -23,8 +23,8 @@ func TestKaplanMeier(t *testing.T) {
 	if s := at(steps, 2.5).s; s != 0.8 {
 		t.Errorf("S(2.5) = %v, want 0.8", s)
 	}
-	if m := median50(steps); m != "3.0 years" {
-		t.Errorf("median %s, want 3.0 years", m)
+	if m := median(steps); m == nil || *m != 3 {
+		t.Errorf("median %v, want 3", m)
 	}
 }
 

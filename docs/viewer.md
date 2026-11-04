@@ -79,7 +79,7 @@ Every number is the one `silosim report --outcomes` prints for that batch.
 
 ## Colours
 
-Colour-blind safe, the same in every view (Okabe–Ito): Up Top `#0072B2` (blue), Mids `#009E73` (green), Down Deep `#D55E00` (vermillion); total `#000000`. Rebellion bands `#CC79A7` at 15% opacity; events dark grey dashed, collapse and Safeguard solid black. Batches in the experiment view: Okabe–Ito in order (`#E69F00`, `#56B4E9`, `#009E73`, `#F0E442`, `#0072B2`, `#D55E00`, `#CC79A7`). Floor scales: viridis. Light background; no dark mode.
+Colour-blind safe, the same in every view (Okabe–Ito): Up Top `#0072B2` (blue), Mids `#009E73` (green), Down Deep `#D55E00` (vermillion); total `#000000`. Rebellion bands `#CC79A7` at 15% opacity; events dark grey dashed, collapse and Safeguard solid black. Batches in the experiment view: Okabe–Ito in order (`#E69F00`, `#56B4E9`, `#009E73`, `#F0E442`, `#0072B2`, `#D55E00`, `#CC79A7`). Endings (T16.4): suppressed `#0072B2`, regimeChange `#D55E00`, split `#CC79A7`, collapse `#000000`, unfinished `#BBBBBB`. Floor scales: viridis. Light background; no dark mode.
 
 ## Code
 

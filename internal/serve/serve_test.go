@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/skrilexxx/silo-sim/internal/report"
 )
 
 // tree makes a runs folder: a loose run with frames, and a batch of two
@@ -93,6 +95,55 @@ func TestFile(t *testing.T) {
 		"/api/file?run=m15&name=daily.csv":                                    404,
 		"/api/file?run=canon-1&name=events.jsonl":                             404,
 	} {
+		if rec := get(t, h, url); rec.Code != code {
+			t.Errorf("%s: %d, want %d", url, rec.Code, code)
+		}
+	}
+}
+
+// Outcomes: a batch of two one-year runs, one with a rebellion, gives the
+// numbers the report package computes for it, as JSON; a path outside the
+// root is refused, a folder without runs is not found.
+func TestOutcomes(t *testing.T) {
+	root := t.TempDir()
+	for i, rebellions := range []string{`{"start":100,"end":200,"days":100,"ending":"suppressed"}` + "\n", ""} {
+		dir := filepath.Join(root, "b", "run-"+string(rune('1'+i)))
+		for name, content := range map[string]string{
+			"run.json":         `{"seed":` + string(rune('1'+i)) + `,"finished":true,"outcomes":{},"scenario":{"warmupYears":0}}`,
+			"daily.csv":        "day,population,rationing,births,foodStockDays,popUpTop,popMids,popDownDeep,healthUpTop,healthMids,healthDownDeep\n1,3,0,0,100,1,1,1,1,1,1\n365,3,0,0,100,1,1,1,1,1,1\n",
+			"yearly.csv":       "day,medianAge,mechanicalInZone,knowHistory\n365,30,1,0\n",
+			"events.jsonl":     "",
+			"rebellions.jsonl": rebellions,
+		} {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	h, err := Handler(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := get(t, h, "/api/outcomes?batch=b")
+	seeds, err := report.Load(filepath.Join(root, "b"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	o, err := report.OutcomesOf(seeds)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ := json.Marshal(o)
+	if rec.Code != 200 || strings.TrimSpace(rec.Body.String()) != string(want) {
+		t.Errorf("outcomes: %d %s, want %s", rec.Code, rec.Body.String(), want)
+	}
+	if o.Runs != 2 || o.Rebellions != 1 || o.Endings[0].Count != 1 || len(o.Curves) != 2 {
+		t.Errorf("outcomes %+v", o)
+	}
+	for url, code := range map[string]int{"/api/outcomes?batch=../b": 403, "/api/outcomes?batch=b/run-1": 404} {
 		if rec := get(t, h, url); rec.Code != code {
 			t.Errorf("%s: %d, want %d", url, rec.Code, code)
 		}

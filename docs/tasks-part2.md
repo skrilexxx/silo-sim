@@ -221,8 +221,8 @@ A UI for looking at results. It answers no research question by itself, but it's
 - [x] **T16.1 `silosim serve --runs runs/`.** (2026-11-04; runs and batches listed newest first, the file endpoint with path checks, checked in Chrome) Go standard HTTP server, page embedded in the binary, one vendored chart library (an agreed exception to the dependency rule). Lists runs and batches.
 - [x] **T16.2 Run replay.** (2026-11-04: the `active` and `violent` frame metrics ODD §6.14 promised, `scenarios/replay.yaml`, the replay view; checked in Chrome on a 160-year canon run; active and violent scaled to the run's highest floor value, as 0–1 showed nothing) The silo as a 144-floor cross-section, each floor coloured by a chosen metric (population, legitimacy, active rebels, arrests, damage); a time slider with play and pause; rebellions and events marked on the timeline; broken stair segments drawn.
 - [x] **T16.3 Run dashboard.** (2026-11-04; uPlot 1.6.31 vendored; five panels with shared cursor and zoom, rebellion bands, event lines with toggles; checked in Chrome) Time series from `daily.csv` (population, health, power, food, hardship and legitimacy by zone) with events overlaid.
-- [ ] **T16.4 Experiment view.** For a batch or a sweep: survival curves, rebellions per century and endings with confidence intervals, scenarios side by side.
-  - *Milestone done when:* a run with frames on can be replayed from start to collapse or end; the experiment view shows the same numbers as `silosim report --outcomes`.
+- [x] **T16.4 Experiment view.** (2026-11-04; `/api/outcomes` from the report package, the CLI text unchanged; Kaplan–Meier curves with Greenwood bands, rate and time-in-rebellion intervals, stacked endings, the numbers table; checked in Chrome against `silosim report --outcomes` on two batches) For a batch or a sweep: survival curves, rebellions per century and endings with confidence intervals, scenarios side by side.
+  - *Milestone done when:* a run with frames on can be replayed from start to collapse or end; the experiment view shows the same numbers as `silosim report --outcomes`. (Done 2026-11-04.)
 
 ## Optional, after M15
 

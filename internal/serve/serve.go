@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/skrilexxx/silo-sim/internal/report"
 )
 
 //go:embed static
@@ -45,6 +47,7 @@ func Handler(root string) (http.Handler, error) {
 	mux.Handle("GET /", http.FileServerFS(page))
 	mux.HandleFunc("GET /api/runs", s.runs)
 	mux.HandleFunc("GET /api/file", s.file)
+	mux.HandleFunc("GET /api/outcomes", s.outcomes)
 	return mux, nil
 }
 
@@ -184,6 +187,28 @@ func (s *server) file(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Encoding", "gzip")
 	}
 	_, _ = io.Copy(w, f)
+}
+
+// outcomes sends a batch's outcome metrics, the numbers silosim report
+// --outcomes prints (docs/viewer.md, T16.4).
+func (s *server) outcomes(w http.ResponseWriter, r *http.Request) {
+	dir, ok := s.within(r.URL.Query().Get("batch"))
+	if !ok {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	seeds, err := report.Load(dir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	o, err := report.OutcomesOf(seeds)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(o)
 }
 
 // within resolves a path relative to the root, refusing an absolute one,
