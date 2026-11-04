@@ -1026,3 +1026,24 @@ func TestStartingZoneByShare(t *testing.T) {
 		t.Errorf("starting zone %v, want the Down Deep (half its adults active, against 30%% Up Top)", z)
 	}
 }
+
+// ODD §6.14, Outputs (T16.2): per floor, the share of resident adults
+// active or beyond, and violent; a child doesn't count; 0 where no adult
+// lives.
+func TestFrameMetrics(t *testing.T) {
+	s := newTiny(t)
+	a, b, c := s.add(30, 1, 1), s.add(30, 1, 1), s.add(30, 1, 1)
+	s.add(30, 1, 1)
+	s.add(10, 2, 1)
+	s.start()
+	st := s.w.Rebellion.Stage
+	st[a], st[b], st[c] = world.Violent, world.Joined, world.Calm
+	ms := s.m.FrameMetrics()
+	for i, want := range [][]float64{{0.5, 0, 0}, {0.25, 0, 0}} {
+		v := make([]float64, len(s.w.Floors))
+		ms[i].Fill(s.w, v)
+		if !slices.Equal(v, want) {
+			t.Errorf("%s: %v, want %v", ms[i].Name, v, want)
+		}
+	}
+}

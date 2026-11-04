@@ -1,0 +1,6 @@
+# A canon run to replay in the viewer (docs/viewer.md, T16.2): canon.yaml with frames on,
+# a per-floor snapshot every 30 days. Run one seed: silosim run --scenario scenarios/replay.yaml
+extends: canon.yaml
+name: replay
+output:
+  frames: true

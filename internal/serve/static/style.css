@@ -16,3 +16,9 @@ th { color: var(--muted); font-weight: 500; }
 th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .empty { color: var(--muted); }
 .wrap { overflow-x: auto; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px; }
+#slider { width: 100%; }
+.timeline { width: 100%; display: block; border: 1px solid var(--line); margin: 4px 0 12px; cursor: pointer; }
+.replay { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.zl { font-size: 11px; fill: var(--muted); }
+#totals td { padding: 2px 16px 2px 0; }

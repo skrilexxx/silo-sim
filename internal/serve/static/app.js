@@ -1,10 +1,21 @@
 // The viewer's page (docs/viewer.md). It only reads what the server's API
 // returns; it computes no statistic of its own.
+import { replay } from "./replay.js";
+
 const view = document.getElementById("view");
 const crumb = document.getElementById("crumb");
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const when = (t) => new Date(t * 1000).toLocaleString();
+
+// file fetches one of a run's files as text; with a fallback, a missing
+// file gives the fallback instead of an error.
+async function file(run, name, fallback) {
+  const r = await fetch(`api/file?run=${encodeURIComponent(run)}&name=${name}`);
+  if (r.ok) return r.text();
+  if (fallback !== undefined && r.status === 404) return fallback;
+  throw new Error(`${name}: ${r.status}`);
+}
 
 async function api(path) {
   const r = await fetch(path);
@@ -53,7 +64,7 @@ async function route() {
   try {
     if (kind === "batch") await batch(path);
     else if (kind === "run") soon("dashboard", path);
-    else if (kind === "replay") soon("replay", path);
+    else if (kind === "replay") { crumb.textContent = `/ ${path} / replay`; view.innerHTML = "<p>Loading frames…</p>"; await replay(view, path, file); }
     else await home();
   } catch (e) {
     view.innerHTML = `<p class="empty">${esc(e.message)}</p>`;

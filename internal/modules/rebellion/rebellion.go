@@ -8,6 +8,7 @@ import (
 
 	"github.com/skrilexxx/silo-sim/internal/config"
 	"github.com/skrilexxx/silo-sim/internal/engine"
+	"github.com/skrilexxx/silo-sim/internal/output"
 	"github.com/skrilexxx/silo-sim/internal/rng"
 	"github.com/skrilexxx/silo-sim/internal/world"
 )
@@ -750,6 +751,39 @@ func (m *Module) count(w *world.World) {
 		}
 		if m.reach[floor-1] {
 			b.Reach[z]++
+		}
+	}
+}
+
+// FrameMetrics: per floor, the share of the adults living there who are
+// active or beyond, and who are violent (ODD §6.14, Outputs; 0 where no
+// adult lives). Registered in T16.2: the spec promised them from M12.
+func (m *Module) FrameMetrics() []output.FrameMetric {
+	return []output.FrameMetric{
+		{Name: "active", Fill: m.adultShare(func(s world.RebelStage) bool { return s >= world.Active })},
+		{Name: "violent", Fill: m.adultShare(func(s world.RebelStage) bool { return s == world.Violent })},
+	}
+}
+
+// adultShare fills each floor with the share of its resident adults whose
+// stage today passes the test.
+func (m *Module) adultShare(pass func(world.RebelStage) bool) func(*world.World, []float64) {
+	return func(w *world.World, v []float64) {
+		adults := make([]int, len(v))
+		for _, id := range w.Alive {
+			if w.Day-w.People[id].BirthDay < m.adultAge {
+				continue
+			}
+			f := w.Households[w.People[id].Household].Floor - 1
+			adults[f]++
+			if pass(w.Rebellion.Stage[id]) {
+				v[f]++
+			}
+		}
+		for i, n := range adults {
+			if n > 0 {
+				v[i] /= float64(n)
+			}
 		}
 	}
 }
