@@ -31,7 +31,8 @@ var files = map[string]string{
 	"yearly.csv":       "text/csv",
 	"events.jsonl":     "application/x-ndjson",
 	"rebellions.jsonl": "application/x-ndjson",
-	"frames.csv.gz":    "text/csv", // sent gzip-encoded, unpacked by the browser
+	"frames.csv.gz":    "text/csv",                     // sent gzip-encoded, unpacked by the browser
+	"story.md":         "text/markdown; charset=utf-8", // written by silosim narrate (docs/narrator.md)
 }
 
 // Handler serves the page and the API over the run folders under root.

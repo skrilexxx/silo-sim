@@ -22,8 +22,15 @@ export function markdown(text) {
   return out.join("\n");
 }
 
-export async function story(view, path) {
-  const r = await fetch(`api/chronicle?run=${encodeURIComponent(path)}`);
+// story shows story.md if the run has one, then the chronicle; without a
+// story, the command that writes one.
+export async function story(view, path, file) {
+  const [told, r] = await Promise.all([file(path, "story.md", ""), fetch(`api/chronicle?run=${encodeURIComponent(path)}`)]);
   if (!r.ok) throw new Error(`chronicle: ${r.status} ${await r.text()}`);
-  view.innerHTML = `<h2>Chronicle</h2><article class="doc">${markdown(await r.text())}</article>`;
+  const chron = await r.text();
+  view.innerHTML = (told
+    ? `<h2>Story</h2><article class="doc">${markdown(told)}</article>`
+    : `<h2>Story</h2><p class="empty">No story yet. To have Claude write one from the chronicle (one API request, about $0.10–0.20):</p>
+       <pre class="cmd">bin/silosim narrate --run runs/${esc(path)}</pre>`)
+    + `<h2>Chronicle</h2><article class="doc">${markdown(chron)}</article>`;
 }

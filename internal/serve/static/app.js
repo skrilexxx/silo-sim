@@ -117,7 +117,7 @@ async function route() {
     else if (kind === "compare" && path) { const ps = rest.join("/").split("+").map(decodeURIComponent); crumb.textContent = `${ps.length} batches`; await experiment(view, ps, api); }
     else if (kind === "compare") await picker();
     else if (kind === "run") { view.innerHTML = "<p>Loading…</p>"; await runTabs(path, kind); await dashboard(view, path, file); }
-    else if (kind === "story") { view.innerHTML = "<p>Loading…</p>"; await runTabs(path, kind); await story(view, path); }
+    else if (kind === "story") { view.innerHTML = "<p>Loading…</p>"; await runTabs(path, kind); await story(view, path, file); }
     else if (kind === "replay") { view.innerHTML = "<p>Loading frames…</p>"; await runTabs(path, kind); await replay(view, path, file); }
     else await home();
   } catch (e) {

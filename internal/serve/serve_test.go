@@ -84,6 +84,12 @@ func TestFile(t *testing.T) {
 	if rec.Code != 200 || rec.Body.String() != "day,population\n1,10000\n" || rec.Header().Get("Content-Type") != "text/csv" {
 		t.Errorf("daily.csv: %d %q %q", rec.Code, rec.Header().Get("Content-Type"), rec.Body.String())
 	}
+	if err := os.WriteFile(filepath.Join(root, "canon-1", "story.md"), []byte("# A story\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if rec := get(t, h, "/api/file?run=canon-1&name=story.md"); rec.Code != 200 || rec.Body.String() != "# A story\n" || !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/markdown") {
+		t.Errorf("story.md: %d %q", rec.Code, rec.Header().Get("Content-Type"))
+	}
 	if rec := get(t, h, "/api/file?run=canon-1&name=frames.csv.gz"); rec.Header().Get("Content-Encoding") != "gzip" {
 		t.Errorf("frames sent without gzip encoding")
 	}

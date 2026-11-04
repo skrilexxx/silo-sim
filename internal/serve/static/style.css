@@ -111,3 +111,4 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--amber); }
 .doc li { margin: 3px 0; }
 .doc p { margin: 8px 0; }
 .doc i { color: var(--muted); }
+.cmd { font: 13px var(--mono); color: var(--amber); background: var(--steel); border: 1px solid var(--steel-line); border-radius: 3px; padding: 8px 12px; display: inline-block; margin: 0 0 8px; }
