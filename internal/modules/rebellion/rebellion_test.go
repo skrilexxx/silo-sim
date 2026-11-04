@@ -1005,3 +1005,24 @@ func TestTriggersAndTeaching(t *testing.T) {
 			k[adult], w.Beliefs.Lived[adult], k[child], k[dosed])
 	}
 }
+
+// ODD §6.14: the day's starting zone is the home zone with the highest
+// share of its adults active, not the most heads: 3 of 10 adults Up Top
+// lose to 1 of 2 Down Deep; children don't count.
+func TestStartingZoneByShare(t *testing.T) {
+	s := newTiny(t)
+	var top []world.PersonID
+	for range 10 {
+		top = append(top, s.add(30, 1, 1))
+	}
+	deep := []world.PersonID{s.add(30, 2, 1), s.add(30, 2, 1), s.add(10, 2, 1), s.add(10, 2, 1)}
+	s.start()
+	b := s.w.Rebellion
+	for _, id := range append(top[:3], deep[0]) {
+		b.Stage[id] = world.Active
+	}
+	s.m.log(s.w, 0)
+	if z := b.Days[len(b.Days)-1].Zone; z != world.DownDeep {
+		t.Errorf("starting zone %v, want the Down Deep (half its adults active, against 30%% Up Top)", z)
+	}
+}

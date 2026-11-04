@@ -614,3 +614,16 @@ The C3 sweep (`analysis/order-sweep.sh`) is on hold: with the blame permanent, i
 **What changed:** the blame now lifts (no entry running at most snapshots, unrest spells come and go), and with it C3 is back where T12.8 left it: 1 of 9 rebellions start Down Deep (Down Deep H 0.60 against the Mids' 0.49, with twice the adults in the Mids). The Order's blame carries C3 only while it is permanent (6 of 11 in the first smoke runs). Recall is slower but still undoes the wipe within a few years: the warned Flamekeepers and their households keep the history, strong ties talk about every other day, and every recaller lowers their own L and becomes a cue for others. Rebellions also recur every 2–15 years, each ending teaching everyone again, so few suppressed rebellions are ever followed by 40 quiet years. The standing rebellion (T12.8) is unchanged: rebellions of 10–70 years, close to half the measured time.
 
 **Runtime (profile of seed 1):** the regime module doesn't show; the 472 s are the M8–M12 modules' daily passes over everyone: rebellion 26% (hardship 8%, stages 7%, count, activeShare, strikes and fights 2–3% each), network 18%, health 8%, life stages 8%, beliefs 8%, location 8%. No single hot spot; meeting the 4-minute budget needs a performance task of its own.
+
+## 2026-11-04 — Starting zone by share of a zone's adults (T13.2)
+
+**Rule change (Adam, 2026-11-04):** a rebellion's starting zone is the home zone with the highest share of its adults active on its start day, not the most heads (ODD §1.2 C3, §6.14). **Setup:** `scenarios/canon.yaml`, seeds 1, 2 and 53; about 495 s per run, three in parallel. Seeds 1 and 53 repeat the previous runs day for day: only the zone written for each rebellion changed.
+
+| Pattern | Measured (3 seeds) | |
+| --- | --- | --- |
+| C1 0.3–2 per century | 1.44 (13 in 900 years) | PASS |
+| C2 ≥ 3× | 3/3 after vs 0/110 without | PASS |
+| C3 ≥ 60% Down Deep, ≥ 50% of those with a Mechanical strike | 11/13 (85%), 1/11 (9%) | FAIL on the strike |
+| C4 | 1/10 | FAIL; left until the standing rebellion is understood (Adam) |
+
+44.6% of measured days in a rebellion; no collapse. The Down Deep is now where revolt starts, by its higher hardship; its rebellions rarely bring Mechanical out on strike (1 of 11).

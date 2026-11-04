@@ -76,7 +76,7 @@ type Rebellion struct {
 type RebellionDay struct {
 	Day      Tick
 	Share    float64 // adults active or beyond
-	Zone     Zone    // home zone of most of them; Up Top on a tie or with none
+	Zone     Zone    // the home zone with the highest share of its adults among them; the first on a tie (ODD §6.14)
 	Struck   []int   // critical departments on strike
 	Fought   bool
 	Held     [NumZones]bool

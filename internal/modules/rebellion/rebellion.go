@@ -400,7 +400,8 @@ func (m *Module) struck(w *world.World) []int {
 }
 
 // log adds today to the rebellion log (ODD §6.14, Outputs): the share
-// active, the home zone of most active adults, the collective actions,
+// active, the home zone with the highest share of its adults active (the
+// first in zone order on a tie; Adam, 2026-11-04), the collective actions,
 // and today's fight losses, arrests and sabotage. While no rebellion runs
 // it keeps only the days a rebellion detected today could reach back to.
 func (m *Module) log(w *world.World, share float64) {
@@ -408,14 +409,24 @@ func (m *Module) log(w *world.World, share float64) {
 	if n := m.def.RebellionDays - 1; b.RebellionStart == world.None && len(b.Days) > n {
 		b.Days = slices.Delete(b.Days, 0, len(b.Days)-n)
 	}
-	var homes [world.NumZones]int
+	var homes, adults [world.NumZones]int
 	for _, id := range w.Alive {
+		z := w.Floors[w.Households[w.People[id].Household].Floor-1].Zone
+		if w.Day-w.People[id].BirthDay >= m.adultAge {
+			adults[z]++
+		}
 		if b.Stage[id] != world.Calm {
-			homes[w.Floors[w.Households[w.People[id].Household].Floor-1].Zone]++
+			homes[z]++
+		}
+	}
+	zone, top := world.UpTop, -1.0
+	for z := range world.NumZones {
+		if adults[z] > 0 && float64(homes[z])/float64(adults[z]) > top {
+			zone, top = world.Zone(z), float64(homes[z])/float64(adults[z])
 		}
 	}
 	t, l := b.Tally, m.lastFights
-	b.Days = append(b.Days, world.RebellionDay{Day: w.Day, Share: share, Zone: world.Zone(slices.Index(homes[:], slices.Max(homes[:]))),
+	b.Days = append(b.Days, world.RebellionDay{Day: w.Day, Share: share, Zone: zone,
 		Struck: m.struck(w), Fought: m.fought, Held: b.Held, Arrests: c.Tally.Arrests - m.lastArrests,
 		Fights: world.FightTally{RebelsKilled: t.RebelsKilled - l.RebelsKilled, RebelsArrested: t.RebelsArrested - l.RebelsArrested,
 			OfficersKilled: t.OfficersKilled - l.OfficersKilled, OfficersWounded: t.OfficersWounded - l.OfficersWounded}})
