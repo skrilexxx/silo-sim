@@ -835,11 +835,11 @@ func TestDosedLearnNothing(t *testing.T) {
 	}
 }
 
-// T10.6 done-when: after dosing, memory comes back only with cues, at κ
-// per cue: 2,000 people alone get nothing back in a year; 2,000 holding a
-// relic, and 2,000 living with someone who knows the flag and talks with
-// them daily, get it back on a day with chance κ = 0.05, as lived or heard
-// as before.
+// T10.6 done-when: after dosing, memory comes back only with cues: 2,000
+// people alone get nothing back in a year; 2,000 holding a relic get it
+// back on a day with chance κ = 0.05, and 2,000 living with someone who
+// knows the flag and talks with them daily with chance κ × (1 − L) = 0.01
+// at their L of 0.8 (T13.2), as lived or heard as before.
 func TestMemoryReturnsOnlyWithCues(t *testing.T) {
 	s := newTiny(t)
 	s.cfg.Beliefs.DoseHideChance, s.cfg.Beliefs.RelicKeptYears = 1, 1e9
@@ -869,11 +869,13 @@ func TestMemoryReturnsOnlyWithCues(t *testing.T) {
 			t.Fatal("not hidden while dosed")
 		}
 	}
-	s.step() // the first day after the dose
+	s.step()          // the first day after the dose
+	l := b.L(told[0]) // everyone's base, with nothing known
 	for _, g := range []struct {
 		name  string
 		group []world.PersonID
-	}{{"relic", relic}, {"contact", told}} {
+		want  float64
+	}{{"relic", relic, 0.05}, {"contact", told, 0.05 * (1 - l)}} {
 		back := 0
 		for _, id := range g.group {
 			if b.Known[id].Has(world.FlagScreen) {
@@ -883,10 +885,10 @@ func TestMemoryReturnsOnlyWithCues(t *testing.T) {
 				}
 			}
 		}
-		got, sd := float64(back)/each, math.Sqrt(0.05*0.95/each)
-		t.Logf("back on the first day with a %s: %.4f (want 0.05)", g.name, got)
-		if math.Abs(got-0.05) > 5*sd {
-			t.Errorf("%s: %.4f back on the first day, want 0.05 ± %.4f", g.name, got, 5*sd)
+		got, sd := float64(back)/each, math.Sqrt(g.want*(1-g.want)/each)
+		t.Logf("back on the first day with a %s: %.4f (want %.4f)", g.name, got, g.want)
+		if math.Abs(got-g.want) > 5*sd {
+			t.Errorf("%s: %.4f back on the first day, want %.4f ± %.4f", g.name, got, g.want, 5*sd)
 		}
 	}
 	for range year {

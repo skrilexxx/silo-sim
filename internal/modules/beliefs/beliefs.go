@@ -534,11 +534,13 @@ func (m *Module) converse(w *world.World, r *rng.Stream) {
 }
 
 // ODD §6.12, Vitamin D+: once the dose has ended, a hidden flag comes back,
-// known as before, with chance κ in each conversation with someone who
-// knew it before today: the person's own memory, so their L doesn't block
-// it. The people with hidden flags are visited in the order they first
-// had one hidden, and the draws skip to the slots (tie and hidden flag)
-// that land, as in converse.
+// known as before, with chance κ × (1 − L) in each conversation with
+// someone who knew it before today, L the person's own: someone who
+// trusts the regime again dismisses the reminder (Adam, 2026-11-04; with
+// κ alone, 95% of a silo recalled a dosed-away history within a year,
+// T13.2). The people with hidden flags are visited in the order they
+// first had one hidden, and the draws skip to the slots (tie and hidden
+// flag) that land at κ, as in converse; then 1 − L, then the tie.
 func (m *Module) recall(w *world.World, r *rng.Stream) {
 	b, n := w.Beliefs, w.Network
 	sk := newSkip(r, m.cue)
@@ -552,7 +554,8 @@ func (m *Module) recall(w *world.World, r *rng.Stream) {
 		slots := len(fl) * len(ties)
 		for s := sk.next(r, slots); s >= 0; s = next(r, &sk, s, slots) {
 			t, f := ties[s/len(fl)], fl[s%len(fl)]
-			if !b.Hidden[h].Has(f) || !(b.Known[t.Other] &^ m.fresh[t.Other]).Has(f) || w.Control.IsHead(t.Other) || !n.Talk(w, h, t.Other, t.Kind) {
+			if !b.Hidden[h].Has(f) || !(b.Known[t.Other] &^ m.fresh[t.Other]).Has(f) || w.Control.IsHead(t.Other) ||
+				r.Float64() >= 1-b.L(h) || !n.Talk(w, h, t.Other, t.Kind) {
 				continue
 			}
 			m.teach(b, h, f, false)

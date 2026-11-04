@@ -14,10 +14,11 @@ events:
 regime:                           # ODD §6.15: The Order, the canon playbook (T13.2)
   emergencyAir: 0.8               # the health balance line (§6.2, T12.7): derived, not a guess
   playbook:
-    # While unrest or a rebellion runs, blame Mechanical (S2) and raid. s_DD 0.6 is
-    # provisional (3× the peacetime 0.2), until the C3 sweep of T13.2 (analysis/order-sweep.sh).
+    # When unrest starts, blame Mechanical (S2) and raid, for a year. Held until quiet, the
+    # blame kept the unrest that started it going, for 200 years (T13.2, Adam 2026-11-04).
+    # s_DD 0.6 is provisional (3× the peacetime 0.2), until the C3 sweep (analysis/order-sweep.sh).
     - on: unrestStart
-      hold: quiet
+      hold: 365
       set: { scapegoatHardship: 0.6, raidsPerYear: 8 }      # raids 2× the peacetime 4
     # After a crushed rebellion, the wipe that followed the Rebellion (lore: Freedom Day,
     # lost records, memory drugs [Likely]): the Freedom Day story lifts L by one flag's

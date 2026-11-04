@@ -597,3 +597,20 @@ Unrest: 6,644 spells, about 66 a run. Fear stays at 0.99. Cleanings 0.52 a year 
 3. *The standing rebellion stays* (T12.8): rebellions last decades, and half the measured time is spent in one. The silos no longer collapse: emergency staffing fired during ordinary generator outages (6-day spells) and air recovered.
 
 The C3 sweep (`analysis/order-sweep.sh`) is on hold: with the blame permanent, it would sweep a peacetime s\_DD, not a response.
+
+## 2026-11-04 — After two rule changes: The Order's blame for a year, recall × (1 − L) (T13.2)
+
+**Rule changes (Adam, 2026-11-04):** The Order's blame is held 365 days from the unrest that starts it, not until quiet; a hidden flag comes back in a conversation with chance κ × (1 − L), L the person's own (ODD §6.12, §6.15). **Setup:** `scenarios/canon.yaml`, seeds 1 and 53, one run each, in parallel; seed 1 under the CPU profiler. 473 s and 463 s.
+
+| | Seed 1 | Seed 53 |
+| --- | --- | --- |
+| Collapse | none | none |
+| Rebellions (starting Down Deep) | 5 (0) | 4 (1) |
+| Unrest spells (measured) | 5 | 7 |
+| Measured time in a rebellion | 42.5% | 45.8% |
+| C4: suppressed rebellions judged / under 10% | 4 / 1 | 3 / 0 |
+| History known 1, 4, 9 years after the first dosing ended | 3%, 46%, 64% | 3%, 84%, 75% |
+
+**What changed:** the blame now lifts (no entry running at most snapshots, unrest spells come and go), and with it C3 is back where T12.8 left it: 1 of 9 rebellions start Down Deep (Down Deep H 0.60 against the Mids' 0.49, with twice the adults in the Mids). The Order's blame carries C3 only while it is permanent (6 of 11 in the first smoke runs). Recall is slower but still undoes the wipe within a few years: the warned Flamekeepers and their households keep the history, strong ties talk about every other day, and every recaller lowers their own L and becomes a cue for others. Rebellions also recur every 2–15 years, each ending teaching everyone again, so few suppressed rebellions are ever followed by 40 quiet years. The standing rebellion (T12.8) is unchanged: rebellions of 10–70 years, close to half the measured time.
+
+**Runtime (profile of seed 1):** the regime module doesn't show; the 472 s are the M8–M12 modules' daily passes over everyone: rebellion 26% (hardship 8%, stages 7%, count, activeShare, strikes and fights 2–3% each), network 18%, health 8%, life stages 8%, beliefs 8%, location 8%. No single hot spot; meeting the 4-minute budget needs a performance task of its own.

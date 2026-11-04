@@ -627,7 +627,7 @@ P(\text{lost today}) = 1 - 2^{-1/(365\,T)}, \qquad T = T_{heard} \text{ or } T_{
 A hidden flag never fades on its own. Once the dose has ended, it comes back, known again as heard or lived as before, with chance κ per *cue*:
 
 - each day the person holds a relic (one draw per hidden flag);
-- each conversation with someone who knows that flag, in place of the π × (1 − L) chance: it is the person's own memory, so their L doesn't block it.
+- each conversation with someone who knows that flag, with chance κ × (1 − L), L the person's own, in place of the telling chance: it is their own memory, so the teller's trust doesn't matter, but someone who trusts the regime again dismisses the reminder. With κ alone, 95% of a silo recalled a dosed-away history within a year of the dose ending, and no wipe could make a rebellion forgotten (T13.2, Adam, 2026-11-04).
 
 The conversations are drawn as in telling (above), from the side of the people with a hidden flag, visited in the order they first had one hidden. This is how Juliette's memory came back (S3).
 
@@ -980,7 +980,7 @@ At the canon setting `emergencyAir` is the balance line 0.8 itself. The value is
 | Strategy | Playbook |
 | --- | --- |
 | None | Empty: the control group |
-| **The Order** (canon) | On `unrestStart`, held `quiet`: s\_DD raised ("blame Mechanical", S2; lore reference), raids 2×. On `suppressed`, held 365 days: a `lift` of δ (the Freedom Day story), a water dosing, raids 2×: the wipe that followed the Rebellion (lore reference: lost records, memory drugs \[Likely\]). Its s\_DD is calibrated against C3 (below) |
+| **The Order** (canon) | On `unrestStart`, held 365 days: s\_DD raised ("blame Mechanical", S2; lore reference), raids 2×. Held until quiet, the blame kept at least 1% of adults active, so the unrest that started it never ended: it ran from the warm-up's first spell for 200 years (T13.2, Adam, 2026-11-04). On `suppressed`, held 365 days: a `lift` of δ (the Freedom Day story), a water dosing, raids 2×: the wipe that followed the Rebellion (lore reference: lost records, memory drugs \[Likely\]). Its s\_DD is calibrated against C3 (below) |
 | Crackdown | On `rebellionStart`, held `quiet`: σ, a, raids and both place counts 2×; the sentences for organising and violence 2× (prison 180 / mines 730; mines 1,460 / cleaning) |
 | Reform | On `rebellionStart`, for good: s\_DD halved (0.1), elections, and a Pact rewrite halving the sentences for organising (prison 45 / mines 183) with a `lift` of δ. Rations stay equal: food hardship is only the shortfall, so more food doesn't ease a fed zone, and a 2× weight for the Down Deep left the rest of the silo with 82% of its need (Adam, 2026-11-04) |
 | Memory wipe | On `rebellionStart`, held `quiet`: every convict dosed for a year (D\_water). On `suppressed` or `split`, held 365 days: a water dosing and raids 2× |
