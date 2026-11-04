@@ -1,0 +1,7 @@
+# E3 (Q3): the reform strategy (scenarios/strategy-reform.yaml) at the experiments' run length;
+# compared with The Order (base.yaml) and the other strategies on the same seeds.
+extends: ../strategy-reform.yaml
+name: exp-e3-reform
+years: 150
+events:
+  - { day: 45625, type: cleaningFailure }   # as base.yaml

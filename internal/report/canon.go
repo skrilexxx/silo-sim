@@ -14,13 +14,14 @@ import (
 // ODD §1.2 canon patterns C1–C4, checked across a batch, not per seed.
 // Like the §8 targets they are the spec's numbers, so they live here.
 const (
-	c1Min, c1Max  = 0.3, 2.0 // rebellions per century, pooled over the batch
-	c2Years       = 5        // window after a scripted cleaning failure
-	c2Ratio       = 3.0      // a rebellion at least this many times as likely in it
-	c3DownDeep    = 0.60     // rebellions starting with most actives Down Deep, at least
-	c3Mechanical  = 0.50     // of those, with a Mechanical strike, at least
-	c4Years       = 40       // years after a suppressed rebellion's end
-	c4KnowHistory = 0.10     // share of adults knowing the true history, below this
+	c1Min, c1Max  = 0.3, 2.0   // rebellions per century, pooled over the batch
+	c2Years       = 5          // window after a scripted cleaning failure
+	c2Ratio       = 3.0        // a rebellion at least this many times as likely in it
+	c3DownDeep    = 0.60       // rebellions starting with most actives Down Deep, at least
+	c3Mechanical  = 0.50       // of those, with a Mechanical strike, at least
+	c4Years       = 40         // years after a suppressed rebellion's end
+	c4KnowHistory = 0.10       // share of adults knowing the true history, below this
+	c5Min, c5Max  = 0.05, 0.50 // share of rebellions ending in collapse, with Silo 1 on full
 )
 
 // Canon is one run's part-2 record, read only when the run wrote
@@ -34,6 +35,7 @@ type Canon struct {
 	Collapse    string // cause, or "" if none
 	CollapseDay int    // 0 if none
 	Unrest      int
+	Silo1       bool // the run had Silo 1 on (full): C5 is judged on such runs
 }
 
 // Rebellion is the part of a rebellions.jsonl line the patterns use.
@@ -233,6 +235,15 @@ func writeCanon(out io.Writer, seeds []Seed) bool {
 			eligible > 0 && share(below, eligible) >= seedsNeeded},
 	}
 	fmt.Fprintf(out, "\ncanon pattern (ODD §1.2), %d runs\ttarget\tmeasured\t\n", len(runs))
+	// C5 is judged only on a batch with Silo 1 on full (ODD §1.2).
+	if runs[0].Silo1 {
+		c5 := share(endings["collapse"], n)
+		checks = append(checks, struct {
+			name, rule, value string
+			ok                bool
+		}{"C5 A rebellion can end a silo", fmt.Sprintf("%.0f–%.0f%% of rebellions end in collapse, Silo 1 on", 100*c5Min, 100*c5Max),
+			fmt.Sprintf("%d/%d (%.0f%%)", endings["collapse"], n, 100*c5), n > 0 && c5 >= c5Min && c5 <= c5Max})
+	}
 	all := true
 	for _, c := range checks {
 		all = all && c.ok

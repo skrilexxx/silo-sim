@@ -1,0 +1,4 @@
+# E4 (Q2, Q4, C5): Silo 1 on (full, ODD §6.16) against base.yaml, where it is off.
+extends: base.yaml
+name: exp-e4-silo1
+modules: [demography, health, work, resources, governance, space, network, beliefs, control, rebellion, regime, silo1]

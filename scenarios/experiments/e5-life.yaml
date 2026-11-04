@@ -1,0 +1,4 @@
+# E5 (Q3): the Mayor appointed for life.
+extends: base.yaml
+name: exp-e5-life
+governance: { term: life }

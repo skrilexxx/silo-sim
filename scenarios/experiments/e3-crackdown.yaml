@@ -1,0 +1,7 @@
+# E3 (Q3): the crackdown strategy (scenarios/strategy-crackdown.yaml) at the experiments' run length;
+# compared with The Order (base.yaml) and the other strategies on the same seeds.
+extends: ../strategy-crackdown.yaml
+name: exp-e3-crackdown
+years: 150
+events:
+  - { day: 45625, type: cleaningFailure }   # as base.yaml

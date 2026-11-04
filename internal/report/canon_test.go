@@ -124,3 +124,21 @@ func TestCollapsedInWarmup(t *testing.T) {
 		t.Fatalf("got %q, %v", s.Crashed, err)
 	}
 }
+
+// ODD §1.2, C5: judged only when the runs had Silo 1 on: 1 of 4
+// rebellions ending in collapse is 25%, inside 5–50%.
+func TestC5(t *testing.T) {
+	c := &Canon{First: 1, Last: 100 * 365, Silo1: true, Rebellions: []Rebellion{
+		{Ending: "suppressed"}, {Ending: "suppressed"}, {Ending: "split"}, {Ending: "collapse"}}}
+	var out strings.Builder
+	writeCanon(&out, []Seed{{Canon: c}})
+	if !strings.Contains(out.String(), "1/4 (25%)") || !strings.Contains(out.String(), "C5 A rebellion can end a silo") {
+		t.Errorf("no C5 line, or a wrong one:\n%s", out.String())
+	}
+	c.Silo1 = false
+	out.Reset()
+	writeCanon(&out, []Seed{{Canon: c}})
+	if strings.Contains(out.String(), "C5") {
+		t.Error("C5 judged without Silo 1")
+	}
+}

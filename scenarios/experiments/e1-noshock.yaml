@@ -1,0 +1,4 @@
+# E1 (Q1): how long does peace last with no shock? Also E2's control arm.
+extends: base.yaml
+name: exp-e1-noshock
+events: []

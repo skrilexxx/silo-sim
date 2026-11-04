@@ -380,7 +380,9 @@ func TestInForce(t *testing.T) {
 // strategies (ODD §6.15) pass the load checks, entries included.
 func TestScenarioFilesLoad(t *testing.T) {
 	paths, err := filepath.Glob("../../scenarios/*.yaml")
-	if err != nil || len(paths) < 8 {
+	more, _ := filepath.Glob("../../scenarios/experiments/*.yaml")
+	paths = append(paths, more...)
+	if err != nil || len(paths) < 19 {
 		t.Fatalf("%d scenario files, %v", len(paths), err)
 	}
 	for _, p := range paths {

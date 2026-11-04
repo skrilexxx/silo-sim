@@ -1,0 +1,8 @@
+# M15 experiments (docs/experiments.md): the canon scenario, The Order included, at the
+# lean plan's run length, 50 + 150 years (ODD §1.2, D11 revised). Its scripted cleaning
+# failure moves to the middle of the measured years. Also E2's treated arm and E3's The Order.
+extends: ../canon.yaml
+name: exp-base
+years: 150
+events:
+  - { day: 45625, type: cleaningFailure }   # 50 + 75 years

@@ -1,0 +1,7 @@
+# E3 (Q3): the none strategy (scenarios/strategy-none.yaml) at the experiments' run length;
+# compared with The Order (base.yaml) and the other strategies on the same seeds.
+extends: ../strategy-none.yaml
+name: exp-e3-none
+years: 150
+events:
+  - { day: 45625, type: cleaningFailure }   # as base.yaml

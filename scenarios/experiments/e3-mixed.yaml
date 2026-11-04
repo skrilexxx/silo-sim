@@ -1,0 +1,7 @@
+# E3 (Q3): the mixed strategy (scenarios/strategy-mixed.yaml) at the experiments' run length;
+# compared with The Order (base.yaml) and the other strategies on the same seeds.
+extends: ../strategy-mixed.yaml
+name: exp-e3-mixed
+years: 150
+events:
+  - { day: 45625, type: cleaningFailure }   # as base.yaml
