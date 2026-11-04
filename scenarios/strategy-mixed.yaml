@@ -1,0 +1,29 @@
+# Q3 strategy (ODD §6.15): mixed. The crackdown while a rebellion runs, the reform once it
+# ends (suppressed or split), for good; values as in strategy-crackdown.yaml and
+# strategy-reform.yaml.
+extends: canon.yaml
+name: strategy-mixed
+regime:
+  playbook:
+    - on: rebellionStart
+      hold: quiet
+      set: { surveillance: 0.1, arrestsPerOfficer: 0.1, raidsPerYear: 8, prisonPlaces: 100, minesPlaces: 200 }
+      pact:
+        - { id: noOrganising, active: true, offences: [organise], detection: 0.6,
+            first: { prison: 180 }, repeat: { mines: 730 }, enforcer: judicial, visibility: 0.7 }
+        - { id: noViolence, active: true, offences: [violence, sabotage], detection: 1.0,
+            first: { mines: 1460 }, repeat: { cleaning: true }, enforcer: judicial, visibility: 0.8 }
+    - on: suppressed
+      hold: forever
+      set: { scapegoatHardship: 0.1, governance: election }
+      pact:
+        - { id: noOrganising, active: true, offences: [organise], detection: 0.6,
+            first: { prison: 45 }, repeat: { mines: 183 }, enforcer: judicial, visibility: 0.7 }
+      lift: 0.15
+    - on: split
+      hold: forever
+      set: { scapegoatHardship: 0.1, governance: election }
+      pact:
+        - { id: noOrganising, active: true, offences: [organise], detection: 0.6,
+            first: { prison: 45 }, repeat: { mines: 183 }, enforcer: judicial, visibility: 0.7 }
+      lift: 0.15

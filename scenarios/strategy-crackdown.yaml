@@ -1,0 +1,15 @@
+# Q3 strategy (ODD §6.15): crackdown. While a rebellion runs, every lever of force moves
+# by the same factor of 2 (Adam, 2026-11-04): surveillance, arrests per officer, raids,
+# detention places, and the sentences for organising and violence. Values: 2× canon.
+extends: canon.yaml
+name: strategy-crackdown
+regime:
+  playbook:
+    - on: rebellionStart
+      hold: quiet
+      set: { surveillance: 0.1, arrestsPerOfficer: 0.1, raidsPerYear: 8, prisonPlaces: 100, minesPlaces: 200 }
+      pact:
+        - { id: noOrganising, active: true, offences: [organise], detection: 0.6,
+            first: { prison: 180 }, repeat: { mines: 730 }, enforcer: judicial, visibility: 0.7 }
+        - { id: noViolence, active: true, offences: [violence, sabotage], detection: 1.0,
+            first: { mines: 1460 }, repeat: { cleaning: true }, enforcer: judicial, visibility: 0.8 }

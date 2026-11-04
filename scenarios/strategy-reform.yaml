@@ -1,0 +1,16 @@
+# Q3 strategy (ODD §6.15): reform, from the day a rebellion is detected and for good.
+# By the factor of 2 (Adam, 2026-11-04): the Down Deep blamed half as hard, the sentences
+# for organising halved, and the rewrite announced as reform lifts L by one flag's worth
+# (δ = 0.15); the Mayor is elected from then on. Rations stay equal: in this model more
+# food doesn't ease a fed zone and starves the others (Adam, 2026-11-04).
+extends: canon.yaml
+name: strategy-reform
+regime:
+  playbook:
+    - on: rebellionStart
+      hold: forever
+      set: { scapegoatHardship: 0.1, governance: election }
+      pact:
+        - { id: noOrganising, active: true, offences: [organise], detection: 0.6,
+            first: { prison: 45 }, repeat: { mines: 183 }, enforcer: judicial, visibility: 0.7 }
+      lift: 0.15

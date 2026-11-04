@@ -1,11 +1,29 @@
 # Canon scenario (ODD §1.2): Silo 18 with every part-2 module built so far on, at the
-# show's settings, which are baseline.yaml's defaults (the canon Pact, σ = 0.05). The
-# canon patterns C1–C4 are checked on 100 seeds of it with `silosim report` (T12.8).
+# show's settings, which are baseline.yaml's defaults (the canon Pact, σ = 0.05), and the
+# regime answering as the show's does: The Order (ODD §6.15). The canon patterns C1–C4
+# are checked on 100 seeds of it with `silosim report` (T12.8, T13.2).
 extends: baseline.yaml
 name: canon
 years: 300                        # 50 warm-up + 300 measured years (ODD §1.2, decision D11)
-modules: [demography, health, work, resources, governance, space, network, beliefs, control, rebellion]
+modules: [demography, health, work, resources, governance, space, network, beliefs, control, rebellion, regime]
 events:
   # C2 (ODD §1.2): one scripted cleaning failure per run, in the middle of the measured
   # years (50 + 150 years), leaving 150 years either side for C1 and C4 (Adam, 2026-11-01).
   - { day: 73000, type: cleaningFailure }
+
+regime:                           # ODD §6.15: The Order, the canon playbook (T13.2)
+  emergencyAir: 0.8               # the health balance line (§6.2, T12.7): derived, not a guess
+  playbook:
+    # While unrest or a rebellion runs, blame Mechanical (S2) and raid. s_DD 0.6 is
+    # provisional (3× the peacetime 0.2), until the C3 sweep of T13.2 (analysis/order-sweep.sh).
+    - on: unrestStart
+      hold: quiet
+      set: { scapegoatHardship: 0.6, raidsPerYear: 8 }      # raids 2× the peacetime 4
+    # After a crushed rebellion, the wipe that followed the Rebellion (lore: Freedom Day,
+    # lost records, memory drugs [Likely]): the Freedom Day story lifts L by one flag's
+    # worth (δ = 0.15), the water is dosed, and raids run at 2× for the dosing's year.
+    - on: suppressed
+      hold: 365
+      set: { raidsPerYear: 8 }
+      lift: 0.15
+      waterDosing: true

@@ -375,3 +375,17 @@ func TestInForce(t *testing.T) {
 		t.Error("InForce changed the scenario")
 	}
 }
+
+// Every scenario in scenarios/ loads: the canon regime and the Q3
+// strategies (ODD §6.15) pass the load checks, entries included.
+func TestScenarioFilesLoad(t *testing.T) {
+	paths, err := filepath.Glob("../../scenarios/*.yaml")
+	if err != nil || len(paths) < 8 {
+		t.Fatalf("%d scenario files, %v", len(paths), err)
+	}
+	for _, p := range paths {
+		if _, err := Load(p); err != nil {
+			t.Error(err)
+		}
+	}
+}

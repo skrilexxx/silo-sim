@@ -39,6 +39,7 @@ type Canon struct {
 type Rebellion struct {
 	Start  int      `json:"start"`
 	End    *int     `json:"end"`
+	Days   int      `json:"days"`
 	Zone   string   `json:"zone"`
 	Struck []string `json:"struck"`
 	Ending string   `json:"ending"`
@@ -155,9 +156,10 @@ func (c *Canon) forgotten() (eligible, below int) {
 }
 
 // writeCanon prints C1–C4 over the runs with a part-2 record, and the
-// outcomes behind Q1 and Q2 as information. It reports whether C1–C3 hold;
-// C4 is printed but judged only from M13 on (ODD §1.2). With no such runs
-// it prints nothing and reports true.
+// outcomes behind Q1–Q3 as information, the share of measured days spent
+// in a rebellion among them (ODD §1.2, §6.15). It reports whether C1–C4
+// hold; C4 is judged since T13.2, when the canon regime gained its memory
+// wipe. With no such runs it prints nothing and reports true.
 func writeCanon(out io.Writer, seeds []Seed) bool {
 	var runs []*Canon
 	for _, s := range seeds {
@@ -168,7 +170,7 @@ func writeCanon(out io.Writer, seeds []Seed) bool {
 	if len(runs) == 0 {
 		return true
 	}
-	days, n, dd, ddMech, unrest := 0, 0, 0, 0, 0
+	days, n, dd, ddMech, unrest, inRebellion := 0, 0, 0, 0, 0, 0
 	var tT, tH, cT, cH, eligible, below int
 	endings, causes := map[string]int{}, map[string]int{} // printed in a fixed order, never ranged over
 	for _, c := range runs {
@@ -177,6 +179,7 @@ func writeCanon(out io.Writer, seeds []Seed) bool {
 		causes[c.Collapse]++
 		for _, r := range c.Rebellions {
 			n++
+			inRebellion += r.Days
 			endings[r.Ending]++
 			if r.Zone == "downDeep" {
 				dd++
@@ -212,29 +215,24 @@ func writeCanon(out io.Writer, seeds []Seed) bool {
 	}
 	checks := []struct {
 		name, rule, value string
-		ok, info          bool // info: printed, not judged
+		ok                bool
 	}{
 		{"C1 Long peace", fmt.Sprintf("%.1f–%.0f rebellions per century, pooled", c1Min, c1Max),
-			fmt.Sprintf("%.2f (%d in %d years)", rate, n, days/daysPerYear), rate >= c1Min && rate <= c1Max, false},
+			fmt.Sprintf("%.2f (%d in %d years)", rate, n, days/daysPerYear), rate >= c1Min && rate <= c1Max},
 		{"C2 Visible failures trigger revolts", fmt.Sprintf("≥ %.0f× as likely within %d years of a scripted failure", c2Ratio, c2Years),
-			fmt.Sprintf("%d/%d after vs %d/%d without (%s)", tH, tT, cH, cT, ratio), c2, false},
+			fmt.Sprintf("%d/%d after vs %d/%d without (%s)", tH, tT, cH, cT, ratio), c2},
 		{"C3 Revolts start Down Deep", fmt.Sprintf("≥ %.0f%% Down Deep, ≥ %.0f%% of those with a Mechanical strike", 100*c3DownDeep, 100*c3Mechanical),
 			fmt.Sprintf("%d/%d (%.0f%%), %d/%d (%.0f%%)", dd, n, 100*share(dd, n), ddMech, dd, 100*share(ddMech, dd)),
-			n > 0 && dd > 0 && share(dd, n) >= c3DownDeep && share(ddMech, dd) >= c3Mechanical, false},
+			n > 0 && dd > 0 && share(dd, n) >= c3DownDeep && share(ddMech, dd) >= c3Mechanical},
 		{"C4 Crushed rebellions are forgotten", fmt.Sprintf("< %.0f%% know the history %d years on, in ≥ %.0f%%", 100*c4KnowHistory, c4Years, 100*seedsNeeded),
 			fmt.Sprintf("%d/%d (%.0f%%)", below, eligible, 100*share(below, eligible)),
-			eligible > 0 && share(below, eligible) >= seedsNeeded, true}, // judged from M13 on (ODD §1.2)
+			eligible > 0 && share(below, eligible) >= seedsNeeded},
 	}
 	fmt.Fprintf(out, "\ncanon pattern (ODD §1.2), %d runs\ttarget\tmeasured\t\n", len(runs))
 	all := true
 	for _, c := range checks {
-		verdict := mark(c.ok)
-		if c.info {
-			verdict = "(" + verdict + ", not judged before M13)"
-		} else {
-			all = all && c.ok
-		}
-		fmt.Fprintf(out, "%s\t%s\t%s\t%s\n", c.name, c.rule, c.value, verdict)
+		all = all && c.ok
+		fmt.Fprintf(out, "%s\t%s\t%s\t%s\n", c.name, c.rule, c.value, mark(c.ok))
 	}
 	var e, k []string
 	for _, end := range []string{"suppressed", "regimeChange", "split", "collapse", "unfinished"} {
@@ -243,7 +241,7 @@ func writeCanon(out io.Writer, seeds []Seed) bool {
 	for _, cause := range []string{"air", "water", "population"} {
 		k = append(k, fmt.Sprintf("%s %d", cause, causes[cause]))
 	}
-	fmt.Fprintf(out, "\n(rebellions %d: %s; unrest spells %d; collapses %d: %s)\n",
-		n, strings.Join(e, ", "), unrest, len(runs)-causes[""], strings.Join(k, ", "))
+	fmt.Fprintf(out, "\n(rebellions %d: %s; unrest spells %d; collapses %d: %s; %.1f%% of measured days in a rebellion)\n",
+		n, strings.Join(e, ", "), unrest, len(runs)-causes[""], strings.Join(k, ", "), 100*share(inRebellion, days))
 	return all
 }

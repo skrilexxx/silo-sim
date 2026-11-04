@@ -1,0 +1,18 @@
+# Q3 strategy (ODD §6.15): memory wipe. While a rebellion runs, every convict is dosed
+# for a year (D_water, §6.12); when it ends, the water is dosed and raids for relics run
+# at 2× for that year (Adam, 2026-11-04).
+extends: canon.yaml
+name: strategy-wipe
+regime:
+  playbook:
+    - on: rebellionStart
+      hold: quiet
+      set: { doseConvicts: 365 }
+    - on: suppressed
+      hold: 365
+      set: { raidsPerYear: 8 }
+      waterDosing: true
+    - on: split
+      hold: 365
+      set: { raidsPerYear: 8 }
+      waterDosing: true

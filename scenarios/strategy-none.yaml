@@ -1,0 +1,7 @@
+# Q3 control group (ODD §6.15): the canon silo whose regime makes no response to unrest
+# or rebellion. Emergency staffing below the air line stays, as in every strategy: it
+# answers the life-support spiral, not rebellion (Adam, 2026-11-04).
+extends: canon.yaml
+name: strategy-none
+regime:
+  playbook: []

@@ -576,3 +576,24 @@ Unrest: 6,644 spells, about 66 a run. Fear stays at 0.99. Cleanings 0.52 a year 
 **Result: the silos live, but rebellions stop ending.** During them 3.6–5.8% of adults are active (10th–90th percentile, median 4.8%): own hardship gives a chronic few percent at canon L, and with 150 places detention can no longer take them out, so activity never falls below 1% for the 30 days an ending needs. The places sit below the pre-shock detention (about 174), so they bind even before the failure; seed 1 rose in year 66 with no shock. A standing rebellion is the regime's problem to answer (Q3); Adam took it to M13 without another batch (T13.0). Nothing was tuned.
 
 **T12.8 closed with:** C1 and C2 passing on the second batch (before the places), C3 failing (every rebellion starts in the Mids), C4 judged from M13, and the standing rebellion open. All three are carried into M13 (Adam, 2026-11-03).
+
+## 2026-11-04 — The Order on the canon scenario, smoke runs of seeds 1 and 53 (T13.2)
+
+**Code:** T13.2 (uncommitted at the run, committed with this entry): `scenarios/canon.yaml` with the regime module and The Order (ODD §6.15): on unrest, held until quiet, s\_DD 0.6 (provisional, before the C3 sweep) and raids 2×; on a suppressed rebellion, a lift of δ = 0.15, a water dosing and raids 2× for 365 days; emergency staffing at air 0.8. **Setup:** seeds 1 and 53, one run each, two in parallel; 452 s per run (the T7.2 budget is 4 minutes). **Commands:** `bin/silosim batch --scenario scenarios/canon.yaml --seeds 1 --out …`, the same for 53, then `bin/silosim report`.
+
+| | Seed 1 | Seed 53 |
+| --- | --- | --- |
+| Collapse | none in 300 years | none |
+| Rebellions (starting Down Deep) | 3 (2) | 8 (4) |
+| Down Deep starts with a Mechanical strike | 0 of 2 | 1 of 4 |
+| Longest rebellion | 48,004 days, 32,047 arrests | 14,152 days |
+| Measured time in a rebellion | 49% | 46% |
+| C4: suppressed rebellions judged / under 10% | 1 / 0 | 5 / 0 |
+
+**Three rule problems, for Adam (nothing tuned):**
+
+1. *The Order's blame never lifts.* Held until quiet, it is switched on by the first unrest spell of the warm-up (day 380 in seed 1, day 446 in seed 53) and runs until the scripted failure's rebellion, 200 years later: blaming the Down Deep (s\_DD 0.2 → 0.6) keeps at least 1% of adults active, so the spell that started it never goes quiet. In effect s\_DD is 0.6 in peacetime. Down Deep hardship is 0.80 against the Mids' 0.49. It moves the starting zone (6 of 11 rebellions start Down Deep, against 0 of 223 in T12.8), but as a permanent scapegoat, not a response; and the Mechanical half of C3 fails (1 of 6).
+2. *A water dosing can't erase a memory.* A year of dosing hid the history from 99.6% of adults (seed 1, year 151), and within a year of its end 95% knew it again (year 152), with no rebellion ending in between: a hidden flag comes back with κ per conversation with anyone who knows it, unblocked by L (ODD §6.12), and the warned Flamekeepers, the Head of IT and the households they shield keep knowing. So C4 fails in both seeds; 40 years after a suppressed rebellion 25–30% still know.
+3. *The standing rebellion stays* (T12.8): rebellions last decades, and half the measured time is spent in one. The silos no longer collapse: emergency staffing fired during ordinary generator outages (6-day spells) and air recovered.
+
+The C3 sweep (`analysis/order-sweep.sh`) is on hold: with the blame permanent, it would sweep a peacetime s\_DD, not a response.

@@ -79,7 +79,7 @@ The answers are **conditional and comparative**. The agents follow rules, not hu
 - *C3:* over all rebellions in the batch: the share whose starting zone (§6.14) is the Down Deep, and among those the share with Mechanical on strike on any of its days (`struck` in `rebellions.jsonl`).
 - *C4:* each suppressed rebellion is judged at the first yearly snapshot at least 40 years after its end day, by the share of adults who know the history flag (`knowHistory`); one with no such snapshot is not judged. C4 holds when at least 90% of the judged rebellions are under 10%, the same bar as the §8 targets.
 
-**C4 is judged from M13 on** (Adam, 2026-11-02). Its sources (Freedom Day, lost records, Vitamin D+) are the regime's memory wipe (§6.15), which the model does not have before M13; `silosim report` prints C4 as information only until `scenarios/canon.yaml` carries The Order's playbook (T13.2). Since T13.0 everyone who lived through a rebellion learns the history at its end (§6.15), so C4 measures how a silo forgets a rebellion everyone saw.
+**C4 is judged from M13 on** (Adam, 2026-11-02). Its sources (Freedom Day, lost records, Vitamin D+) are the regime's memory wipe (§6.15), which the model does not have before M13; `silosim report` printed C4 as information only until `scenarios/canon.yaml` carried The Order's playbook, and judges it since T13.2. Since T13.0 everyone who lived through a rebellion learns the history at its end (§6.15), so C4 measures how a silo forgets a rebellion everyone saw.
 
 C1 bounds the rebellion rate, which is also what Q1 measures. That is deliberate but limited: C1 is a wide plausibility check (no constant revolts, no eternal peace), never a target to tune toward a point. Q1's answer is what *changes* the rate, read from comparisons between scenarios.
 
@@ -973,20 +973,20 @@ A lever, or a Pact row, takes the value of the most recently started running ent
 
 At the canon setting `emergencyAir` is the balance line 0.8 itself. The value is derived, not guessed. Retrained workers start at skill 0.2, so the released workers carry most of the effect. Whether it is enough is a result. The mass death on a single day that ends a slide comes from the baseline's health rule: every adult's health follows the same path, and health 0 is certain death (§6.1). The baseline is frozen, so this stays and is reported as part of the result.
 
-**Elections** *(proposed; Adam to approve)*. With this module on, each Mayor chosen by election (§6.8) adds λ\_elect to the lift S, as a cleaning does (§6.13). Appointment adds nothing. Without this rule the Mayor's office changes nothing, and experiment E5 (appointment vs election) would have no mechanism to compare.
+**Elections** (Adam, 2026-11-04). With this module on, each Mayor chosen by election (§6.8) adds λ\_elect to the lift S, as a cleaning does (§6.13). Appointment adds nothing. Without this rule the Mayor's office changes nothing, and experiment E5 (appointment vs election) would have no mechanism to compare.
 
-**The strategies.** Each one is a scenario file built on `scenarios/canon.yaml`. The values are guesses, set in T13.2 and counted there:
+**The strategies.** Each one is a scenario file built on `scenarios/canon.yaml` (`scenarios/strategy-*.yaml`, T13.2), replacing The Order's playbook. Their values are guesses set by one principle, so the comparison is one of equal effort (Adam, 2026-11-04): every lever a strategy pulls moves by the same **factor of 2** from its canon value, sentences included, and every `lift` is one flag's worth, δ = 0.15 (§6.12). The sensitivity analysis (T15.3) varies the factor. Every strategy keeps emergency staffing at the canon line: it answers the life-support spiral, not rebellion, so Q3 compares only the rebellion responses (Adam, 2026-11-04).
 
 | Strategy | Playbook |
 | --- | --- |
 | None | Empty: the control group |
-| **The Order** (canon) | On `unrestStart`, held `quiet`: s\_DD raised ("blame Mechanical", S2; lore reference) and raids raised. On `suppressed`: a `lift` (the Freedom Day story), a water dosing and a raid surge, the wipe that followed the Rebellion (lore reference: lost records, memory drugs \[Likely\]) |
-| Crackdown | On `rebellionStart`, held `quiet`: σ, a, raids and places raised; harsher rows for `organise` and `violence` |
-| Reform | On `rebellionStart`: s\_DD to 0, ration weights toward the Down Deep, elections, and a rewrite with a positive `lift` |
-| Memory wipe | On `rebellionStart`, held `quiet`: `doseConvicts`. On every ending: a water dosing and a raid surge |
-| Mixed | Crackdown while it runs, reform after |
+| **The Order** (canon) | On `unrestStart`, held `quiet`: s\_DD raised ("blame Mechanical", S2; lore reference), raids 2×. On `suppressed`, held 365 days: a `lift` of δ (the Freedom Day story), a water dosing, raids 2×: the wipe that followed the Rebellion (lore reference: lost records, memory drugs \[Likely\]). Its s\_DD is calibrated against C3 (below) |
+| Crackdown | On `rebellionStart`, held `quiet`: σ, a, raids and both place counts 2×; the sentences for organising and violence 2× (prison 180 / mines 730; mines 1,460 / cleaning) |
+| Reform | On `rebellionStart`, for good: s\_DD halved (0.1), elections, and a Pact rewrite halving the sentences for organising (prison 45 / mines 183) with a `lift` of δ. Rations stay equal: food hardship is only the shortfall, so more food doesn't ease a fed zone, and a 2× weight for the Down Deep left the rest of the silo with 82% of its need (Adam, 2026-11-04) |
+| Memory wipe | On `rebellionStart`, held `quiet`: every convict dosed for a year (D\_water). On `suppressed` or `split`, held 365 days: a water dosing and raids 2× |
+| Mixed | The crackdown while a rebellion runs; the reform, for good, once it ends (`suppressed` or `split`) |
 
-The Order is the canon regime. It is also meant to carry pattern C3 (Adam, 2026-11-03): with own hardship the same in every zone, the Down Deep's grievance was only 1.2 times the Mids', and every rebellion started in the Mids (T12.8). Blaming Mechanical while unrest builds concentrates grievance where the show puts it. It is a lever, so reform can switch it off.
+The Order is the canon regime. It is also meant to carry pattern C3 (Adam, 2026-11-03): with own hardship the same in every zone, the Down Deep's grievance was only 1.2 times the Mids', and every rebellion started in the Mids (T12.8). Blaming Mechanical while unrest builds concentrates grievance where the show puts it. It is a lever, so reform can switch it off. Its value is calibrated against C3, a canon pattern: s\_DD under The Order at 0.4, 0.6 and 0.8 on the canon scenario, and the lowest that passes C3 is kept (`analysis/order-sweep.sh`; Adam, 2026-11-04). Until that sweep runs it is 0.6, provisional.
 
 **Scripted events** (§5): `policy`, an entry run on its day, at the regime step, with a `hold` of days or `forever` (no `on`). It is how experiments impose a policy at a fixed day, such as a Pact rewrite like Season 3's under Camille (§6.9). It applies whether or not the Head of IT's post is filled, and after a regime change too, since the experimenter imposes it, not the regime.
 
@@ -1013,7 +1013,7 @@ The levers set today are read by the steps that run after this one, so in practi
 ```yaml
 regime:                           # ODD §6.15; used only when `regime` is in modules
   emergencyAir: 0                 # air line for emergency staffing; 0 = off. Canon: 0.8, the health balance line (§6.2, T12.7)
-  electionLift: 0.05              # λ_elect: lift of L from each Mayor chosen by election; guess (proposed)
+  electionLift: 0.05              # λ_elect: lift of L from each Mayor chosen by election; guess, the size of a public cleaning's lift (Adam, 2026-11-04)
   denial: true                    # peacetime covert lottery denial (§6.13); false = a fair lottery
   doseConvicts: 0                 # peacetime targeted Vitamin D+ for convicts, days from the trial; 0 = none
   playbook:                       # empty = no response; strategies fill it (T13.2)

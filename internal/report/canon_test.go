@@ -78,7 +78,7 @@ func TestCanonReport(t *testing.T) {
 		}
 	}
 	write("run.json", `{"seed":7,"finished":true,"outcomes":{"unrestSpells":3,"collapseCause":"air"},"scenario":{"warmupYears":1,"output":{"logWarmup":true}}}`)
-	write("rebellions.jsonl", `{"start":500,"end":600,"zone":"downDeep","struck":["mechanical"],"ending":"suppressed"}`+"\n")
+	write("rebellions.jsonl", `{"start":500,"end":600,"days":100,"zone":"downDeep","struck":["mechanical"],"ending":"suppressed"}`+"\n")
 	var yearly strings.Builder
 	yearly.WriteString("day,medianAge,mechanicalInZone,knowHistory\n")
 	for y := 1; y <= 11; y++ {
@@ -98,11 +98,17 @@ func TestCanonReport(t *testing.T) {
 	}
 	// 1 rebellion in 10 years, in the first comparison block; no scripted
 	// failure; Down Deep with a
-	// Mechanical strike; too early to judge forgetting.
-	for _, want := range []string{"10.00 (1 in 10 years)", "0/0 after vs 1/2 without", "1/1 (100%), 1/1 (100%)", "0/0 (0%)", "(FAIL, not judged before M13)",
-		"suppressed 1,", "unrest spells 3", "collapses 1: air 1"} {
+	// Mechanical strike; too early to judge forgetting, so C4 fails; 100
+	// of the 3,650 measured days in a rebellion.
+	for _, want := range []string{"10.00 (1 in 10 years)", "0/0 after vs 1/2 without", "1/1 (100%), 1/1 (100%)", "0/0 (0%)",
+		"suppressed 1,", "unrest spells 3", "collapses 1: air 1", "2.7% of measured days in a rebellion"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("report lacks %q:\n%s", want, out.String())
+		}
+	}
+	for _, line := range strings.Split(out.String(), "\n") {
+		if strings.HasPrefix(line, "C4") && (!strings.HasSuffix(strings.TrimSpace(line), "FAIL") || strings.Contains(line, "not judged")) {
+			t.Errorf("C4 not judged: %q", line)
 		}
 	}
 }
