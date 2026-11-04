@@ -24,7 +24,8 @@ type Module struct {
 	// workers. Fixed, so losing workers silo-wide lowers every coverage.
 	need []float64
 
-	general int // index of General services, the pool retraining draws from
+	general    int // index of General services, the pool retraining draws from
+	mechanical int // index of Mechanical, retrained into in an emergency (ODD §6.15)
 
 	// Reused buffers.
 	load   []int // shadows per master, indexed by PersonID
@@ -63,6 +64,11 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	}
 	if m.general == world.None {
 		return fmt.Errorf("work: no department named \"general\" (retraining draws from it)")
+	}
+	for d, dep := range w.Depts {
+		if dep.Name == "mechanical" {
+			m.mechanical = d // config checked that there is one
+		}
 	}
 	m.dayOneWorkers(w, r)
 	m.dayOneSkill(w)
@@ -263,36 +269,47 @@ func (m *Module) setTargets(w *world.World) {
 // retrainStartSkill; their shadows get new masters.
 func (m *Module) retrain(w *world.World, r *rng.Stream) {
 	moved := false
-	for d, dep := range w.Depts {
-		mark := m.c.RetrainBelowShare * m.target[d]
-		if d == m.general || float64(dep.Headcount) >= mark {
-			continue
-		}
-		spare := w.Depts[m.general].Headcount - int(math.Ceil(m.c.RetrainBelowShare*m.target[m.general]))
-		want := min(int(math.Ceil(mark))-dep.Headcount, spare)
-		if want <= 0 {
-			continue
-		}
-		m.people = m.people[:0]
-		for _, id := range w.Alive {
-			p := &w.People[id]
-			if p.Stage == world.Worker && p.Department == m.general && !w.Space.Off(id) && (dep.Zone == world.AllZones || homeZone(w, id) == dep.Zone) {
-				m.people = append(m.people, id)
-			}
-		}
-		for i := range min(want, len(m.people)) {
-			j := r.IntRange(i, len(m.people)-1)
-			m.people[i], m.people[j] = m.people[j], m.people[i]
-			p := &w.People[m.people[i]]
-			p.Department, p.Skill = d, m.c.RetrainStartSkill
-			w.Depts[m.general].Headcount--
-			w.Depts[d].Headcount++
+	for d := range w.Depts {
+		if d != m.general && m.retrainTo(w, r, d, m.c.RetrainBelowShare*m.target[d]) {
 			moved = true
 		}
 	}
 	if moved {
 		m.remaster(w, r)
 	}
+}
+
+// retrainTo moves General workers into department d until it has mark
+// workers, by the rule of retrain, and reports whether anyone moved. The
+// caller finds the moved workers' shadows new masters.
+func (m *Module) retrainTo(w *world.World, r *rng.Stream, d int, mark float64) bool {
+	dep := w.Depts[d]
+	if float64(dep.Headcount) >= mark {
+		return false
+	}
+	spare := w.Depts[m.general].Headcount - int(math.Ceil(m.c.RetrainBelowShare*m.target[m.general]))
+	want := min(int(math.Ceil(mark))-dep.Headcount, spare)
+	if want <= 0 {
+		return false
+	}
+	m.people = m.people[:0]
+	for _, id := range w.Alive {
+		p := &w.People[id]
+		if p.Stage == world.Worker && p.Department == m.general && !w.Space.Off(id) && (dep.Zone == world.AllZones || homeZone(w, id) == dep.Zone) {
+			m.people = append(m.people, id)
+		}
+	}
+	moved := false
+	for i := range min(want, len(m.people)) {
+		j := r.IntRange(i, len(m.people)-1)
+		m.people[i], m.people[j] = m.people[j], m.people[i]
+		p := &w.People[m.people[i]]
+		p.Department, p.Skill = d, m.c.RetrainStartSkill
+		w.Depts[m.general].Headcount--
+		w.Depts[d].Headcount++
+		moved = true
+	}
+	return moved
 }
 
 // shortfall counts shadows as future workers: max(0, target − workers − shadows).

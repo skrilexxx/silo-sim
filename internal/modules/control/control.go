@@ -17,10 +17,13 @@ type Module struct {
 	surveillance float64       // σ
 	rules        []config.Rule // the Pact (ODD §6.9)
 	ruleOf       [world.NumOffences]int
-	it, medical  int        // IT's and Medical's department indexes
-	doctors      int        // N_doc: implant doctor posts
-	minSkill     float64    // a master's skill must be above this (ODD §6.5)
-	shadowAge    world.Tick // in days: acts by younger children are not offences
+	it, medical  int              // IT's and Medical's department indexes
+	mechanical   int              // Mechanical's: released in an emergency (ODD §6.15)
+	seen         *config.Scenario // the scenario in force the levers were last read from (ODD §6.15)
+	dose         int              // days a convict is dosed from the trial (ODD §6.15); 0 = none
+	doctors      int              // N_doc: implant doctor posts
+	minSkill     float64          // a master's skill must be above this (ODD §6.5)
+	shadowAge    world.Tick       // in days: acts by younger children are not offences
 
 	perOfficer     float64 // a: arrests a day per officer
 	officers       []int   // Judicial's and the Sheriff's department indexes
@@ -81,19 +84,9 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	m.shadowAge = world.Tick(cfg.Work.ShadowAge * engine.DaysPerYear)
 	m.it = slices.IndexFunc(w.Depts, func(d world.Department) bool { return d.Name == "it" })
 	m.medical = slices.IndexFunc(w.Depts, func(d world.Department) bool { return d.Name == "medical" })
+	m.mechanical = slices.IndexFunc(w.Depts, func(d world.Department) bool { return d.Name == "mechanical" })
 	m.doctors = cfg.Control.ImplantDoctors
-	m.rules = slices.Clone(cfg.Pact)
-	for o := range m.ruleOf {
-		m.ruleOf[o] = world.None
-	}
-	for i, rule := range m.rules {
-		if !rule.Active {
-			continue
-		}
-		for _, name := range rule.Offences {
-			m.ruleOf[slices.Index(config.Offences, name)] = i // config checked the name, and that no other active rule lists it
-		}
-	}
+	m.setRules(slices.Clone(cfg.Pact))
 	m.perOfficer, m.raid = cfg.Control.ArrestsPerOfficer, cfg.Control.RaidsPerYear/engine.DaysPerYear
 	m.find, m.name, m.mines = cfg.Control.FindChance, cfg.Control.NameChance, cfg.Control.MinesFloor
 	m.places = [2]int{cfg.Control.PrisonPlaces, cfg.Control.MinesPlaces}
@@ -130,14 +123,49 @@ func (m *Module) Steps() []engine.Step {
 	return []engine.Step{{Phase: engine.PhaseControl, Run: m.step}}
 }
 
+// setRules puts a Pact in force: an offence goes to the active rule that
+// lists it.
+func (m *Module) setRules(rules []config.Rule) {
+	m.rules = rules
+	for o := range m.ruleOf {
+		m.ruleOf[o] = world.None
+	}
+	for i, rule := range m.rules {
+		if !rule.Active {
+			continue
+		}
+		for _, name := range rule.Offences {
+			m.ruleOf[slices.Index(config.Offences, name)] = i // config checked the name, and that no other active rule lists it
+		}
+	}
+}
+
+// policy reads the levers of the scenario in force when the regime
+// module has put a new one in force (ODD §6.15). Its Pact keeps every
+// rule at its index, so convictions still point at the right rule.
+func (m *Module) policy(w *world.World) {
+	p := w.Policy
+	if p == nil || p == m.seen {
+		return
+	}
+	m.seen = p
+	m.surveillance, m.perOfficer, m.raid = p.Control.Surveillance, p.Control.ArrestsPerOfficer, p.Control.RaidsPerYear/engine.DaysPerYear
+	m.find, m.places, m.dose = p.Control.FindChance, [2]int{p.Control.PrisonPlaces, p.Control.MinesPlaces}, p.Regime.DoseConvicts
+	m.setRules(p.Pact)
+}
+
 // ODD §6.13 / §3 step 10.8.
 func (m *Module) step(w *world.World, r *rng.Stream) error {
 	w.Control.Cleaned, w.Control.DeniedToday = w.Control.Cleaned[:0], w.Control.DeniedToday[:0]
+	m.policy(w)
 	m.newcomers(w)
 	m.drop(w)
 	m.headOfIT(w)
 	m.implantDoctors(w)
 	m.detect(w, r)
+	if g := w.Regime; g != nil && g.Emergency {
+		m.emergency(w)
+	}
 	m.releases(w)
 	m.admit(w, r)
 	m.seize(w, r)
@@ -486,6 +514,9 @@ func (m *Module) try(w *world.World, id world.PersonID) {
 		confiscate, flag, v = confiscate || pen.Confiscate, flag || pen.FlagFamily, max(v, rule.Visibility)
 	}
 	c.Fear = min(1, c.Fear+m.fear*v)
+	if m.dose > 0 { // ODD §6.15: every convict, whatever the penalty
+		w.Beliefs.Dose(id, w.Day+world.Tick(m.dose)-1)
+	}
 	c.Convicted[id] |= c.Charges[id]
 	c.Charges[id] = 0
 	if confiscate {
@@ -567,7 +598,7 @@ func (m *Module) admit(w *world.World, r *rng.Stream) {
 	for k, h := range []world.Hold{world.Prison, world.Mines} {
 		m.queue[k] = slices.DeleteFunc(m.queue[k], func(q waiting) bool {
 			f := s.Location[q.id]
-			if m.full(w, k) || f == 0 || w.Rebellion.Holds(w, f) {
+			if m.full(w, k) || f == 0 || w.Rebellion.Holds(w, f) || m.mechanic(w, q.id) && w.Regime != nil && w.Regime.Emergency {
 				return false
 			}
 			started := h == world.Mines && s.StartTrip(q.id, w.Day, m.mines) == nil
@@ -581,6 +612,25 @@ func (m *Module) admit(w *world.World, r *rng.Stream) {
 			return m.unqueue(q.id, true)
 		})
 	}
+}
+
+// ODD §6.15, Emergency staffing: every Mechanical worker or shadow
+// detained in prison or the mines has their sentence end yesterday, so
+// the releases that follow free them today and they walk home. Those
+// waiting for a place are passed over while the emergency lasts (admit).
+func (m *Module) emergency(w *world.World) {
+	c := w.Control
+	for _, id := range m.held {
+		if (c.Hold[id] == world.Prison || c.Hold[id] == world.Mines) && m.mechanic(w, id) {
+			c.Until[id] = w.Day - 1
+		}
+	}
+}
+
+// mechanic reports whether the person works or shadows in Mechanical.
+func (m *Module) mechanic(w *world.World, id world.PersonID) bool {
+	p := &w.People[id]
+	return p.Department == m.mechanical && (p.Stage == world.Worker || p.Stage == world.Shadow)
 }
 
 // severity orders detentions: cleaning, then mines, then prison, then

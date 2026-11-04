@@ -43,6 +43,7 @@ type Scenario struct {
 	Control     Control    `yaml:"control"`
 	Pact        []Rule     `yaml:"pact"`
 	Rebellion   Rebellion  `yaml:"rebellion"`
+	Regime      Regime     `yaml:"regime"`
 	Events      []Event    `yaml:"events,omitempty"`
 }
 
@@ -57,6 +58,18 @@ type Event struct {
 	Segment    int     `yaml:"segment,omitempty"`
 	Share      float64 `yaml:"share,omitempty"`
 	Department string  `yaml:"department,omitempty"`
+
+	// policy (ODD §6.15): an entry run on the event's day, with no trigger.
+	Hold        string  `yaml:"hold,omitempty"`
+	Set         Levers  `yaml:"set,omitempty"`
+	Pact        []Rule  `yaml:"pact,omitempty"`
+	Lift        float64 `yaml:"lift,omitempty"`
+	WaterDosing bool    `yaml:"waterDosing,omitempty"`
+}
+
+// Entry is the policy entry a policy event carries (ODD §6.15).
+func (e Event) Entry() Entry {
+	return Entry{Hold: e.Hold, Set: e.Set, Pact: e.Pact, Lift: e.Lift, WaterDosing: e.WaterDosing}
 }
 
 // Zones holds one value per zone: a share of people or a policy weight.
@@ -280,6 +293,133 @@ type Rebellion struct {
 	CollapseDays   int     `yaml:"collapseDays"`
 }
 
+// Regime is the regime policy and response module (ODD §6.15). Its own
+// settings are the peacetime values of the levers no other section has.
+type Regime struct {
+	EmergencyAir float64 `yaml:"emergencyAir"`
+	ElectionLift float64 `yaml:"electionLift"`
+	Denial       bool    `yaml:"denial"`
+	DoseConvicts int     `yaml:"doseConvicts"`
+	Playbook     []Entry `yaml:"playbook"`
+}
+
+// Entry is a playbook entry (ODD §6.15, Entries): on its trigger, it sets
+// levers and Pact rows while it runs, adds its lift once, and may start a
+// water dosing. A policy event carries the same parts with no trigger.
+type Entry struct {
+	On          string  `yaml:"on"`
+	Hold        string  `yaml:"hold"` // quiet, forever, or a number of days
+	Set         Levers  `yaml:"set,omitempty"`
+	Pact        []Rule  `yaml:"pact,omitempty"`
+	Lift        float64 `yaml:"lift,omitempty"`
+	WaterDosing bool    `yaml:"waterDosing,omitempty"`
+}
+
+// Levers are the policy levers (ODD §6.15, The policy vector). Each
+// overrides the setting it names; nil leaves it alone.
+type Levers struct {
+	Surveillance      *float64 `yaml:"surveillance,omitempty"`
+	ArrestsPerOfficer *float64 `yaml:"arrestsPerOfficer,omitempty"`
+	RaidsPerYear      *float64 `yaml:"raidsPerYear,omitempty"`
+	FindChance        *float64 `yaml:"findChance,omitempty"`
+	PrisonPlaces      *int     `yaml:"prisonPlaces,omitempty"`
+	MinesPlaces       *int     `yaml:"minesPlaces,omitempty"`
+	TaughtLegitimacy  *float64 `yaml:"taughtLegitimacy,omitempty"`
+	RationWeights     *Zones   `yaml:"rationWeights,omitempty"`
+	ScapegoatHardship *float64 `yaml:"scapegoatHardship,omitempty"`
+	Denial            *bool    `yaml:"denial,omitempty"`
+	DoseConvicts      *int     `yaml:"doseConvicts,omitempty"`
+	Governance        *string  `yaml:"governance,omitempty"`
+	MayorTerm         *string  `yaml:"mayorTerm,omitempty"`
+	EmergencyAir      *float64 `yaml:"emergencyAir,omitempty"`
+}
+
+// Triggers are the rebellion events that start playbook entries (ODD
+// §6.15), in the order their entries start on a day.
+var Triggers = []string{"unrestStart", "rebellionStart", "suppressed", "split", "regimeChange"}
+
+// Hold values besides a number of days ≥ 1 (ODD §6.15, Entries).
+const (
+	HoldForever = 0
+	HoldQuiet   = -1 // until the unrest spell or rebellion that started it ends
+)
+
+// ParseHold reads an entry's hold: quiet, forever, or days ≥ 1.
+func ParseHold(h string) (int, error) {
+	switch h {
+	case "quiet":
+		return HoldQuiet, nil
+	case "forever":
+		return HoldForever, nil
+	}
+	n, err := strconv.Atoi(h)
+	if err != nil || n < 1 {
+		return 0, fmt.Errorf("hold = %q, must be quiet, forever or a number of days of at least 1", h)
+	}
+	return n, nil
+}
+
+// InForce is the scenario with the given entries running, in the order
+// they started (ODD §6.15): each entry's levers and Pact rows override the
+// scenario's, a later entry over an earlier one. Its Pact holds every rule
+// the scenario, a playbook entry or a policy event names, in a fixed
+// order (the scenario's rows, then new ids as first named), so a rule
+// keeps its index, which convictions are kept by (ODD §6.13); a rule only
+// entries add is inactive while none of them runs. The playbook and the
+// events are left out: they are not in force, they change it.
+func (s *Scenario) InForce(running []Entry) *Scenario {
+	p := *s
+	p.Regime.Playbook, p.Events = nil, nil
+	p.Pact = slices.Clone(s.Pact)
+	add := func(rows []Rule) {
+		for _, r := range rows {
+			if !slices.ContainsFunc(p.Pact, func(x Rule) bool { return x.ID == r.ID }) {
+				r.Active = false
+				p.Pact = append(p.Pact, r)
+			}
+		}
+	}
+	for _, e := range s.Regime.Playbook {
+		add(e.Pact)
+	}
+	for _, ev := range s.Events {
+		if ev.Type == "policy" {
+			add(ev.Pact)
+		}
+	}
+	for _, e := range running {
+		p.apply(e)
+	}
+	return &p
+}
+
+func (p *Scenario) apply(e Entry) {
+	l := e.Set
+	set(&p.Control.Surveillance, l.Surveillance)
+	set(&p.Control.ArrestsPerOfficer, l.ArrestsPerOfficer)
+	set(&p.Control.RaidsPerYear, l.RaidsPerYear)
+	set(&p.Control.FindChance, l.FindChance)
+	set(&p.Control.PrisonPlaces, l.PrisonPlaces)
+	set(&p.Control.MinesPlaces, l.MinesPlaces)
+	set(&p.Beliefs.TaughtLegitimacy, l.TaughtLegitimacy)
+	set(&p.Rations.Weights, l.RationWeights)
+	set(&p.Rebellion.ScapegoatHardship, l.ScapegoatHardship)
+	set(&p.Regime.Denial, l.Denial)
+	set(&p.Regime.DoseConvicts, l.DoseConvicts)
+	set(&p.Governance.Mode, l.Governance)
+	set(&p.Governance.Term, l.MayorTerm)
+	set(&p.Regime.EmergencyAir, l.EmergencyAir)
+	for _, r := range e.Pact {
+		p.Pact[slices.IndexFunc(p.Pact, func(x Rule) bool { return x.ID == r.ID })] = r
+	}
+}
+
+func set[T any](dst, v *T) {
+	if v != nil {
+		*dst = *v
+	}
+}
+
 // Rule is one row of the Pact (ODD §6.9).
 type Rule struct {
 	ID         string   `yaml:"id"`
@@ -447,6 +587,8 @@ func missingKeys(n *yaml.Node, t reflect.Type, path string) []error {
 			}
 			errs = append(errs, missingKeys(child, t.Field(i).Type, key)...)
 		}
+	case reflect.Pointer: // an optional section: when it is there, it is whole
+		errs = append(errs, missingKeys(n, t.Elem(), path)...)
 	case reflect.Slice:
 		if n.Kind == yaml.SequenceNode {
 			for i, item := range n.Content {

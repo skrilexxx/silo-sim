@@ -14,6 +14,8 @@ import (
 
 type Module struct {
 	cfg       *config.Scenario
+	mode      string // appointment or election: a lever (ODD §6.15)
+	term      string
 	termYears int // 0 = life
 
 	votes []int // reused, per zone
@@ -30,7 +32,7 @@ func (m *Module) Requires() []string { return []string{"work"} }
 // ODD §6.8: the first Mayor is chosen on day 1, so the silo always has
 // one and 5-year terms end on yearly governance steps.
 func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error {
-	m.cfg = cfg
+	m.cfg, m.mode, m.term = cfg, cfg.Governance.Mode, cfg.Governance.Term
 	var err error
 	if m.termYears, err = cfg.Governance.TermYears(); err != nil {
 		return err
@@ -53,7 +55,10 @@ func (m *Module) Steps() []engine.Step {
 // last time. A Mayor who retires keeps the office until then.
 func (m *Module) governance(w *world.World, r *rng.Stream) error {
 	s := &w.Silo
+	changed := m.policy(w)
 	switch {
+	case changed:
+		m.choose(w, r, "policy")
 	case s.Mayor == world.None:
 		m.choose(w, r, "vacant")
 	case !w.People[s.Mayor].Alive:
@@ -64,6 +69,26 @@ func (m *Module) governance(w *world.World, r *rng.Stream) error {
 	return nil
 }
 
+// policy reads the mode and term in force (ODD §6.15). A changed mode
+// ends the sitting Mayor's term at once, so the new way of choosing is
+// used now; it reports that. A changed term counts from the Mayor's start.
+func (m *Module) policy(w *world.World) bool {
+	p := w.Policy
+	if p == nil {
+		return false
+	}
+	if p.Governance.Term != m.term {
+		m.term = p.Governance.Term
+		m.termYears, _ = p.Governance.TermYears() // checked at load
+	}
+	if p.Governance.Mode == m.mode {
+		return false
+	}
+	m.mode = p.Governance.Mode
+	w.Silo.GovernanceMode = m.mode
+	return true
+}
+
 // choose picks a new Mayor by the scenario's mode and logs it. The sitting
 // Mayor may be chosen again. If nobody can be chosen, the office stays
 // vacant and is retried next year; a vacancy that continues is not logged
@@ -72,8 +97,12 @@ func (m *Module) choose(w *world.World, r *rng.Stream, reason string) {
 	s := &w.Silo
 	var mayor world.PersonID
 	var votes []int
-	if m.cfg.Governance.Mode == "election" {
+	if m.mode == "election" {
 		mayor, votes = m.elect(w, r)
+		// ODD §6.15, Elections (proposed): a Mayor the silo chose lifts L.
+		if p := w.Policy; p != nil && mayor != world.None {
+			w.Beliefs.Lift += p.Regime.ElectionLift
+		}
 	} else {
 		mayor = m.appoint(w)
 	}
@@ -87,7 +116,7 @@ func (m *Module) choose(w *world.World, r *rng.Stream, reason string) {
 		zone = homeZone(w, mayor).String()
 	}
 	w.Events = append(w.Events, world.MayorEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "mayor"}, Mayor: mayor, Previous: prev,
-		Zone: zone, Reason: reason, Mode: m.cfg.Governance.Mode, Votes: votes})
+		Zone: zone, Reason: reason, Mode: m.mode, Votes: votes})
 }
 
 // ODD §6.8 appointment: the heads of IT, Judicial and Administration (the

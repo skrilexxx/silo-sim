@@ -55,6 +55,7 @@ type Rebellion struct {
 	// spell and of the running rebellion, or None; and the spells ended
 	// and rebellions started since day 0.
 	Busy, Rising, Quiet         int
+	Fired                       []string // the triggers of ODD §6.15 today, in config.Triggers' names
 	LastAction                  Tick
 	UnrestStart, RebellionStart Tick
 	UnrestSpells, Rebellions    int

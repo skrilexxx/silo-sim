@@ -129,3 +129,22 @@ func TestRetrainingRemastersShadows(t *testing.T) {
 		t.Errorf("shadow's master %d, want a General worker", m)
 	}
 }
+
+// ODD §6.15, Emergency staffing: on a day after an emergency was declared,
+// the life-stages step fills Mechanical from General in its zone up to its
+// whole target, 20 here, not the 80% of monthly retraining; with no
+// emergency it moves nobody.
+func TestEmergencyRetraining(t *testing.T) {
+	tw := retrainWorld(t, 20, 20)
+	tw.m.mechanical = mechanical
+	tw.w.Regime, tw.w.Policy = &world.Regime{}, tw.m.cfg.InForce(nil)
+	tw.day()
+	if got := tw.w.Depts[mechanical].Headcount; got != 14 {
+		t.Fatalf("no emergency: Mechanical has %d workers, want the 14 it had", got)
+	}
+	tw.w.Regime.Emergency = true
+	tw.day()
+	if got := tw.w.Depts[mechanical].Headcount; got != 20 {
+		t.Errorf("in an emergency: Mechanical has %d workers, want its target of 20", got)
+	}
+}

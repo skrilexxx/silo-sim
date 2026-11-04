@@ -53,10 +53,36 @@ func Check(w *world.World, cfg *config.Scenario) error {
 	if err := beliefs(w, cfg.Beliefs.Relics); err != nil {
 		return err
 	}
-	if err := control(w, len(cfg.Pact)); err != nil {
+	pact := cfg.Pact
+	if w.Policy != nil { // ODD §6.15: the Pact in force holds the rules entries add
+		pact = w.Policy.Pact
+	}
+	if err := control(w, len(pact)); err != nil {
 		return err
 	}
-	return rebellion(w)
+	if err := rebellion(w); err != nil {
+		return err
+	}
+	return regime(w)
+}
+
+// ODD §6.15 (draft): the scenario in force passes the load checks, so
+// every lever is in its setting's range and the Pact passes §6.9; after a
+// regime change, only regimeChange entries and policy events run.
+func regime(w *world.World) error {
+	g := w.Regime
+	if g == nil {
+		return nil
+	}
+	if err := w.Policy.Validate(); err != nil {
+		return fmt.Errorf("day %d: the scenario in force fails: %w", w.Day, err)
+	}
+	for _, r := range g.Running {
+		if g.Changed && r.Trigger != "regimeChange" && r.Trigger != "scripted" {
+			return fmt.Errorf("day %d: a %s entry runs after the regime changed", w.Day, r.Trigger)
+		}
+	}
+	return nil
 }
 
 // ODD §6.14 (draft): H and G lie in 0–1; everyone not calm has a
@@ -108,7 +134,7 @@ func control(w *world.World, rules int) error {
 			return fmt.Errorf("day %d: Head of IT %d knows %05b or holds a Flamekeeper seat", w.Day, h, w.Beliefs.Known[h])
 		}
 	}
-	if c.Fear < 0 || c.Fear > 1 || w.Beliefs.Lift < 0 {
+	if c.Fear < 0 || c.Fear > 1 || w.Beliefs.Lift < 0 && w.Regime == nil { // ODD §6.15: a lift may be negative
 		return fmt.Errorf("day %d: fear %v, lift %v", w.Day, c.Fear, w.Beliefs.Lift)
 	}
 	for _, d := range c.Doctors {

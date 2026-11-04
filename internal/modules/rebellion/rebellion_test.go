@@ -39,7 +39,7 @@ func newTiny(t *testing.T) *tiny {
 		Silo:  world.Silo{Intake: [3]float64{1, 1, 1}, AirQuality: 1, WaterSupply: 1}}
 	r, _ := rng.New(1, "rebellion")
 	cfg := &config.Scenario{}
-	cfg.Work.WorkerAge = 18
+	cfg.Work.ShadowAge, cfg.Work.WorkerAge = 14, 18
 	cfg.Rebellion.LossHardship, cfg.Rebellion.LossHalfLifeYears, cfg.Rebellion.ScapegoatHardship = 0.5, 2, 0.2
 	cfg.Rebellion.ActiveThreshold, cfg.Rebellion.ArrestConstant, cfg.Rebellion.ViolentThreshold = 0.1, 2.3, 0.3
 	cfg.Rebellion.StrikeShare, cfg.Rebellion.StairRepairDays = 0.1, 60
@@ -75,11 +75,12 @@ func (s *tiny) start() {
 	s.t.Helper()
 	n := len(s.w.People)
 	s.w.Network = &world.Network{Weak: make([][]world.Tie, n), Children: make([][]world.PersonID, n)}
-	base, risk := make([]float64, n), make([]float64, n)
+	base, risk, dosed := make([]float64, n), make([]float64, n), make([]world.Tick, n)
 	for i := range base {
-		base[i], risk[i] = 0.8, 0.5
+		base[i], risk[i], dosed[i] = 0.8, 0.5, world.None
 	}
-	s.w.Beliefs = &world.Beliefs{Base: base, Known: make([]world.Flags, n), Risk: risk, Cost: 0.15}
+	s.w.Beliefs = &world.Beliefs{Base: base, Known: make([]world.Flags, n), Lived: make([]world.Flags, n), Hidden: make([]world.Flags, n),
+		DosedUntil: dosed, Risk: risk, Cost: 0.15, Water: world.None}
 	s.w.Control = &world.Control{Head: world.None, Successor: world.None, Hold: make([]world.Hold, n)}
 	sp := s.w.Space
 	sp.Location, sp.OffWork = make([]int, n), make([]bool, n)
@@ -962,5 +963,45 @@ func TestOwnHardship(t *testing.T) {
 	}
 	if mean := sum / n; math.Abs(mean-0.5) > 5*math.Sqrt(1.0/12/n) {
 		t.Errorf("mean h_own %v, want 0.5", mean)
+	}
+}
+
+// ODD §6.15: the triggers the regime reads, each on its day (unrest on
+// its 3rd day, the rebellion on its 7th, the ending when detected), and
+// what an ending teaches: everyone aged 14 or more and not dosed learns
+// the history as lived; a child and a dosed adult don't.
+func TestTriggersAndTeaching(t *testing.T) {
+	s := newTiny(t)
+	adult, child, dosed := s.add(30, 1, 1), s.add(10, 1, 1), s.add(40, 1, 1)
+	s.start()
+	w, b := s.w, s.w.Rebellion
+	w.Beliefs.DosedUntil[dosed] = w.Day + 1000
+	fired := map[string]world.Tick{}
+	day := func(share float64, action bool) {
+		w.Day++
+		b.Fired = b.Fired[:0]
+		s.m.track(w, share, action)
+		for _, f := range b.Fired {
+			fired[f] = w.Day
+		}
+	}
+	first := w.Day + 1
+	for range 6 {
+		day(0.05, false)
+	}
+	day(0.05, true)
+	for range 30 {
+		day(0, false)
+	}
+	want := map[string]world.Tick{"unrestStart": first + 2, "rebellionStart": first + 6, "suppressed": first + 36}
+	for k, d := range want {
+		if fired[k] != d {
+			t.Errorf("%s fired on day %d, want %d", k, fired[k], d)
+		}
+	}
+	k := w.Beliefs.Known
+	if !k[adult].Has(world.FlagHistory) || !w.Beliefs.Lived[adult].Has(world.FlagHistory) || k[child] != 0 || k[dosed] != 0 {
+		t.Errorf("after the ending: adult %05b (lived %05b), child %05b, dosed %05b; want only the adult, lived",
+			k[adult], w.Beliefs.Lived[adult], k[child], k[dosed])
 	}
 }

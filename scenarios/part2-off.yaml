@@ -82,3 +82,16 @@ rebellion:                # M12, off
   splitPeople: 0
   collapseLevel: 1
   collapseDays: 1
+
+regime:                   # M13, off: every lever pulled on unrest
+  emergencyAir: 1
+  electionLift: 1
+  denial: false
+  doseConvicts: 365
+  playbook:
+    - on: unrestStart
+      hold: forever
+      set: { surveillance: 1, raidsPerYear: 365, scapegoatHardship: 1, taughtLegitimacy: 0, governance: election,
+             mayorTerm: 1y, rationWeights: { upTop: 3, mids: 1, downDeep: 0.1 } }
+      lift: -1
+      waterDosing: true

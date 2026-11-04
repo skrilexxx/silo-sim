@@ -239,6 +239,9 @@ func (m *Module) food(w *world.World, _ *rng.Stream) error {
 // §6.2 gains nothing from it).
 func (m *Module) rationsStep(w *world.World, _ *rng.Stream) error {
 	s := &w.Silo
+	if p := w.Policy; p != nil { // ODD §6.15: the ration weights are a lever
+		s.RationShares = [world.NumZones]float64{p.Rations.Weights.UpTop, p.Rations.Weights.Mids, p.Rations.Weights.DownDeep}
+	}
 	need := m.zoneNeed(w)
 	total, weighted := 0.0, 0.0
 	for z := range world.NumZones {

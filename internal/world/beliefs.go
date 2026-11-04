@@ -41,6 +41,9 @@ type Beliefs struct {
 	Water      Tick
 	DosedUntil []Tick
 	Warned     bool // the Flamekeepers were warned of the current water dosing
+	// WaterOrdered: the regime ordered a water dosing (ODD §6.15), which
+	// starts at the next beliefs step, as the scripted event would.
+	WaterOrdered bool
 
 	// The Flamekeepers (ODD §6.12): the members, in the order they took
 	// their seats, and whether each person is one.

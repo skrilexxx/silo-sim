@@ -38,6 +38,8 @@ func streamID(name string) (uint64, bool) {
 		return 14, true
 	case "rebellion":
 		return 15, true
+	case "regime":
+		return 16, true // draws nothing today; every module gets a stream
 	}
 	return 0, false
 }

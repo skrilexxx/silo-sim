@@ -191,7 +191,7 @@ Each tick runs the same fixed sequence: silo-wide systems first, then people. Th
 10.7. **Beliefs** *(part 2, draft)* — upbringing, forgetting, Vitamin D+, relics, the day's conversations that pass knowledge on, Flamekeepers (6.12)
 10.8. **Control** *(part 2, draft)* — Head of IT, detection, releases, trials and cleanings, raids, arrests (6.13)
 10.9. **Rebellion** *(part 2, draft)* — hardship and grievance, stages, fights, sabotage, stair repairs, unrest and rebellion, collapse (6.14)
-10.95. **Regime** *(part 2, draft)* — the playbook's entries lapse and start, policy events, emergency staffing (6.15)
+10.95. **Regime** *(part 2, draft)* — the playbook's entries lapse and start, policy events, the emergency declared or lifted (6.15)
 11. **Logging** — daily metrics written (8)
 
 ### Every 30 days
@@ -926,7 +926,7 @@ rebellion:                        # ODD §6.14; used only when `rebellion` is in
 
 *Answers Q3.* What the regime does during and after unrest and rebellion, and so which response keeps the silo alive. Following decision D7 (Adam, 2026-11-03), the regime does not learn. Each scenario gives it a fixed *playbook*: a list of policy changes, each started by a rebellion event and held for a set time. A response strategy (crackdown, reform, memory wipe, mixed, The Order) is a playbook written in a scenario file. The code holds no strategy logic and no numbers, so strategies are compared by running the same seeds with different files. The module needs the control and rebellion modules (§6.13, §6.14), and through them the beliefs, network and space modules.
 
-**Who decides** (decision D13). The playbook is the Head of IT's (§6.13). While the post is vacant, no new entry starts, and entries already running run on. An entry missed this way is not started later. The Mayor (§6.8) stays a figurehead. Silo 1's orders reach the silo through the Head in §6.16.
+**Who decides** (decision D13). The playbook is the Head of IT's (§6.13). While the post is vacant, no new entry starts, and entries already running run on. An entry missed this way is not started later. The `regimeChange` entries are the new regime's, so a vacancy doesn't stop them. The Mayor (§6.8) stays a figurehead. Silo 1's orders reach the silo through the Head in §6.16.
 
 **State** (owned by this module; §2 is unchanged): the running entries, each with the day it started and the day it lapses, if any; whether the regime has changed (§1.2).
 
@@ -941,8 +941,8 @@ rebellion:                        # ODD §6.14; used only when `rebellion` is in
 | taughtLegitimacy | L\_edu, the regime's propaganda in Education and on Freedom Day. It moves the base of people still being raised, so it acts over a generation, not at once (§6.12) | 6.12 |
 | rationWeights | the zones' ration weights w\_z | 6.7 |
 | scapegoatHardship | s\_DD: how hard the regime blames the Down Deep (The Order, below) | 6.14 |
-| denial | covert lottery denial: `false` makes the lottery fair. People are still flagged, but a flagged couple wins and conceives like anyone | 6.13 |
-| doseConvicts | targeted Vitamin D+: every convict is dosed for this many days from their trial, whatever their penalty; 0 = none | 6.12, 6.13 |
+| denial | covert lottery denial: `false` makes the lottery fair. People are still flagged, but a flagged couple wins and conceives like anyone. Its peacetime value is `regime.denial`, true: the lottery of §6.13 | 6.13 |
+| doseConvicts | targeted Vitamin D+: every convict is dosed for this many days from their trial, whatever their penalty; 0 = none. Its peacetime value is `regime.doseConvicts`, 0 | 6.12, 6.13 |
 | governance, mayorTerm | how the Mayor is chosen, and the term. A changed mode ends the sitting Mayor's term at the next governance step, so the new way of choosing is used at once | 6.8 |
 | emergencyAir | the air line for emergency staffing (below); 0 = off | 6.15 |
 
@@ -962,14 +962,14 @@ A lever's value must pass the same load checks as the setting it overrides. The 
 
 A lever, or a Pact row, takes the value of the most recently started running entry that sets it. With none, it takes its peacetime value. When an entry lapses, every lever and row it set falls back the same way. Entries started on the same day count in file order, the later one as more recent. Playbook entries come before the day's `policy` events. A `lift` and a dosing are done once they are applied, so a lapse doesn't undo them.
 
-**Rebellion state as trigger.** At the regime step, the module reads that day's results of the rebellion step (§6.14) and starts the entries for each trigger that fired, in the order of the list above. On a regime change, every running entry ends, and the old playbook is gone: from then on only its `regimeChange` entries apply, held for good whatever their `hold`. A scenario with none of these runs on at its peacetime settings and makes no response, which is what the new regime does by default.
+**Rebellion state as trigger.** At the regime step, the module reads that day's results of the rebellion step (§6.14) and starts the entries for each trigger that fired, in the order of the list above. On the first regime change, every running entry ends, and the old playbook is gone: from then on only its `regimeChange` entries apply, held for good whatever their `hold`. A later regime change starts nothing more. A scenario with none of these runs on at its peacetime settings and makes no response, which is what the new regime does by default.
 
 **What a rebellion teaches** (Adam, 2026-11-03). On the day a rebellion's ending is detected, whatever the ending, everyone alive aged 14 or more and not dosed learns the history as lived, as in `revealHistory` (§6.12). They lived through it. This happens at the rebellion step (§6.14), before the regime step, so a dosing the playbook starts that day can't stop it: the wipe works on what people have already learned. Learning lowers L by δ for most of the silo, and the next rebellion can follow soon after. In the T12.8 smoke run, it started 30 days later. That *echo* is a result of the response, not a defect to remove: a regime that wipes, tells its story (a `lift`) or reforms answers it, and one that does nothing doesn't. Comparing these is Q3.
 
-**Emergency staffing** (Adam, 2026-11-03). Health balances where air = 1 − r × medicalCoverage / d\_air = 0.8 (§6.2). Below that line, lower health lowers Mechanical's output (§6.5), and so power and air, and so health again. A rebellion that removes about a quarter of Mechanical's output can push the silo under the line, and without a response it slides to death (T12.7). Each day at the regime step, if today's air is below `emergencyAir`:
+**Emergency staffing** (Adam, 2026-11-03). Health balances where air = 1 − r × medicalCoverage / d\_air = 0.8 (§6.2). Below that line, lower health lowers Mechanical's output (§6.5), and so power and air, and so health again. A rebellion that removes about a quarter of Mechanical's output can push the silo under the line, and without a response it slides to death (T12.7). Each day at the regime step, the regime declares an *emergency* if today's air is below `emergencyAir`, and lifts it once air is back at or above the line. The emergency acts the next day, through the modules that own the people it moves (T13.1):
 
-1. every Mechanical worker or shadow detained in prison or the mines is released: their sentence ends, and they walk home as on a release day (§6.13). While air stays below the line, Mechanical workers in the queues for places are passed over;
-2. General workers are retrained into Mechanical by the §6.5 rule, but every day and up to 100% of Mechanical's target, not 80%. General still keeps at least 80% of its own target. Strikers still count as workers (§6.14), so strikes are not replaced.
+1. at the control step, every Mechanical worker or shadow detained in prison or the mines has their sentence end the day before, so the day's releases free them and they walk home (§6.13). Mechanical workers and shadows in the queues for places are passed over while the emergency lasts;
+2. at the life-stages step, General workers are retrained into Mechanical by the §6.5 rule, but every day and up to 100% of Mechanical's target, not 80%. General still keeps at least 80% of its own target. Strikers still count as workers (§6.14), so strikes are not replaced. The draws come from the work module's stream, as monthly retraining's do.
 
 At the canon setting `emergencyAir` is the balance line 0.8 itself. The value is derived, not guessed. Retrained workers start at skill 0.2, so the released workers carry most of the effect. Whether it is enough is a result. The mass death on a single day that ends a slide comes from the baseline's health rule: every adult's health follows the same path, and health 0 is certain death (§6.1). The baseline is frozen, so this stays and is reported as part of the result.
 
@@ -993,27 +993,29 @@ The Order is the canon regime. It is also meant to carry pattern C3 (Adam, 2026-
 **Step.** The regime step (§3 step 10.95) runs after the rebellion step, in this order:
 
 1. entries whose hold ran out lapse;
-2. the triggers that fired today start their entries, then the day's `policy` events;
-3. emergency staffing.
+2. the triggers that fired today start their entries, then the day's `policy` events; the scenario in force is rebuilt if anything started or lapsed;
+3. the emergency is declared or lifted.
 
-The levers set today are read by the steps that run after this one, so in practice from tomorrow. The step draws from its own random stream (only retraining draws).
+The levers set today are read by the steps that run after this one, so in practice from tomorrow. An entry held n days lapses at the regime step n days after its start, so every step reads it on exactly n days. The step draws no random numbers.
 
 **Outputs** (only when the module is on):
 
-- *events.jsonl:* `policy` (trigger or `scripted`, entry, levers and rows set, lift, dosing) when an entry starts; `policyEnd` when it lapses; `emergency` on each day emergency staffing acts (released, retrained).
-- *yearly.csv:* days in the year with emergency staffing; entries running at the snapshot.
+- *events.jsonl:* `policy` when an entry starts and `policyEnd` when it lapses, each with its trigger (`scripted` for a policy event), the playbook entry's index (none for a policy event; its levers and rows are in the scenario, in `run.json`) and its start day; `emergency` when an emergency is declared and `emergencyEnd` when it is lifted.
+- *yearly.csv:* `emergencyDays`, the days in the year with an emergency declared; `policies`, the entries running at the snapshot.
 - Q3's standing-rebellion check, the **share of measured days in a rebellion**, is computed by `silosim report` from `rebellions.jsonl` (`days`), alongside C1's count (§1.2).
 
-**Invariants** (§8): every running entry's trigger has fired, and every running entry since a regime change is a `regimeChange` entry or a `policy` event; every lever's value passes its setting's load check; the Pact in force passes the checks of §6.9.
+**Invariants** (§8): the scenario in force passes the load checks, so every lever is in its setting's range and the Pact in force passes the checks of §6.9; every running entry since a regime change is a `regimeChange` entry or a `policy` event.
 
-**Off and null.** With the module off, nothing of this exists. With it on, an empty playbook, `emergencyAir` 0, no `policy` events and λ\_elect 0, it changes nothing and draws nothing, so the files are byte-identical to the same scenario without it.
+**Off and null.** With the module off, nothing of this exists. With it on, an empty playbook, `emergencyAir` 0, no `policy` events and λ\_elect 0, it changes nothing and draws nothing: `daily.csv`, `events.jsonl` and `rebellions.jsonl` are byte-identical to the same scenario without it, and `yearly.csv` differs only by its two columns (T13.1).
 
-**Parameters:** the emergency air line and the election lift λ\_elect. In the scenario file they are the `regime:` section; the playbook's values are each strategy's own:
+**Parameters:** the emergency air line and the election lift λ\_elect, and two peacetime switches with no other home, `denial` and `doseConvicts`, which state the behaviour of §6.13 (denial on, nobody dosed) and are no new assumptions. In the scenario file they are the `regime:` section; the playbook's values are each strategy's own:
 
 ```yaml
 regime:                           # ODD §6.15; used only when `regime` is in modules
   emergencyAir: 0                 # air line for emergency staffing; 0 = off. Canon: 0.8, the health balance line (§6.2, T12.7)
   electionLift: 0.05              # λ_elect: lift of L from each Mayor chosen by election; guess (proposed)
+  denial: true                    # peacetime covert lottery denial (§6.13); false = a fair lottery
+  doseConvicts: 0                 # peacetime targeted Vitamin D+ for convicts, days from the trial; 0 = none
   playbook:                       # empty = no response; strategies fill it (T13.2)
     - on: unrestStart             # unrestStart | rebellionStart | suppressed | split | regimeChange
       hold: quiet                 # quiet | forever | days ≥ 1
@@ -1025,7 +1027,7 @@ regime:                           # ODD §6.15; used only when `regime` is in mo
       waterDosing: true
 ```
 
-The entry shown is an example of the shape, not a default: `baseline.yaml` has an empty playbook. Checked at load: `emergencyAir` and λ\_elect are in [0, 1]; each `on` is one of the five triggers; `hold` is `quiet` (only on `unrestStart` and `rebellionStart`), `forever` or an integer ≥ 1; `lift` is in [−1, 1]; every lever passes its setting's checks; the scenario's Pact with any one entry's rows applied passes the checks of §6.9. A combination of running entries that breaks those checks stops the run with an error on the day the later entry would start. A `policy` event takes no `on` and no `quiet`.
+The entry shown is an example of the shape, not a default: `baseline.yaml` has an empty playbook. Checked at load: `emergencyAir` and λ\_elect are in [0, 1]; `doseConvicts` is an integer ≥ 0; each `on` is one of the five triggers; `hold` is `quiet` (only on `unrestStart` and `rebellionStart`), `forever` or an integer ≥ 1; `lift` is in [−1, 1]; every lever passes its setting's checks; the scenario's Pact with any one entry's rows applied passes the checks of §6.9. A combination of running entries that breaks those checks stops the run with an error on the day the later entry would start. A `policy` event takes no `on` and no `quiet`.
 
 ## 7. Parameters
 

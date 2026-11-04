@@ -54,13 +54,15 @@ func (m *Module) lottery(w *world.World, r *rng.Stream) error {
 	// Partial Fisher–Yates: the pool is drawn in a uniform random order,
 	// without replacement, until n winners have permits. A flagged couple
 	// drawn is denied in secret and doesn't use one up (ODD §6.13), so
-	// the draw goes on; with nobody flagged it stops after n draws.
+	// the draw goes on; with nobody flagged it stops after n draws. With
+	// the regime's denial lever off the lottery is fair (ODD §6.15).
+	deny := w.Policy == nil || w.Policy.Regime.Denial
 	granted := 0
 	for i := 0; granted < n && i < len(m.pool); i++ {
 		j := r.IntRange(i, len(m.pool)-1)
 		m.pool[i], m.pool[j] = m.pool[j], m.pool[i]
 		p := &w.People[m.pool[i]]
-		if c := w.Control; c.Flags(m.pool[i], p.Partner) { // the implant stays in
+		if c := w.Control; deny && c.Flags(m.pool[i], p.Partner) { // the implant stays in
 			c.Deny(m.pool[i], w.Day+world.Tick(m.cfg.Lottery.WindowDays))
 			continue
 		}

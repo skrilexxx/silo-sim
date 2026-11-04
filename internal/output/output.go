@@ -69,6 +69,7 @@ type Writer struct {
 	fights                   world.FightTally      // rebellion, at the previous yearly row
 	sabotage                 [world.NumTargets]int // rebellion, at the previous yearly row
 	repairs                  int
+	emergencyDays            int // regime, at the previous yearly row
 }
 
 // ODD §8: the age pyramid uses 5-year bands, the last open-ended.
@@ -177,6 +178,9 @@ func (o *Writer) Init(w *world.World, cfg *config.Scenario, _ *rng.Stream) error
 	}
 	if w.Rebellion != nil {
 		h = append(h, ",meanH,meanHUpTop,meanHMids,meanHDownDeep,meanG,meanGUpTop,meanGMids,meanGDownDeep,unrestSpells,rebellions,rebelsKilled,rebelsArrested,officersKilled,officersWounded,sabotageGenerator,sabotagePump,sabotageStairs,stairRepairs"...)
+	}
+	if w.Regime != nil {
+		h = append(h, ",emergencyDays,policies"...)
 	}
 	h = append(h, '\n')
 	if _, err := o.yearly.Write(h); err != nil {
@@ -447,6 +451,13 @@ func (o *Writer) logYearly(w *world.World, _ *rng.Stream) error {
 	}
 	if w.Rebellion != nil {
 		b = o.appendRebellion(w, b)
+	}
+	if g := w.Regime; g != nil { // ODD §6.15, Outputs: emergency days over the year; entries running now
+		for _, n := range []int{g.EmergencyDays - o.emergencyDays, len(g.Running)} {
+			b = append(b, ',')
+			b = strconv.AppendInt(b, int64(n), 10)
+		}
+		o.emergencyDays = g.EmergencyDays
 	}
 	o.row = append(b, '\n')
 	_, err := o.yearly.Write(o.row)

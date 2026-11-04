@@ -88,6 +88,8 @@ func (s *Scenario) Validate() error {
 		{"rebellion.collapseLevel", s.Rebellion.CollapseLevel},
 		{"rebellion.unrestShare", s.Rebellion.UnrestShare},
 		{"rebellion.rebellionShare", s.Rebellion.RebellionShare},
+		{"regime.emergencyAir", s.Regime.EmergencyAir},
+		{"regime.electionLift", s.Regime.ElectionLift},
 	}
 	for _, u := range unit {
 		if u.v < 0 || u.v > 1 {
@@ -281,8 +283,52 @@ func (s *Scenario) Validate() error {
 		}
 	}
 
+	// ODD §6.15: each entry is checked against the scenario it would put in
+	// force, so only once the scenario itself passes.
+	if len(errs) == 0 {
+		errs = append(errs, s.validateRegime()...)
+	}
 	return errors.Join(errs...)
 }
+
+// validateRegime checks the playbook and the policy events (ODD §6.15):
+// trigger, hold and lift, and the scenario in force with the entry alone
+// running, so every lever passes its setting's checks and the Pact the
+// checks of §6.9.
+func (s *Scenario) validateRegime() []error {
+	var errs []error
+	check := func(key string, e Entry, event bool) {
+		days, err := ParseHold(e.Hold)
+		switch {
+		case err != nil:
+			errs = append(errs, fmt.Errorf("%s.%w", key, err))
+		case days == HoldQuiet && (event || e.On != "unrestStart" && e.On != "rebellionStart"):
+			errs = append(errs, fmt.Errorf("%s.hold = quiet, allowed only on unrestStart and rebellionStart", key))
+		}
+		if !event && !slices.Contains(Triggers, e.On) {
+			errs = append(errs, fmt.Errorf("%s.on = %q, must be one of %s", key, e.On, strings.Join(Triggers, ", ")))
+		}
+		if e.Lift < -1 || e.Lift > 1 {
+			errs = append(errs, fmt.Errorf("%s.lift = %v, must be between -1 and 1", key, e.Lift))
+		}
+		if err := s.InForce([]Entry{e}).Validate(); err != nil {
+			errs = append(errs, fmt.Errorf("%s puts in force a scenario that fails: %w", key, err))
+		}
+	}
+	for i, e := range s.Regime.Playbook {
+		check(fmt.Sprintf("regime.playbook[%d]", i), e, false)
+	}
+	for i, ev := range s.Events {
+		if ev.Type == "policy" {
+			check(fmt.Sprintf("events[%d]", i), ev.Entry(), true)
+		}
+	}
+	return errs
+}
+
+// CheckPact checks the Pact against ODD §6.9, as at load; the regime
+// module uses it on the Pact several running entries put in force.
+func (s *Scenario) CheckPact() error { return errors.Join(s.validatePact()...) }
 
 // negatives walks every number in the scenario and reports those below 0.
 func negatives(v reflect.Value, path string) []error {
@@ -291,6 +337,9 @@ func negatives(v reflect.Value, path string) []error {
 	case reflect.Struct:
 		for i := range v.NumField() {
 			name, _, _ := strings.Cut(v.Type().Field(i).Tag.Get("yaml"), ",")
+			if name == "lift" { // ODD §6.15: a lift may be a legitimacy cost; checked in validateRegime
+				continue
+			}
 			errs = append(errs, negatives(v.Field(i), joinPath(path, name))...)
 		}
 	case reflect.Slice:

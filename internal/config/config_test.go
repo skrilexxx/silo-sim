@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -288,5 +289,89 @@ func TestControlAndPact(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := Load(write(t, dir, "s.yaml", cfgOff)); err != nil {
 		t.Errorf("inactive rule sharing an offence: %v", err)
+	}
+}
+
+// ODD §6.15: the playbook and policy events. A hold is quiet, forever or
+// days (a YAML number decodes as days); each entry is checked against the
+// scenario it would put in force, so a lever out of its setting's range,
+// or rows that break the Pact, fail at load with the entry's key.
+func TestRegimeEntries(t *testing.T) {
+	base := readBaseline(t)
+	playbook := func(entries string) string {
+		return edit(t, base, "  playbook: []", "  playbook:\n"+entries)
+	}
+	s, err := Load(write(t, t.TempDir(), "s.yaml", playbook(
+		"    - { on: unrestStart, hold: quiet, set: { scapegoatHardship: 0.5, rationWeights: { upTop: 1, mids: 1, downDeep: 2 } } }\n"+
+			"    - { on: suppressed, hold: 30, lift: -0.2, waterDosing: true }\n")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if days, _ := ParseHold(s.Regime.Playbook[1].Hold); days != 30 {
+		t.Errorf("hold: 30 read as %d days", days)
+	}
+	if *s.Regime.Playbook[0].Set.ScapegoatHardship != 0.5 || s.Regime.Playbook[0].Set.Surveillance != nil {
+		t.Error("levers set and unset read wrong")
+	}
+
+	for _, c := range []struct{ entries, want string }{
+		{"    - { on: lunch, hold: 3 }\n", "regime.playbook[0].on"},
+		{"    - { on: suppressed, hold: quiet }\n", "regime.playbook[0].hold = quiet"},
+		{"    - { on: unrestStart, hold: 0 }\n", "regime.playbook[0].hold"},
+		{"    - { on: unrestStart, hold: 3, lift: 1.5 }\n", "regime.playbook[0].lift"},
+		{"    - { on: unrestStart, hold: 3, set: { surveillance: 2 } }\n", "control.surveillance"},
+		{"    - { on: unrestStart, hold: 3, set: { governance: vote } }\n", "governance.mode"},
+		{"    - { on: unrestStart, hold: 3, set: { rationWeights: { downDeep: 2 } } }\n", "missing key regime.playbook[0].set.rationWeights.upTop"},
+		{"    - { on: unrestStart, hold: 3, pact: [ { id: twice, active: true, offences: [organise], detection: 1, first: {}, enforcer: judicial, visibility: 1 } ] }\n",
+			`"organise" is also listed by active rule`},
+		{"    - { on: unrestStart }\n", "missing key regime.playbook[0].hold"},
+	} {
+		if got := loadErr(t, playbook(c.entries)); !strings.Contains(got, c.want) {
+			t.Errorf("%q: error %q, want it to mention %q", c.entries, got, c.want)
+		}
+	}
+
+	event := func(e string) string { return base + "events:\n  - " + e + "\n" }
+	if got := loadErr(t, event("{ day: 20000, type: policy, hold: quiet }")); !strings.Contains(got, "events[0].hold = quiet") {
+		t.Errorf("a quiet policy event: %q", got)
+	}
+	if got := loadErr(t, event("{ day: 20000, type: policy, hold: forever, set: { minesPlaces: 0 } }")); got != "" {
+		t.Errorf("a valid policy event failed: %s", got)
+	}
+}
+
+// ODD §6.15: the scenario in force keeps every rule at a fixed index (the
+// scenario's rows, then new ids), a rule only an entry adds is inactive
+// until the entry runs, and the later of two entries wins a lever.
+func TestInForce(t *testing.T) {
+	s, err := Load(baselinePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	strict := Rule{ID: "strict", Active: true, Offences: []string{"organise"}, Enforcer: "judicial"}
+	off := s.Pact[slices.IndexFunc(s.Pact, func(r Rule) bool { return r.ID == "noOrganising" })]
+	off.Active = false
+	low, high := 0.1, 0.3
+	a := Entry{On: "unrestStart", Hold: "quiet", Set: Levers{Surveillance: &low}, Pact: []Rule{off, strict}}
+	b := Entry{On: "rebellionStart", Hold: "quiet", Set: Levers{Surveillance: &high}}
+	s.Regime.Playbook = []Entry{a, b}
+
+	peace := s.InForce(nil)
+	n := len(s.Pact)
+	if len(peace.Pact) != n+1 || peace.Pact[n].ID != "strict" || peace.Pact[n].Active {
+		t.Fatalf("peacetime Pact %+v: want the scenario's rows, then strict, inactive", peace.Pact[n:])
+	}
+	if peace.Control.Surveillance != s.Control.Surveillance || peace.Regime.Playbook != nil {
+		t.Error("peacetime changed a lever or kept the playbook")
+	}
+	p := s.InForce([]Entry{a, b})
+	if p.Control.Surveillance != high || !p.Pact[n].Active || len(p.Pact) != n+1 {
+		t.Errorf("σ %v, strict active %v: want the later entry's σ and strict in force at its index", p.Control.Surveillance, p.Pact[n].Active)
+	}
+	if err := p.CheckPact(); err != nil {
+		t.Error(err)
+	}
+	if s.Pact[0].Active != true || len(s.Pact) != n {
+		t.Error("InForce changed the scenario")
 	}
 }

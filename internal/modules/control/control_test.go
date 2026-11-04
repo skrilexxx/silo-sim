@@ -800,3 +800,41 @@ func TestPlaces(t *testing.T) {
 		t.Errorf("seized while waiting: hold %d, waiting %v, queue %v; want custody, out of the queue", c.Hold[b], s.m.waiting[b], s.m.queue[0])
 	}
 }
+
+// ODD §6.15: control reads the levers of the scenario in force when it
+// changes. Convicts are dosed for doseConvicts days from the trial; in an
+// emergency a detained Mechanical worker is released, others are not;
+// surveillance 0 in force sees nothing.
+func TestRegimeLevers(t *testing.T) {
+	s := newTiny(t)
+	s.w.Depts = append(s.w.Depts, world.Department{Name: "mechanical"})
+	s.w.Space.DeptFloors = append(s.w.Space.DeptFloors, nil)
+	mech, gen := s.on(3), s.on(3)
+	s.w.People[mech].Department = len(s.w.Depts) - 1
+	s.start()
+	c := s.w.Control
+	p := *s.cfg
+	p.Regime.DoseConvicts = 30
+	s.w.Policy, s.w.Regime = &p, &world.Regime{}
+	s.offend(mech, world.TradeRelic)
+	s.offend(gen, world.TradeRelic)
+	s.days(2)
+	tried := s.w.Day
+	if c.Hold[mech] != world.Prison || c.Hold[gen] != world.Prison || s.w.Beliefs.DosedUntil[gen] != tried+29 {
+		t.Fatalf("after the trials: holds %d %d, dosed until %d (want %d)", c.Hold[mech], c.Hold[gen], s.w.Beliefs.DosedUntil[gen], tried+29)
+	}
+	s.w.Regime.Emergency = true
+	s.step()
+	if c.Held(mech) || !c.Held(gen) {
+		t.Errorf("in an emergency: Mechanical held %v, General held %v; want only General held", c.Held(mech), c.Held(gen))
+	}
+	q := p
+	q.Control.Surveillance = 0
+	s.w.Policy, s.w.Regime.Emergency = &q, false
+	seen := c.Tally.Seen
+	s.offend(mech, world.TradeRelic)
+	s.step()
+	if c.Tally.Seen != seen {
+		t.Error("surveillance 0 in force, but an act was seen")
+	}
+}

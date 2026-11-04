@@ -266,7 +266,14 @@ rebellion:                        # ODD §6.14 (part 2, draft); used only when `
   collapseLevel: 0.2              # collapse: air or water below this level ... (§1.2, decision D2)
   collapseDays: 30                # ... for this many days in a row
 
-governance:                       # ODD §6.8
+regime:                           # ODD §6.15 (part 2, draft); used only when `regime` is in modules
+  emergencyAir: 0                 # air line for emergency staffing; 0 = off. Canon: 0.8, the health balance line (§6.2, T12.7)
+  electionLift: 0.05              # λ_elect: lift of L from each Mayor chosen by election (§6.8); guess (proposed in T13.0)
+  denial: true                    # peacetime covert lottery denial of flagged couples (§6.13); a lever, false = a fair lottery
+  doseConvicts: 0                 # peacetime targeted Vitamin D+ for convicts, days from the trial (§6.12); 0 = none
+  playbook: []                    # entries started by rebellion triggers; empty = no response. Strategies fill it (T13.2)
+
+governance:                      # ODD §6.8
   mode: appointment               # or: election
   term: 5y                        # or: life
   ownZoneVote: 0.8

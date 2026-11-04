@@ -2,6 +2,8 @@
 // behaviour: modules change it, the engine and outputs read it.
 package world
 
+import "github.com/skrilexxx/silo-sim/internal/config"
+
 // Tick is one simulated day.
 type Tick int32
 
@@ -197,6 +199,15 @@ type World struct {
 	Beliefs   *Beliefs
 	Control   *Control
 	Rebellion *Rebellion
+	Regime    *Regime
+
+	// Policy is the scenario in force (ODD §6.15): the scenario with the
+	// running playbook entries' levers and Pact rows applied. The regime
+	// module builds a new one whenever an entry starts or lapses and never
+	// changes one it has published, so a module can tell a change by the
+	// pointer. Nil when the regime module is off: modules then keep the
+	// settings they read at Init.
+	Policy *config.Scenario
 }
 
 // Counts are running totals since day 0 that no state variable holds.

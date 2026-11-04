@@ -17,6 +17,7 @@ type Module struct {
 	lossDays  float64    // T_loss in days
 	scapegoat float64    // s_DD
 	adultAge  world.Tick // worker age in days (ODD §6.5)
+	shadowAge world.Tick // shadow age in days: who learns from a rebellion's end (ODD §6.15)
 	buf       []world.Tie
 
 	threshold, k float64 // T and k (Epstein 2002)
@@ -59,6 +60,7 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 	m.loss, m.scapegoat = cfg.Rebellion.LossHardship, cfg.Rebellion.ScapegoatHardship
 	m.lossDays = cfg.Rebellion.LossHalfLifeYears * engine.DaysPerYear
 	m.adultAge = world.Tick(cfg.Work.WorkerAge * engine.DaysPerYear)
+	m.shadowAge = world.Tick(cfg.Work.ShadowAge * engine.DaysPerYear)
 	m.threshold, m.k, m.violent = cfg.Rebellion.ActiveThreshold, cfg.Rebellion.ArrestConstant, cfg.Rebellion.ViolentThreshold
 	m.def, m.strikeShare = cfg.Rebellion, cfg.Rebellion.StrikeShare
 	m.eJ, m.eR, m.kill, m.injury = cfg.Rebellion.OfficerEffect, cfg.Rebellion.RebelEffect, cfg.Rebellion.KilledShare, cfg.Health.InjuryCost
@@ -93,6 +95,10 @@ func (m *Module) Steps() []engine.Step {
 
 // ODD §6.14 / §3 step 10.9.
 func (m *Module) step(w *world.World, r *rng.Stream) error {
+	w.Rebellion.Fired = w.Rebellion.Fired[:0]
+	if p := w.Policy; p != nil { // ODD §6.15: s_DD is a lever
+		m.scapegoat = p.Rebellion.ScapegoatHardship
+	}
 	m.newcomers(w, r)
 	m.losses(w)
 	m.hardship(w)
@@ -420,13 +426,31 @@ func (m *Module) log(w *world.World, share float64) {
 }
 
 // end ends the running rebellion with its end day and ending: the
-// rebellionEnd event and its record (ODD §1.2, §6.14 Outputs).
+// rebellionEnd event and its record (ODD §1.2, §6.14 Outputs). Every
+// ending but collapse is a trigger for the regime (ODD §6.15).
 func (m *Module) end(w *world.World, end world.Tick, ending string) {
 	b := w.Rebellion
 	w.Events = append(w.Events, world.RebellionEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "rebellionEnd"},
 		Start: b.RebellionStart, End: end, Ending: ending})
 	b.Ended = append(b.Ended, b.Record(w, end, ending))
 	b.RebellionStart = world.None
+	m.teach(w)
+	if ending != "collapse" {
+		b.Fired = append(b.Fired, ending)
+	}
+}
+
+// ODD §6.15, What a rebellion teaches: on the day its ending is detected,
+// everyone alive aged 14 or more and not dosed learns the history as
+// lived; they lived through it. It runs before the regime step, so a
+// dosing the regime starts today comes after.
+func (m *Module) teach(w *world.World) {
+	b := w.Beliefs
+	for _, id := range w.Alive {
+		if w.Day-w.People[id].BirthDay >= m.shadowAge && !b.Dosed(w, id) {
+			b.Learn(id, world.FlagHistory, true)
+		}
+	}
 }
 
 // ODD §1.2, Split: a segment broken since the running rebellion's start
@@ -503,6 +527,7 @@ func (m *Module) track(w *world.World, share float64, action bool) {
 	case b.Rising >= d.RebellionDays && b.LastAction != world.None && b.LastAction > w.Day-world.Tick(d.RebellionDays):
 		b.RebellionStart, b.UnrestStart = w.Day-world.Tick(d.RebellionDays)+1, world.None
 		b.Rebellions++
+		b.Fired = append(b.Fired, "rebellionStart")
 		m.trigger(b)
 		if b.Collapsed == w.Day { // it ran when the silo died
 			m.end(w, w.Day, "collapse")
@@ -516,6 +541,7 @@ func (m *Module) track(w *world.World, share float64, action bool) {
 		}
 	case b.Busy >= d.UnrestDays:
 		b.UnrestStart = w.Day - world.Tick(d.UnrestDays) + 1
+		b.Fired = append(b.Fired, "unrestStart")
 	}
 }
 

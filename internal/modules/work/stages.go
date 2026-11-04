@@ -54,6 +54,11 @@ func (m *Module) lifeStages(w *world.World, r *rng.Stream) error {
 			}
 		}
 	}
+	// ODD §6.15, Emergency staffing: on the day after air fell below the
+	// line, Mechanical is filled from General up to its whole target.
+	if g := w.Regime; g != nil && g.Emergency {
+		m.retrainTo(w, r, m.mechanical, m.target[m.mechanical])
+	}
 	m.remaster(w, r)
 	return nil
 }

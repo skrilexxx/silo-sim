@@ -116,15 +116,30 @@ func (m *Module) EventTypes() []engine.EventType {
 			return nil
 		}},
 		{Name: "waterDosing", Phase: engine.PhaseBeliefs, Fire: func(w *world.World, _ *rng.Stream, _ config.Event) error {
-			w.Beliefs.Water = max(w.Beliefs.Water, w.Day+world.Tick(m.waterDays)-1)
-			w.Beliefs.Warned = m.warned(w)
+			m.waterDosing(w)
 			return nil
 		}},
 	}
 }
 
-// ODD §6.12 / §3 step 10.7.
+// waterDosing puts Vitamin D+ in the water for D_water days from today
+// (ODD §6.12); the Flamekeepers' warning is judged today.
+func (m *Module) waterDosing(w *world.World) {
+	w.Beliefs.Water = max(w.Beliefs.Water, w.Day+world.Tick(m.waterDays)-1)
+	w.Beliefs.Warned = m.warned(w)
+}
+
+// ODD §6.12 / §3 step 10.7. With the regime module on (ODD §6.15), the
+// taught legitimacy L_edu is a lever, and a water dosing it ordered
+// yesterday starts today, as the scripted event would.
 func (m *Module) step(w *world.World, r *rng.Stream) error {
+	if p := w.Policy; p != nil {
+		m.edu = p.Beliefs.TaughtLegitimacy
+	}
+	if w.Beliefs.WaterOrdered {
+		w.Beliefs.WaterOrdered = false
+		m.waterDosing(w)
+	}
 	m.newcomers(w, r)
 	if w.Day%engine.DaysPerMonth == 0 {
 		m.upbringing(w)
