@@ -187,6 +187,7 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 // just before the control step.
 func (m *Module) EventTypes() []engine.EventType {
 	return []engine.EventType{{Name: "cleaningFailure", Phase: engine.PhaseControl, Fire: func(w *world.World, r *rng.Stream, _ config.Event) error {
+		w.Control.Tally.Escapes++ // ODD §6.16: it stands in for a cleaner who walked away
 		m.shock(w, r, 1)
 		return nil
 	}}}
@@ -204,6 +205,7 @@ func (m *Module) cleanings(w *world.World, r *rng.Stream) {
 		failed := r.Float64() < m.fail
 		if failed {
 			c.Tally.Failed++
+			c.Tally.Escapes++
 			m.shock(w, r, v)
 		} else {
 			w.Beliefs.Lift += m.lift * v

@@ -200,6 +200,7 @@ type World struct {
 	Control   *Control
 	Rebellion *Rebellion
 	Regime    *Regime
+	Silo1     *Silo1
 
 	// Policy is the scenario in force (ODD §6.15): the scenario with the
 	// running playbook entries' levers and Pact rows applied. The regime

@@ -37,3 +37,18 @@ type PolicyEvent struct {
 	Entry   *int   `json:"entry,omitempty"` // the playbook entry's index; absent for a policy event
 	Start   Tick   `json:"start"`
 }
+
+// Silo1 is the Silo 1 module's state (ODD §6.16, draft, lean); nil when
+// the module is off.
+type Silo1 struct {
+	Escapes   []Tick // the day of each escape seen
+	Order     bool   // an escape today: the regime step starts Silo 1's order
+	Safeguard Tick   // the day the Safeguard goes off, or None
+}
+
+// SafeguardEvent: type "safeguard", the day Silo 1 sets it off and the
+// day it goes off (ODD §6.16).
+type SafeguardEvent struct {
+	EventHeader
+	GoesOff Tick `json:"goesOff"`
+}

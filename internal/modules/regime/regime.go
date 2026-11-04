@@ -61,6 +61,12 @@ func (m *Module) step(w *world.World, _ *rng.Stream) error {
 	for _, t := range w.Rebellion.Fired {
 		changed = m.trigger(w, t) || changed
 	}
+	// ODD §6.16: Silo 1's order after an escape, through the Head of IT,
+	// whatever the playbook and whether or not the regime has changed.
+	if s := w.Silo1; s != nil && s.Order && w.Control.Head != world.None {
+		m.start(w, &m.cfg.Silo1.Orders, "silo1", world.None)
+		changed = true
+	}
 	for i := range m.pending {
 		m.start(w, &m.pending[i], "scripted", world.None)
 		changed = true

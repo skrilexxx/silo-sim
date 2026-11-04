@@ -193,7 +193,7 @@ Questions, definitions and the plumbing every later module needs. No model behav
 *Answers Q2 and Q4.* Silo 1 is an outside controller. Its trigger is **escape**, not unrest as such (S3). The lean plan (Adam, 2026-11-04) keeps only what Q4 and C5 need: settings `off` and `full`, escapes as the only contact, Silo 1's orders through the Head of IT, and the Safeguard. Radio, digging, capping, drones and the deal are left out.
 
 - [x] **T14.0 Spec: Silo 1 (ODD §6.16).** (2026-11-04; Adam's answers: every failed cleaning is an escape; 2 within 5 years set off the Safeguard 30 days later; each escape orders σ 2× and a water dosing for a year) Decision D8: what counts as an escape, Silo 1's threat and its orders, the Safeguard's trigger and delay.
-- [ ] **T14.1 Silo 1 module.** Threat from escapes, orders through the Head of IT, the Safeguard as a collapse with cause `safeguard` (D2).
+- [x] **T14.1 Silo 1 module.** (2026-11-04; escapes counted by control, orders started by the regime, the Safeguard's collapse recorded by rebellion; `TestSafeguard`: two scripted failures a year apart end the run 30 days after the second) Threat from escapes, orders through the Head of IT, the Safeguard as a collapse with cause `safeguard` (D2).
   - *Milestone done when:* `off` vs `full` runs in E4 (T15.5); C5 measured there.
 
 ## Milestone 15: Experiments and thesis (lean)

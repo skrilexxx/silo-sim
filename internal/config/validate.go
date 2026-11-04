@@ -149,6 +149,9 @@ func (s *Scenario) Validate() error {
 		{"rebellion.splitDays", float64(s.Rebellion.SplitDays)},
 		{"rebellion.collapseDays", float64(s.Rebellion.CollapseDays)},
 		{"rebellion.stairRepairDays", s.Rebellion.StairRepairDays},
+		{"silo1.safeguardEscapes", float64(s.Silo1.SafeguardEscapes)},
+		{"silo1.windowYears", s.Silo1.WindowYears},
+		{"silo1.safeguardDelayDays", float64(s.Silo1.SafeguardDelayDays)},
 	}
 	for i, d := range s.Work.Departments {
 		positive = append(positive, struct {
@@ -285,7 +288,7 @@ func (s *Scenario) Validate() error {
 
 	// ODD §6.15: each entry is checked against the scenario it would put in
 	// force, so only once the scenario itself passes.
-	if len(errs) == 0 {
+	if len(errs) == 0 && !s.inForce {
 		errs = append(errs, s.validateRegime()...)
 	}
 	return errors.Join(errs...)
@@ -323,6 +326,13 @@ func (s *Scenario) validateRegime() []error {
 			check(fmt.Sprintf("events[%d]", i), ev.Entry(), true)
 		}
 	}
+	// ODD §6.16: Silo 1's order is an entry started by an escape.
+	o := s.Silo1.Orders
+	if o.On != "escape" {
+		errs = append(errs, fmt.Errorf("silo1.orders.on = %q, must be escape", o.On))
+	}
+	o.On = "suppressed" // any trigger that takes a hold of days or forever, for the shared checks
+	check("silo1.orders", o, false)
 	return errs
 }
 

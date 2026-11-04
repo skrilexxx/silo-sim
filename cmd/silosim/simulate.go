@@ -20,6 +20,7 @@ import (
 	"github.com/skrilexxx/silo-sim/internal/modules/rebellion"
 	"github.com/skrilexxx/silo-sim/internal/modules/regime"
 	"github.com/skrilexxx/silo-sim/internal/modules/resources"
+	"github.com/skrilexxx/silo-sim/internal/modules/silo1"
 	"github.com/skrilexxx/silo-sim/internal/modules/space"
 	"github.com/skrilexxx/silo-sim/internal/modules/work"
 	"github.com/skrilexxx/silo-sim/internal/output"
@@ -126,6 +127,8 @@ func newModule(name string) (engine.Module, error) {
 		return rebellion.New(), nil
 	case "regime":
 		return regime.New(), nil
+	case "silo1":
+		return silo1.New(), nil
 	}
 	return nil, fmt.Errorf("module %q is not implemented yet", name)
 }

@@ -78,7 +78,7 @@ func regime(w *world.World) error {
 		return fmt.Errorf("day %d: the scenario in force fails: %w", w.Day, err)
 	}
 	for _, r := range g.Running {
-		if g.Changed && r.Trigger != "regimeChange" && r.Trigger != "scripted" {
+		if g.Changed && r.Trigger != "regimeChange" && r.Trigger != "scripted" && r.Trigger != "silo1" {
 			return fmt.Errorf("day %d: a %s entry runs after the regime changed", w.Day, r.Trigger)
 		}
 	}

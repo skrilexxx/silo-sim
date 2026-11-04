@@ -273,6 +273,16 @@ regime:                           # ODD §6.15 (part 2, draft); used only when `
   doseConvicts: 0                 # peacetime targeted Vitamin D+ for convicts, days from the trial (§6.12); 0 = none
   playbook: []                    # entries started by rebellion triggers; empty = no response. Strategies fill it (T13.2)
 
+silo1:                            # ODD §6.16 (part 2, draft, lean); used only when `silo1` is in modules (the setting full)
+  safeguardEscapes: 2             # escapes (failed cleanings) within the window that set off the Safeguard; guess (Adam, 2026-11-04)
+  windowYears: 5                  # the window; guess
+  safeguardDelayDays: 30          # from Silo 1's decision to the gas; guess
+  orders:                         # sent through the Head of IT after each escape: S3's more surveillance and doubled Vitamin D+
+    on: escape
+    hold: 365
+    set: { surveillance: 0.1 }    # 2× canon σ, the factor of §6.15
+    waterDosing: true
+
 governance:                      # ODD §6.8
   mode: appointment               # or: election
   term: 5y                        # or: life

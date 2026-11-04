@@ -44,7 +44,12 @@ type Scenario struct {
 	Pact        []Rule     `yaml:"pact"`
 	Rebellion   Rebellion  `yaml:"rebellion"`
 	Regime      Regime     `yaml:"regime"`
+	Silo1       Silo1      `yaml:"silo1"`
 	Events      []Event    `yaml:"events,omitempty"`
+
+	// inForce marks a scenario built by InForce: its entries were checked
+	// when the scenario loaded, so Validate doesn't check them again.
+	inForce bool
 }
 
 // Event is a scripted shock (ODD §5, Scripted events): on Day, the module
@@ -303,6 +308,15 @@ type Regime struct {
 	Playbook     []Entry `yaml:"playbook"`
 }
 
+// Silo1 is Silo 1, lean (ODD §6.16): the escapes within a window that
+// set off the Safeguard, its delay, and the order sent after each escape.
+type Silo1 struct {
+	SafeguardEscapes   int     `yaml:"safeguardEscapes"`
+	WindowYears        float64 `yaml:"windowYears"`
+	SafeguardDelayDays int     `yaml:"safeguardDelayDays"`
+	Orders             Entry   `yaml:"orders"`
+}
+
 // Entry is a playbook entry (ODD §6.15, Entries): on its trigger, it sets
 // levers and Pact rows while it runs, adds its lift once, and may start a
 // water dosing. A policy event carries the same parts with no trigger.
@@ -369,7 +383,7 @@ func ParseHold(h string) (int, error) {
 // events are left out: they are not in force, they change it.
 func (s *Scenario) InForce(running []Entry) *Scenario {
 	p := *s
-	p.Regime.Playbook, p.Events = nil, nil
+	p.Regime.Playbook, p.Events, p.inForce = nil, nil, true
 	p.Pact = slices.Clone(s.Pact)
 	add := func(rows []Rule) {
 		for _, r := range rows {
@@ -387,6 +401,7 @@ func (s *Scenario) InForce(running []Entry) *Scenario {
 			add(ev.Pact)
 		}
 	}
+	add(s.Silo1.Orders.Pact)
 	for _, e := range running {
 		p.apply(e)
 	}
@@ -576,6 +591,9 @@ func missingKeys(n *yaml.Node, t reflect.Type, path string) []error {
 	switch t.Kind() {
 	case reflect.Struct:
 		for i := range t.NumField() {
+			if !t.Field(i).IsExported() {
+				continue
+			}
 			name, opts, _ := strings.Cut(t.Field(i).Tag.Get("yaml"), ",")
 			key := joinPath(path, name)
 			child := lookup(n, name)

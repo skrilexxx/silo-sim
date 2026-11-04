@@ -22,6 +22,7 @@ const (
 	PhaseNetwork      Phase = 1050 // part 2: ties and conversations (ODD §6.11)
 	PhaseBeliefs      Phase = 1070 // part 2: legitimacy, knowledge and memory (ODD §6.12)
 	PhaseControl      Phase = 1080 // part 2: surveillance, Judicial and punishment (ODD §6.13)
+	PhaseSilo1        Phase = 1085 // part 2: Silo 1 (ODD §6.16)
 	PhaseRebellion    Phase = 1090 // part 2: grievance and rebellion (ODD §6.14)
 	PhaseRegime       Phase = 1095 // part 2: regime policy and response (ODD §6.15)
 	PhaseLogDaily     Phase = 1100
@@ -60,6 +61,7 @@ var schedule = []phaseInfo{
 	{PhaseNetwork, "network", daily, false},
 	{PhaseBeliefs, "beliefs", daily, false},
 	{PhaseControl, "control", daily, false},
+	{PhaseSilo1, "silo1", daily, false},
 	{PhaseRebellion, "rebellion", daily, false},
 	{PhaseRegime, "regime", daily, false},
 	{PhaseLogDaily, "logging", daily, false},

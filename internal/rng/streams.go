@@ -40,6 +40,8 @@ func streamID(name string) (uint64, bool) {
 		return 15, true
 	case "regime":
 		return 16, true // draws nothing today; every module gets a stream
+	case "silo1":
+		return 17, true // draws nothing today
 	}
 	return 0, false
 }

@@ -198,6 +198,9 @@ func (m *Module) collapse(w *world.World) {
 	}
 	cause := ""
 	switch {
+	case w.Silo1 != nil && w.Silo1.Safeguard == w.Day: // ODD §6.16: gas; everyone dies at the next deaths step
+		cause = "safeguard"
+		w.Control.Doomed = append(w.Control.Doomed, w.Alive...)
 	case b.AirLow >= d.CollapseDays:
 		cause = "air"
 	case b.WaterLow >= d.CollapseDays:

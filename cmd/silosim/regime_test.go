@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -191,5 +192,28 @@ func TestPactRewrite(t *testing.T) {
 	cost := run(false, -0.1)
 	if l0, l1 := floats(t, off, "lift")[5], floats(t, cost, "lift")[5]; l1 > l0-0.03 {
 		t.Errorf("lift at the snapshot: %.3f without the cost, %.3f with −0.1; want it clearly lower", l0, l1)
+	}
+}
+
+// T14.1, ODD §6.16: Silo 1 in a 1,000-person silo. Two scripted cleaning
+// failures a year apart are two escapes within 5 years: each brings Silo
+// 1's order through the Head of IT, and the Safeguard goes off 30 days
+// after the second, a collapse with cause safeguard that ends the run.
+func TestSafeguard(t *testing.T) {
+	cfg := regimeSilo(t, true, 10)
+	cfg.Modules = append(cfg.Modules, "silo1")
+	first, second := 5*365+100, 6*365+100
+	cfg.Events = []config.Event{{Day: first, Type: "cleaningFailure"}, {Day: second, Type: "cleaningFailure"}}
+	dir := mustSimulate(t, cfg)
+	ev := string(readFile(t, filepath.Join(dir, "events.jsonl")))
+	if n := strings.Count(ev, `"type":"policy","trigger":"silo1"`); n < 2 {
+		t.Errorf("%d Silo 1 orders, want one per escape", n)
+	}
+	want := fmt.Sprintf(`{"day":%d,"type":"collapse","cause":"safeguard"}`, second+30)
+	if !strings.Contains(ev, want) {
+		t.Errorf("events.jsonl has no %s", want)
+	}
+	if rj := string(readFile(t, filepath.Join(dir, "run.json"))); !strings.Contains(rj, `"collapseCause": "safeguard"`) {
+		t.Error("run.json lacks the safeguard cause")
 	}
 }

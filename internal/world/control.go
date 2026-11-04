@@ -49,7 +49,8 @@ type Tally struct {
 	Prisons       int
 	Mines         int
 	Cleanings     int
-	Failed        int // cleanings that failed
+	Failed        int // sentenced cleanings that failed
+	Escapes       int // failed cleanings, sentenced or scripted: Silo 1's escapes (ODD §6.16)
 	Denied        int // lottery wins denied
 	FlaggedBirths int // children born to a flagged mother or father
 	Taken         int // relics confiscated

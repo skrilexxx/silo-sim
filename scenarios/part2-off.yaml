@@ -95,3 +95,9 @@ regime:                   # M13, off: every lever pulled on unrest
              mayorTerm: 1y, rationWeights: { upTop: 3, mids: 1, downDeep: 0.1 } }
       lift: -1
       waterDosing: true
+
+silo1:                    # M14, off
+  safeguardEscapes: 1
+  windowYears: 100
+  safeguardDelayDays: 1
+  orders: { on: escape, hold: forever, set: { surveillance: 1 }, waterDosing: true }

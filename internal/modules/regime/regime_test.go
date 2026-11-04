@@ -189,3 +189,22 @@ func TestEmergency(t *testing.T) {
 		t.Errorf("emergency %v, days %d, events %v", g.Emergency, g.EmergencyDays, kinds)
 	}
 }
+
+// ODD §6.16: Silo 1's order after an escape starts its entry through the
+// Head of IT, also after a regime change; with the post vacant, nothing.
+func TestSilo1Order(t *testing.T) {
+	s := newTiny(t)
+	s.cfg.Silo1.Orders = config.Entry{On: "escape", Hold: "2", Set: config.Levers{Surveillance: f(0.3)}}
+	s.w.Silo1 = &world.Silo1{Order: true}
+	s.w.Regime.Changed = true
+	s.day()
+	if s.sigma() != 0.3 || s.w.Regime.Running[0].Trigger != "silo1" {
+		t.Errorf("σ %v, running %+v; want Silo 1's order in force", s.sigma(), s.w.Regime.Running)
+	}
+	s.w.Control.Head = world.None
+	s.day()
+	s.day()
+	if len(s.w.Regime.Running) != 0 {
+		t.Errorf("with no Head of IT, an order started: %+v", s.w.Regime.Running)
+	}
+}
