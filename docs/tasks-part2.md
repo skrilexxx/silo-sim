@@ -232,7 +232,7 @@ The story of one run: a deterministic chronicle of its facts, and a story Claude
 
 - [x] **T17.0 Spec: chronicle, narrator and the Story tab.** (2026-11-04, approved: `docs/narrator.md`) Decision D14. `docs/narrator.md`; no code.
 - [x] **T17.1 Chronicle.** (2026-11-04; the CLI and `/api/chronicle` byte-identical on four runs, the Story tab checked in Chrome) `internal/chronicle`, `silosim chronicle --run DIR`, `/api/chronicle`, the Story tab with the chronicle.
-- [ ] **T17.2 Narrator.** (2026-11-04: built, tested against a fake API server, the Story tab checked in Chrome; the first real story pending Adam's API key) The Anthropic Go SDK, `internal/narrate`, `silosim narrate --run DIR`, `story.md` in the Story tab.
+- [x] **T17.2 Narrator.** (2026-11-04: tested against a fake API server, and without credentials it fails before sending anything; the Story tab checked in Chrome. Never run against the real API: Adam chose not to create a key. The milestone's story check was done on a story written in a Claude Code session from the chronicle) The Anthropic Go SDK, `internal/narrate`, `silosim narrate --run DIR`, `story.md` in the Story tab.
   - *Milestone done when:* a canon run's chronicle and story read correctly from start to end, and every number in the story can be found in the chronicle.
 
 ## Optional, after M15

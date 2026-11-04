@@ -19,7 +19,7 @@ silosim chronicle --run DIR                    # the chronicle as Markdown, on s
 silosim narrate   --run DIR [--model ID]       # writes DIR/story.md; default model claude-opus-5-5
 ```
 
-`narrate` needs Claude API credentials: `ANTHROPIC_API_KEY`, or a profile from `ant auth login`, which the SDK finds by itself. Without them it stops with a message saying so, and writes nothing. A story costs about $0.10–0.20 (a chronicle of a few thousand tokens in, up to about 3,000 words out, at Opus 5.5's $4 / $20 per million tokens).
+`narrate` needs Claude API credentials: `ANTHROPIC_API_KEY`, or a profile from `ant auth login`, which the SDK finds by itself. Without them it stops with the SDK's message listing the sources it tried, before any request is sent, and writes nothing (tested). A story costs about $0.10–0.20 (a chronicle of a few thousand tokens in, up to about 3,000 words out, at Opus 5.5's $4 / $20 per million tokens).
 
 ## The chronicle
 
@@ -77,7 +77,7 @@ New endpoint: `GET /api/chronicle?run=PATH` returns the chronicle as text (the s
 - **T17.0** this spec, D14, the milestone in `docs/tasks-part2.md`.
 - **T17.1** `internal/chronicle`, `silosim chronicle`, `/api/chronicle` and the Story tab (chronicle only).
 - **T17.2** the SDK, `internal/narrate`, `silosim narrate`, `story.md` in the Story tab.
-- *Milestone done when:* a canon run's chronicle and story read correctly from start to end, and every number in the story can be found in the chronicle.
+- *Milestone done when:* a canon run's chronicle and story read correctly from start to end, and every number in the story can be found in the chronicle. (2026-11-04: checked on a story written from the chronicle in a Claude Code session, under the same system prompt, for `t12.8-canon-2/canon-1`; `narrate` itself has not called the real API, Adam's choice: no API key.)
 
 ## Left out
 

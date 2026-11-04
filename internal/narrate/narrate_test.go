@@ -140,3 +140,28 @@ func TestHaikuNoFallback(t *testing.T) {
 		t.Errorf("fallbacks sent for Haiku: %v", got["fallbacks"])
 	}
 }
+
+// With no credentials anywhere, Write fails before sending a request and
+// writes no story.md.
+func TestNoCredentials(t *testing.T) {
+	for _, k := range []string{"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_PROFILE", "ANTHROPIC_FEDERATION_RULE_ID", "ANTHROPIC_IDENTITY_TOKEN"} {
+		t.Setenv(k, "") // restored after the test
+		os.Unsetenv(k)
+	}
+	home := t.TempDir() // no profile file
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", home)
+	requests := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { requests++ }))
+	defer srv.Close()
+	dir := runDir(t)
+	if err := Write(context.Background(), dir, Model, day, option.WithBaseURL(srv.URL), option.WithMaxRetries(0)); err == nil {
+		t.Error("no error without credentials")
+	}
+	if requests != 0 {
+		t.Errorf("%d requests sent without credentials", requests)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "story.md")); err == nil {
+		t.Error("story.md written without credentials")
+	}
+}
