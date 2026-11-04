@@ -38,10 +38,10 @@ Each one is settled in the spec task named. Decided ones point to the spec; for 
 | D5 | Vitamin D+ in the water: can memories come back? | T10.0 | **Decided 2026-10-31:** dosing hides flags; after it stops, a hidden flag comes back with a chance per cue (a held relic, or a conversation with someone who knows it, the latter × the person's doubt 1 − L since T13.2); hidden flags never fade on their own (ODD §6.12) |
 | D6 | How rebels and Judicial fight | T12.0 | **Decided 2026-10-31:** per zone, no marching: violent rebels fight the zone's abstract patrol by Lanchester's square law; those put out are killed or arrested; rebels hold a zone they outnumber its patrol in (ODD §6.14) |
 | D7 | Regime behaviour | T13.0 | **Decided 2026-11-03:** a fixed playbook per scenario (an experimental factor), not a learning regime: policy changes on rebellion triggers, held for a set time, written in YAML; strategies are scenario files (ODD §6.15) |
-| D8 | Silo 1 as agents or as a rule set | T14.0 | [a rule set with three settings: `off`, `watch`, `full`; no second simulated population] |
+| D8 | Silo 1 as agents or as a rule set | T14.0 | **Scope decided 2026-11-04:** a rule set with two settings, `off` and `full`; no second population, no radio, digging, capping, drones or deal (the lean plan below) |
 | D9 | Several silos at once | — | [no; only as optional work after M15] |
 | D10 | The Pact: prose or rules | T7.1 | **Decided 2026-10-30:** a rule table in the scenario file, no prose (ODD §6.9) |
-| D11 | Run length and seeds for part 2 | T7.1 | **Decided 2026-10-30:** 50 + 300 years; 100 seeds for calibration, 1,000 for the final experiments (ODD §1.2) |
+| D11 | Run length and seeds for part 2 | T7.1 | **Decided 2026-10-30:** 50 + 300 years; 100 seeds for calibration, 1,000 for the final experiments. **Revised 2026-11-04 (lean plan):** experiments 50 + 150 years, 30 seeds per scenario with common random numbers (ODD §1.2) |
 | D12 | Viewer technology | T16.0 | [`silosim serve`: Go's standard HTTP server with the page embedded in the binary, plus one vendored JavaScript chart library; read-only] |
 | D13 | The Head of IT as a role | T11.0 (role, succession), T13.0 (decisions), T14.0 (Silo 1's link) | **Role and succession decided 2026-10-31:** one IT worker, for life (only death ends it); knows all five flags, never dosed, never tells, can't be arrested; their shadow succeeds them, else the most skilled IT worker (ODD §6.13). **Decisions settled 2026-11-03:** the playbook is the Head's, and a vacant post starts no response (ODD §6.15). Silo 1's link (T14.0) still open |
 
@@ -181,42 +181,35 @@ Questions, definitions and the plumbing every later module needs. No model behav
   - **The life-support spiral (found in T12.7, left for M13 by Adam, 2026-11-01).** Health balances at air = 1 − recoveryRate × medicalCoverage / airDamage = 0.8; below it, lower health lowers Mechanical's output (skill × health), so power and air, so health again. A rebellion that takes away about a quarter of Mechanical's output (arrests, deaths) plus one sabotaged generator puts the silo under the line, and nothing reacts: in a harsh test (s\_DD 0.9, T\_v 0.15) the silo slid for 100 days after the rebellion was suppressed, then about 9,000 people died on one day, as everyone's health is the same and health 0 is certain death. Decide whether the regime responds to it (moving workers to Mechanical, rations), and whether the one-day cliff is acceptable.
 - [x] **T13.1 Policy vector and scheduled policy changes.** (2026-11-04; levers reach modules through `World.Policy`, the scenario in force; the emergency acts the next day through control and work; `denial` and `doseConvicts` given peacetime keys in `regime:`) The `regime` module and its RNG stream, the levers, entries and their holding, the `policy` event, emergency staffing, the election lift, and the teaching rule in the rebellion step.
   - *Done when:* empty playbook = byte-identical to the same scenario without the module; a `policy` event sets and reverts a lever on the right days; emergency staffing releases detained Mechanical workers when air is below the line (test).
-- [ ] **T13.2 Response strategies,** (built 2026-11-04: The Order in canon, five strategy files at a factor of 2, time in a rebellion in the report, C4 judged; after smoke runs, Adam: The Order's blame held a year, recall × (1 − L), a rebellion starts where the share of a zone's adults active is highest; C4 left until the standing rebellion is understood, as recurrence drives it; the canon batch waits for T13.5 and Adam; calibration log) triggered by rebellion state. Playbook triggers; the strategy scenario files (none, The Order, crackdown, reform, memory wipe, mixed) with their values; The Order in `scenarios/canon.yaml`; the share of time in a rebellion in `silosim report`; C3 and C4 judged on the canon batch.
+- [x] **T13.2 Response strategies,** (2026-11-04: The Order in canon, five strategy files at a factor of 2, time in a rebellion in the report, C4 judged; after smoke runs, Adam: The Order's blame held a year, recall × (1 − L), a rebellion starts where the share of a zone's adults active is highest; C4 left until the standing rebellion is understood, as recurrence drives it; the canon batch moved to T15.3 with the lean plan; calibration log) triggered by rebellion state. Playbook triggers; the strategy scenario files (none, The Order, crackdown, reform, memory wipe, mixed) with their values; The Order in `scenarios/canon.yaml`; the share of time in a rebellion in `silosim report`; C3 and C4 judged on the canon batch.
 - [x] **T13.3 Memory-wipe strategy,** using T10.4 and T10.6. (2026-11-04; `scenarios/strategy-wipe.yaml` from T13.2: convicts dosed during, water dosing and raids 2× after; a 1,000-person run hides a flag from 99% of adults, `TestMemoryWipe`)
 - [x] **T13.4 Pact rewrites** (ODD §6.9, §6.15; 2026-11-04, built in T13.1; a rule switched off stops its trials and a lift of −0.1 lowers S, `TestPactRewrite`): rows switched, penalties changed or added through `pact` in an entry, and their legitimacy cost or benefit through `lift` (S may go negative). `travelPermits` and `curfew` are left out (T13.0).
-- [ ] **T13.5 Performance** (Adam, 2026-11-04; before any 100-seed batch). A canon run takes about 470 s against the 4-minute budget of `docs/architecture.md`, and the T13.2 profile shows no single hot spot: the rebellion step's several daily passes over everyone (hardship, stages, counts, active share, strikes; 26%), the network (18%), health, life stages, beliefs and location (about 8% each). Merge passes and cache per-person lookups.
+- ~~**T13.5 Performance**~~ dropped with the lean plan (Adam, 2026-11-04): 30 seeds × 150 years fit in minutes per scenario as is. Kept for the record: A canon run takes about 470 s against the 4-minute budget of `docs/architecture.md`, and the T13.2 profile shows no single hot spot: the rebellion step's several daily passes over everyone (hardship, stages, counts, active share, strikes; 26%), the network (18%), health, life stages, beliefs and location (about 8% each). Merge passes and cache per-person lookups.
   - *Done when:* a canon run fits the budget; golden hash unchanged and a canon seed's files byte-identical before and after.
-  - *Milestone done when:* each strategy runs on 100 seeds, and the survival curves differ by more than seed noise (or the report says plainly that they don't; that's a result too).
+  - *Milestone done when:* moved to experiment E3 (T15.5), with the lean plan's 30 seeds.
 
-## Milestone 14: Silo 1
+## Milestone 14: Silo 1 (lean)
 
-*Answers Q2 and Q4.* Silo 1 is an outside controller. Its trigger is **contact between silos or escape**, not unrest as such (S3).
+*Answers Q2 and Q4.* Silo 1 is an outside controller. Its trigger is **escape**, not unrest as such (S3). The lean plan (Adam, 2026-11-04) keeps only what Q4 and C5 need: settings `off` and `full`, escapes as the only contact, Silo 1's orders through the Head of IT, and the Safeguard. Radio, digging, capping, drones and the deal are left out.
 
-- [ ] **T14.0 Spec: Silo 1 (ODD §6.16).** Decision D8. Three settings:
-  - `off` — no Silo 1
-  - `watch` — Silo 1 sees through IT and gives orders through the Head of IT (more surveillance, doubled Vitamin D+, cleanings), and the Head of IT complies with some probability
-  - `full` — adds the Directive and the Safeguard
+- [ ] **T14.0 Spec: Silo 1 (ODD §6.16).** Decision D8: what counts as an escape, Silo 1's threat and its orders, the Safeguard's trigger and delay.
+- [ ] **T14.1 Silo 1 module.** Threat from escapes, orders through the Head of IT, the Safeguard as a collapse with cause `safeguard` (D2).
+  - *Milestone done when:* `off` vs `full` runs in E4 (T15.5); C5 measured there.
 
-  Contact attempts are rebel actions: radio (needs someone who knows how), digging toward another silo (months of progress in the mines), and walking out. If threat > threshold, Silo 1 triggers the **Safeguard** (gas through a pipe) after a delay. Capping the pipe defeats it, if someone knows about it and Mechanical acts in time. **Drones** kill anyone outside. After a defeated Safeguard, Silo 1 offers the **deal** from S3E10: no contact, no Safeguard.
-- [ ] **T14.1 Algorithm and Head of IT.** Silo 1's view and orders through the Head of IT, in the IT vault only they can enter (D13).
-- [ ] **T14.2 Contact attempts.** Radio, digging, escape.
-- [ ] **T14.3 Safeguard, capping and drones.** A Safeguard death counts as silo death (D2) with its own cause.
-- [ ] **T14.4 The deal.** The offer, the silo's answer (decided by its leaders' L and knowledge), and breaking it.
-  - *Milestone done when:* pattern C5 measured; Q4 answered with `off` vs `watch` vs `full` on 100 seeds.
+## Milestone 15: Experiments and thesis (lean)
 
-## Milestone 15: Experiments and thesis
+All experiments: 50 + 150 years, 30 seeds per scenario, the same seeds in every scenario (common random numbers), so differences come from the factor, not noise (D11, revised 2026-11-04).
 
-- [ ] **T15.1 Outcome report.** `silosim report --outcomes`: per seed and across seeds, with confidence intervals: time to first rebellion, rebellions per century, endings, causes of death, survival curves (Kaplan–Meier).
-- [ ] **T15.2 Sweeps.** `silosim sweep` runs a scenario matrix (full factorial or chosen cells) with common random numbers, so differences come from the factor, not noise.
-- [ ] **T15.3 Sensitivity analysis.** Morris screening over the part-2 parameters. Which few drive the outcomes? Results go in the calibration log and the thesis.
-- [ ] **T15.4 Canon validation.** C1–C5 on 100 seeds per pattern, reported pass or fail.
-- [ ] **T15.5 Experiments.** Write each one down before running it: question, scenarios, seeds, the metric that answers it.
-  - **E1:** beliefs and control on, no shocks. How long does peace last? (Q1)
+- [ ] **T15.1 Outcome report.** `silosim report --outcomes`: per seed and across seeds, with confidence intervals: time to first rebellion, rebellions per century, endings, causes of death, survival curves (Kaplan–Meier), share of time in a rebellion.
+- [ ] **T15.2 Sensitivity.** One at a time, about 6 key part-2 parameters at ±50% (e.g. L\_edu, δ, π, T, s\_DD, p\_fail) on the canon scenario, 30 seeds each. Which move the outcomes? Replaces Morris screening and `silosim sweep`.
+- [ ] **T15.3 Canon validation.** C1–C5 on the canon scenario's 30 seeds, reported pass or fail; C3's strike half and C4 reported as they are.
+- [ ] **T15.4 Experiments.** Write each one down before running it: question, scenarios, seeds, the metric that answers it.
+  - **E1:** canon without shocks. How long does peace last? (Q1)
   - **E2:** cleaning-failure shock at a fixed day. Trigger effect (Q1, C2)
-  - **E3:** crackdown vs reform vs memory wipe after the first rebellion (Q3)
-  - **E4:** Silo 1 `off` vs `watch` vs `full` (Q2, Q4)
+  - **E3:** none vs The Order vs crackdown vs reform vs memory wipe vs mixed (Q3; M13's milestone check)
+  - **E4:** Silo 1 `off` vs `full` (Q2, Q4, C5)
   - **E5:** appointment vs election, 5-year vs life term (Q3)
-- [ ] **T15.6 Freeze model v2.** ODD v2 complete, `scenarios/canon.yaml` frozen, golden hashes regenerated, tag `model-v2`. Thesis figures generated from `runs/` by scripts in `analysis/`.
+- [ ] **T15.5 Freeze model v2.** ODD v2 complete, `scenarios/canon.yaml` frozen, golden hashes regenerated, tag `model-v2`. Thesis figures generated from `runs/` by scripts in `analysis/`.
 
 ---
 
