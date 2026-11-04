@@ -230,8 +230,8 @@ A UI for looking at results. It answers no research question by itself, but it's
 
 The story of one run: a deterministic chronicle of its facts, and a story Claude writes from it (`docs/narrator.md`). Optional work that answers no research question; Adam chose to build it before running M15 (2026-11-04). It reads run files only and changes no run.
 
-- [ ] **T17.0 Spec: chronicle, narrator and the Story tab.** Decision D14. `docs/narrator.md`; no code.
-- [ ] **T17.1 Chronicle.** `internal/chronicle`, `silosim chronicle --run DIR`, `/api/chronicle`, the Story tab with the chronicle.
+- [x] **T17.0 Spec: chronicle, narrator and the Story tab.** (2026-11-04, approved: `docs/narrator.md`) Decision D14. `docs/narrator.md`; no code.
+- [x] **T17.1 Chronicle.** (2026-11-04; the CLI and `/api/chronicle` byte-identical on four runs, the Story tab checked in Chrome) `internal/chronicle`, `silosim chronicle --run DIR`, `/api/chronicle`, the Story tab with the chronicle.
 - [ ] **T17.2 Narrator.** The Anthropic Go SDK, `internal/narrate`, `silosim narrate --run DIR`, `story.md` in the Story tab.
   - *Milestone done when:* a canon run's chronicle and story read correctly from start to end, and every number in the story can be found in the chronicle.
 

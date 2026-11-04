@@ -3,6 +3,7 @@
 import { replay } from "./replay.js";
 import { dashboard } from "./dashboard.js";
 import { experiment } from "./experiment.js";
+import { story } from "./story.js";
 
 const view = document.getElementById("view");
 const crumb = document.getElementById("crumb");
@@ -98,10 +99,10 @@ async function runTabs(path, on) {
   const p = encodeURIComponent(path);
   sub.innerHTML = `<div class="tabs"><a href="#/run/${p}" class="${on === "run" ? "on" : ""}">Dashboard</a>${frames
     ? `<a href="#/replay/${p}" class="${on === "replay" ? "on" : ""}">Replay</a>`
-    : `<span title="This run has no frames: run it with scenarios/replay.yaml">Replay</span>`}</div>`;
+    : `<span title="This run has no frames: run it with scenarios/replay.yaml">Replay</span>`}<a href="#/story/${p}" class="${on === "story" ? "on" : ""}">Story</a></div>`;
 }
 
-const TAB = { "": "runs", run: "runs", replay: "runs", batches: "batches", batch: "batches", compare: "compare" };
+const TAB = { "": "runs", run: "runs", replay: "runs", story: "runs", batches: "batches", batch: "batches", compare: "compare" };
 
 async function route() {
   const [, kind = "", ...rest] = location.hash.replace(/^#\/?/, "#/").split("/");
@@ -116,6 +117,7 @@ async function route() {
     else if (kind === "compare" && path) { const ps = rest.join("/").split("+").map(decodeURIComponent); crumb.textContent = `${ps.length} batches`; await experiment(view, ps, api); }
     else if (kind === "compare") await picker();
     else if (kind === "run") { view.innerHTML = "<p>Loading…</p>"; await runTabs(path, kind); await dashboard(view, path, file); }
+    else if (kind === "story") { view.innerHTML = "<p>Loading…</p>"; await runTabs(path, kind); await story(view, path); }
     else if (kind === "replay") { view.innerHTML = "<p>Loading frames…</p>"; await runTabs(path, kind); await replay(view, path, file); }
     else await home();
   } catch (e) {

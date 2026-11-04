@@ -5,6 +5,7 @@
 package serve
 
 import (
+	"bytes"
 	"cmp"
 	"embed"
 	"encoding/json"
@@ -16,6 +17,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/skrilexxx/silo-sim/internal/chronicle"
 	"github.com/skrilexxx/silo-sim/internal/report"
 )
 
@@ -48,6 +50,7 @@ func Handler(root string) (http.Handler, error) {
 	mux.HandleFunc("GET /api/runs", s.runs)
 	mux.HandleFunc("GET /api/file", s.file)
 	mux.HandleFunc("GET /api/outcomes", s.outcomes)
+	mux.HandleFunc("GET /api/chronicle", s.chronicle)
 	return mux, nil
 }
 
@@ -209,6 +212,27 @@ func (s *server) outcomes(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(o)
+}
+
+// chronicle sends a run's chronicle, the text silosim chronicle prints
+// (docs/narrator.md, T17.1).
+func (s *server) chronicle(w http.ResponseWriter, r *http.Request) {
+	dir, ok := s.within(r.URL.Query().Get("run"))
+	if !ok {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	if _, err := os.Stat(filepath.Join(dir, "run.json")); err != nil {
+		http.Error(w, "not a run", http.StatusNotFound)
+		return
+	}
+	var b bytes.Buffer
+	if err := chronicle.Write(&b, dir); err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+	_, _ = w.Write(b.Bytes())
 }
 
 // within resolves a path relative to the root, refusing an absolute one,

@@ -48,7 +48,7 @@ PATH is relative to `--runs`; one that is absolute, contains `..`, or resolves o
 
 ## Views
 
-**Menu** (T16.5). The header holds three tabs: *Runs*, *Batches*, *Compare*. A run's pages add two sub-tabs, *Dashboard* and *Replay*; Replay is greyed out for a run without frames.
+**Menu** (T16.5). The header holds three tabs: *Runs*, *Batches*, *Compare*. A run's pages add three sub-tabs, *Dashboard*, *Replay* and *Story* (`docs/narrator.md`, T17.1); Replay is greyed out for a run without frames.
 
 **1. Runs (home).** The silo banner, then the runs outside batches, newest first: name, seed, years, collapse, frames yes/no. A click opens the run's dashboard. *Batches* lists the batches the same way; a click opens the batch's experiment view. *Compare* lists the batches with a tick box each and opens the experiment view for the ticked ones.
 

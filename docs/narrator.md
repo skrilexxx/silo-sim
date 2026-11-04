@@ -1,6 +1,6 @@
-# Chronicle and narrator — spec (T17.0, draft)
+# Chronicle and narrator — spec (T17.0)
 
-Nov 4, 2026 · decision D14 · Milestone 17 (optional work, started before M15 at Adam's request)
+Nov 4, 2026 · decision D14, approved by Adam · Milestone 17 (optional work, started before M15 at Adam's request)
 
 A run's files say *what* happened. This milestone turns them into something a person reads from top to bottom: a dated **chronicle** of the facts, written by Go code, and, on request, a **story** written from that chronicle by Claude. Like the viewer, it answers no research question (`docs/tasks-part2.md`, Optional) and adds no model code.
 
@@ -23,7 +23,7 @@ silosim narrate   --run DIR [--model ID]       # writes DIR/story.md; default mo
 
 ## The chronicle
 
-Time is measured years from the first measured day, one decimal, as in the dashboard: year = (day − warm-up days) / 365. Entries are in day order; entries on the same day keep the order of the files they come from (`events.jsonl`, then `rebellions.jsonl`).
+Time is measured years from the first measured day, one decimal, as in the dashboard: year = (day − warm-up days) / 365. Entries are in day order; entries on the same day keep the order of the files they come from (`events.jsonl`, then `rebellions.jsonl`). A span (a rebellion, a spell of unrest, a policy) is placed at its start day, though the files log it at its end; one that began in the warm-up is dated "Warm-up" (T17.1).
 
 **Header.** Scenario name, seed, measured years run, the modules on, and the outcome: collapse (cause, year) or the silo still standing at the end; the number of rebellions and unrest spells.
 
@@ -32,11 +32,11 @@ Time is measured years from the first measured day, one decimal, as in the dashb
 | Source | Entry |
 | --- | --- |
 | `scripted` | the scripted event and its day, e.g. "a cleaning failure" (`cleaningFailure`), "stairs broken at segment *s*" (`breakStairs`) |
-| `failure` + `repair`, `emergency` + `emergencyEnd` | the generator failed; days without power until the repair; an emergency declared and lifted in that window is part of the same entry |
+| `failure` + `repair`, `emergency` + `emergencyEnd` | the generator failed; days without power until the repair; an emergency declared and lifted in that window is part of the same entry. An emergency outside any outage is an entry of its own (T17.1) |
 | `unrest` | a spell of unrest, its start and end years |
 | `rebellions.jsonl` | a rebellion: start year, trigger, starting zone, peak share of adults active (%), duration, departments struck, zones held, fight days, rebels and officers killed, arrests, stair segments broken, generator and pump sabotage, ending |
 | `zoneHeld`, `zoneFreed` | rebels take or lose a zone |
-| `policy`, `policyEnd` | the regime answers: the playbook entry's trigger and levers (`set`, `lift`, `waterDosing`, …, read from `run.json`), and how long it holds |
+| `policy`, `policyEnd` | the regime answers: the trigger and the entry's levers (`set`, `lift`, `waterDosing`, Pact rows), and until when it holds. The entry is read from `run.json`: the playbook entry the event names, Silo 1's `orders`, or the scenario's scripted `policy` event on that day |
 | `headOfIT` | a new Head of IT, and whether their shadow succeeded |
 | `mayor` | a new Mayor: why the post fell vacant (`reason`), appointment or election, the zone they come from |
 | `cleaning` with `failed: true` | a cleaner walked out of sight, with the Pact rule they were sent out under |
@@ -44,7 +44,7 @@ Time is measured years from the first measured day, one decimal, as in the dashb
 
 **Cleanings that do not fail** are too many to list one by one (hundreds in a long run). They are counted instead, per decade, by the Pact rule they were sent out under, in the decade lines.
 
-**Decade lines**, at each tenth measured year, from the yearly snapshot nearest the decade's end (`yearly.csv`) and the population on that day (`daily.csv`): population, mean legitimacy, the share of adults who know the true history, Flamekeepers, people in prison, and that decade's arrests and cleanings. A column the run does not have (its module was off) is left out of the line.
+**Decade lines**, closing each ten measured years (a run cut short gets a last, shorter section), from the last yearly snapshot on or before the section's end (`yearly.csv`) and the population on that snapshot's day (`daily.csv`), so the line is of one moment: population, mean legitimacy, the share of adults who know the true history, Flamekeepers, the people held by Judicial (`held`; the `prison` column counts sentences, not people), and that decade's cleanings. A column the run does not have (its module was off) is left out of the line. Arrests are left out (T17.1): the first measured year's yearly counts of the control module also hold the whole warm-up's, so a decade's sum would mislead; a rebellion's arrests are in its entry.
 
 Nothing else from the files goes in. In particular: individual sabotage acts and arrests (they are counted in the rebellion entry and the decade lines), rationing switches, departments falling below half their target, and the frames.
 

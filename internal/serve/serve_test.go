@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/skrilexxx/silo-sim/internal/chronicle"
 	"github.com/skrilexxx/silo-sim/internal/report"
 )
 
@@ -144,6 +145,43 @@ func TestOutcomes(t *testing.T) {
 		t.Errorf("outcomes %+v", o)
 	}
 	for url, code := range map[string]int{"/api/outcomes?batch=../b": 403, "/api/outcomes?batch=b/run-1": 404} {
+		if rec := get(t, h, url); rec.Code != code {
+			t.Errorf("%s: %d, want %d", url, rec.Code, code)
+		}
+	}
+}
+
+// Chronicle: a run's chronicle is the bytes chronicle.Write gives; a path
+// outside the root is refused, a folder that is not a run is not found.
+func TestChronicle(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "r")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, content := range map[string]string{
+		"run.json":     `{"seed":3,"scenario":{"name":"tiny","warmupYears":0,"years":1,"modules":["demography"]}}`,
+		"events.jsonl": `{"day":100,"type":"failure","outageDays":2}` + "\n",
+		"daily.csv":    "day,population\n1,10\n365,11\n",
+		"yearly.csv":   "day,medianAge\n365,30\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h, err := Handler(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want strings.Builder
+	if err := chronicle.Write(&want, dir); err != nil {
+		t.Fatal(err)
+	}
+	rec := get(t, h, "/api/chronicle?run=r")
+	if rec.Code != 200 || rec.Body.String() != want.String() || !strings.Contains(rec.Body.String(), "The generator failed: 2 days") {
+		t.Errorf("chronicle: %d\n%s\nwant\n%s", rec.Code, rec.Body.String(), want.String())
+	}
+	for url, code := range map[string]int{"/api/chronicle?run=../r": 403, "/api/chronicle?run=.": 404} {
 		if rec := get(t, h, url); rec.Code != code {
 			t.Errorf("%s: %d, want %d", url, rec.Code, code)
 		}

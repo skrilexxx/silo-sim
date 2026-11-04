@@ -97,3 +97,17 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--amber); }
 .zl { font-size: 11px; fill: var(--muted); }
 #totals td { padding: 2px 16px 2px 0; }
 .chart text { font-size: 12px; }
+
+/* The Story tab: the chronicle (and later the story) on a screen, set for reading. */
+.doc {
+  --ink: var(--screen-ink); --muted: var(--screen-muted);
+  color: var(--ink); background: var(--screen); max-width: 800px; padding: 8px 28px 20px;
+  border: 1px solid #0c0d0f; border-radius: 3px; font-size: 15px; line-height: 1.6;
+  box-shadow: 0 0 0 1px var(--steel-line), inset 0 0 18px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+.doc h2 { font: 600 20px/1.3 var(--mono); letter-spacing: 0.04em; text-transform: none; color: var(--ink); margin: 18px 0 6px; }
+.doc h3 { font: 600 12px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--amber-dim); margin: 22px 0 6px; padding-top: 10px; border-top: 1px solid var(--screen-line); }
+.doc ul { padding-left: 18px; margin: 6px 0; }
+.doc li { margin: 3px 0; }
+.doc p { margin: 8px 0; }
+.doc i { color: var(--muted); }

@@ -17,7 +17,8 @@ const usage = `usage:
   silosim run    --scenario FILE [--seed N] [--dry-run]
   silosim batch  --scenario FILE --seeds FIRST-LAST --out DIR [--workers N]
   silosim report --batch DIR [--outcomes]
-  silosim serve  [--runs DIR] [--addr HOST:PORT]`
+  silosim serve  [--runs DIR] [--addr HOST:PORT]
+  silosim chronicle --run DIR`
 
 func main() {
 	if len(os.Args) < 2 {
@@ -34,6 +35,8 @@ func main() {
 		err = reportCmd(os.Args[2:])
 	case "serve":
 		err = serveCmd(os.Args[2:])
+	case "chronicle":
+		err = chronicleCmd(os.Args[2:])
 	default:
 		err = fmt.Errorf("unknown command %q\n%s", os.Args[1], usage)
 	}
