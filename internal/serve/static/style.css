@@ -22,3 +22,9 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .replay { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
 .zl { font-size: 11px; fill: var(--muted); }
 #totals td { padding: 2px 16px 2px 0; }
+.panel { margin-bottom: 18px; }
+.panel h3 { font-size: 13px; font-weight: 600; margin: 0 0 4px; }
+.key { color: var(--muted); }
+.key i { display: inline-block; width: 18px; height: 10px; margin: 0 4px 0 10px; vertical-align: middle; }
+.key i.dash { border-top: 2px dashed #555; height: 0; }
+.key i.solid { border-top: 2px solid #000; height: 0; }

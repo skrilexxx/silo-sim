@@ -64,8 +64,8 @@ Rebellions are shaded bands across every panel; scripted events, collapses and t
 
 | Metric | Scale |
 | --- | --- |
-| population, households | sequential, 0 to the run's highest value on any floor |
-| health, legitimacy, knowsHistory, active, violent | sequential, fixed 0–1 |
+| population, households, active, violent | sequential, 0 to the run's highest value on any floor and frame; rebels are a few percent of a floor, so a 0–1 scale showed nothing (T16.2) |
+| health, legitimacy, knowsHistory | sequential, fixed 0–1 |
 
 Dashboard panels 1–4 for the current day sit beside the column, so the replay and the totals move together.
 

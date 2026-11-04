@@ -1,6 +1,7 @@
 // The viewer's page (docs/viewer.md). It only reads what the server's API
 // returns; it computes no statistic of its own.
 import { replay } from "./replay.js";
+import { dashboard } from "./dashboard.js";
 
 const view = document.getElementById("view");
 const crumb = document.getElementById("crumb");
@@ -53,17 +54,13 @@ async function batch(path) {
   view.innerHTML = `<h2>Runs in ${esc(path)}</h2>${runTable(runs.filter((r) => r.batch === path))}`;
 }
 
-function soon(what, path) {
-  crumb.textContent = `/ ${path}`;
-  view.innerHTML = `<p class="empty">The ${what} of ${esc(path)} comes in a later task.</p>`;
-}
 
 async function route() {
   const [, kind, ...rest] = location.hash.replace(/^#\/?/, "#/").split("/");
   const path = decodeURIComponent(rest.join("/"));
   try {
     if (kind === "batch") await batch(path);
-    else if (kind === "run") soon("dashboard", path);
+    else if (kind === "run") { crumb.textContent = `/ ${path}`; view.innerHTML = "<p>Loading…</p>"; await dashboard(view, path, file); }
     else if (kind === "replay") { crumb.textContent = `/ ${path} / replay`; view.innerHTML = "<p>Loading frames…</p>"; await replay(view, path, file); }
     else await home();
   } catch (e) {

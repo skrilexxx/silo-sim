@@ -4,7 +4,9 @@
 const NS = "http://www.w3.org/2000/svg";
 const ZONES = [["upTop", "Up Top"], ["mids", "Mids"], ["downDeep", "Down Deep"]];
 const VIRIDIS = ["#440154", "#482878", "#3e4989", "#31688e", "#26828e", "#1f9e89", "#35b779", "#6ece58", "#b5de2b", "#fde725"];
-const SHARES = new Set(["health", "legitimacy", "knowsHistory", "active", "violent"]); // fixed 0–1 scale
+// Fixed 0–1 scale; the others (population, households, active, violent) run to the run's highest
+// floor value: rebels are a few percent of a floor, invisible on 0–1.
+const SHARES = new Set(["health", "legitimacy", "knowsHistory"]);
 const TOTALS = ["population", "air", "water", "foodStockDays", "active", "joined", "violent", "onStrike", "brokenSegments"];
 
 const el = (tag, attrs = {}, parent) => {
@@ -124,7 +126,7 @@ export async function replay(view, path, file) {
     const m = $("metric").value, day = days[i], v = data.get(m)[i], max = top.get(m);
     rects.forEach((r, k) => r.setAttribute("fill", viridis(v[k] / max)));
     lo.textContent = "0";
-    hi.textContent = SHARES.has(m) ? "1" : max.toFixed(0);
+    hi.textContent = SHARES.has(m) ? "1" : max >= 10 ? max.toFixed(0) : max.toFixed(2);
     breaks.innerHTML = "";
     const broken = new Set();
     for (const [d, s, b] of changes) if (d <= day) b ? broken.add(s) : broken.delete(s);

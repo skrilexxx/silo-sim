@@ -627,3 +627,7 @@ The C3 sweep (`analysis/order-sweep.sh`) is on hold: with the blame permanent, i
 | C4 | 1/10 | FAIL; left until the standing rebellion is understood (Adam) |
 
 44.6% of measured days in a rebellion; no collapse. The Down Deep is now where revolt starts, by its higher hardship; its rebellions rarely bring Mechanical out on strike (1 of 11).
+
+## 2026-11-04 — Seen in the viewer: the canon food stock runs out (T16.3, open)
+
+**Setup:** `scenarios/replay.yaml` at 160 measured years, seed 53 (the viewer's test run). **Observation, not yet explained:** the food stock, about 400–650 days early on, rises to about 900 days by measured year 48, then falls steadily to the rationing line at about year 110, before any rebellion; from then on rationing switches on and off nearly every day (6,882 `rationingOn` events), and Down Deep hardship flickers between 0 and 0.1. The baseline holds a 5% food surplus (calibration log, 2026-10-29), so something in the part-2 modules eats it: candidates are workers held by Judicial or waiting in place queues, strikers (no output), and the farmers retrained into Mechanical by emergency staffing, which outlast the emergency. To be measured before the M15 results are read; nothing changed.
