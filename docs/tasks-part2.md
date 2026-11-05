@@ -203,8 +203,8 @@ All experiments: 50 + 150 years, 30 seeds per scenario, the same seeds in every 
 
 - [x] **T15.1 Outcome report.** (2026-11-04; Kaplan–Meier with Greenwood intervals, Wilson for endings, Poisson (Bartlett) for the rate, a normal interval for the time in a rebellion; runs dead in warm-up listed and left out) `silosim report --outcomes`: per seed and across seeds, with confidence intervals: time to first rebellion, rebellions per century, endings, causes of death, survival curves (Kaplan–Meier), share of time in a rebellion.
 - [ ] **T15.2 Sensitivity.** One at a time, about 6 key part-2 parameters at ±50% (e.g. L\_edu, δ, π, T, s\_DD, p\_fail) on the canon scenario, 30 seeds each. Which move the outcomes? Replaces Morris screening and `silosim sweep`.
-- [ ] **T15.3 Canon validation.** C1–C5 on the canon scenario's 30 seeds, reported pass or fail; C3's strike half and C4 reported as they are.
-- [ ] **T15.4 Experiments.** Write each one down before running it: question, scenarios, seeds, the metric that answers it. (2026-11-04: written down in `docs/experiments.md`, scenarios in `scenarios/experiments/`, everything run by `analysis/m15.sh`, which Adam starts; C5 judged by `silosim report` on batches with Silo 1 on)
+- [x] **T15.3 Canon validation.** (2026-11-05, `docs/m15-results.md`: C1 PASS only pooled, C2 PASS, C3 FAIL on the strike half, C4 FAIL, C5 PASS through the Safeguard; open questions there) C1–C5 on the canon scenario's 30 seeds, reported pass or fail; C3's strike half and C4 reported as they are.
+- [x] **T15.4 Experiments.** Write each one down before running it: question, scenarios, seeds, the metric that answers it. (2026-11-04: written down in `docs/experiments.md`, scenarios in `scenarios/experiments/`, everything run by `analysis/m15.sh`, which Adam starts; C5 judged by `silosim report` on batches with Silo 1 on; 2026-11-05: E1–E5 run and analysed in `docs/m15-results.md`)
   - **E1:** canon without shocks. How long does peace last? (Q1)
   - **E2:** cleaning-failure shock at a fixed day. Trigger effect (Q1, C2)
   - **E3:** none vs The Order vs crackdown vs reform vs memory wipe vs mixed (Q3; M13's milestone check)
