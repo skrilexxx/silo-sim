@@ -4,7 +4,7 @@ Run overnight 2026-11-04/05 by `analysis/m15.sh`: seeds 1–30 in every scenario
 
 As in the plan, a difference counts as a result only when the two 95% intervals don't overlap. Every claim holds only under the model's rules (ODD §1.2).
 
-Each batch took about 31 minutes on 8 cores, including its two reports; the whole run took about 13 hours. The thermal watcher never paused it: the package stayed below 95 °C and `tempwatch` logged no WARN (`runs/m15-thermal.log`).
+Each batch took about 31 minutes on 8 cores, including its two reports; the whole run took about 14 hours, with a break on 2026-11-05 that reran one sensitivity batch from scratch (the runs are deterministic, so its results are unaffected). The thermal watcher never paused it: the package stayed below 95 °C and `tempwatch` logged no WARN (`runs/m15-thermal.log`).
 
 ## The main finding: rebellions don't end
 
@@ -114,20 +114,32 @@ The second escape was always a failed noViolence cleaning. During a rebellion ma
 
 ## T15.2 Sensitivity, one at a time
 
-*Running: 4 of 12 cells are done; this section will be completed when the rest finish.*
-
-Every cell is base with one parameter at −50% and at +50%. Base: rate 2.02 (1.63–2.46), time 43.3% (42.2–44.5), 0/30 collapses. A value in bold has an interval that doesn't overlap base's.
+Every cell is base with one parameter at −50% and at +50%. Base: rate 2.02 (1.63–2.46), time 43.3% (42.2–44.5), 0/30 collapses (0–11%). A value in bold has an interval that doesn't overlap base's.
 
 | Parameter (base) | Cell | Rebellions per century | Time in a rebellion | Collapses |
 |---|---|---|---|---|
-| L\_edu (0.8) | 0.9 | 1.67 (1.30–2.08) | **34.5% (29.2–39.8)** | 4/30 (air) |
+| L\_edu (0.8) | 0.9 | 1.67 (1.30–2.08) | **34.5% (29.2–39.8)** | 4/30 (air), 5–30% |
 | | 0.7 | 1.47 (1.14–1.85) | **59.8% (49.2–70.4)** | 1/30 (air) |
 | δ (0.15) | 0.075 | **0.76 (0.52–1.03)** | **49.2% (48.8–49.7)** | 0/30 |
 | | 0.225 | 2.43 (1.99–2.93) | 42.2% (35.0–49.5) | 3/30 (air 2, water 1) |
+| π (0.002) | 0.001 | 2.40 (1.97–2.87) | **40.6% (39.5–41.7)** | 0/30 |
+| | 0.003 | 1.67 (1.31–2.07) | 42.6% (39.3–45.8) | 0/30 |
+| T (0.1) | 0.05 | 1.78 (1.41–2.19) | 44.4% (40.4–48.5) | 0/30 |
+| | 0.15 | 2.11 (1.69–2.59) | **26.5% (21.0–32.0)** | **7/30 (air 5, water 2), 12–41%** |
+| s\_DD (0.2) | 0.1 | 2.04 (1.65–2.48) | 45.7% (42.5–49.0) | 0/30 |
+| | 0.3 | 2.05 (1.64–2.49) | 39.6% (35.6–43.7) | 2/30 (air) |
+| p\_fail (0.05) | 0.025 | 2.40 (1.97–2.87) | **39.8% (38.0–41.5)** | 0/30 |
+| | 0.075 | 1.73 (1.37–2.14) | 47.7% (44.1–51.2) | 0/30 |
 
-What the finished cells show so far:
-- **L\_edu matters** for the time spent in a rebellion, in both directions.
-- **Halving δ gives fewer but endless rebellions.** There are 34 rebellions in all, and 29 runs end with one still going.
+**Answer:**
+- **The parameters that clearly matter are δ, L\_edu and T.**
+  - **δ (the legitimacy cost of a flag):** halving it is the only change that moves the rate of rebellions. It drops to 0.76 per century, but the rebellions don't end: 29 of the 34 are unfinished, so 29 runs end with one still going.
+  - **L\_edu (the legitimacy taught):** it moves the time spent in a rebellion in both directions, from 34.5% to 59.8%.
+  - **T (the active threshold):** at +50%, much less time is spent in a rebellion (26.5%), and it is the only cell whose collapses leave base's interval: 7 of 30 runs, by air or water.
+- **π and p\_fail matter only weakly.** In each, one cell moves the time in a rebellion down by 2–4 points, and only just outside base's narrow interval (open question 7).
+- **s\_DD doesn't move any outcome.**
+- **No cell ends the standing rebellion.** Every cell with a scripted failure still spends 26–60% of measured time in a rebellion, so the pattern is not caused by any single one of these guesses (open question 1).
+- **The rate of rebellions is the least sensitive outcome:** 11 of 12 cells stay inside base's interval.
 
 ## Open questions for Adam
 
