@@ -704,7 +704,7 @@ func TestSeizedInFight(t *testing.T) {
 		a := s.on(3)
 		s.start()
 		c := s.w.Control
-		c.Seized = []world.PersonID{a}
+		c.Seized = []world.Act{{Person: a, Other: world.None, Offence: world.Violence}}
 		s.step()
 		if !ruled {
 			if c.Held(a) || c.Tally.Arrests != 0 {
@@ -794,7 +794,7 @@ func TestPlaces(t *testing.T) {
 	s.offend(a, world.TradeRelic)
 	s.offend(b, world.TradeRelic)
 	s.days(3)
-	c.Seized = []world.PersonID{b}
+	c.Seized = []world.Act{{Person: b, Other: world.None, Offence: world.Violence}}
 	s.step()
 	if c.Hold[b] != world.Custody || s.m.waiting[b] || len(s.m.queue[0]) != 0 {
 		t.Errorf("seized while waiting: hold %d, waiting %v, queue %v; want custody, out of the queue", c.Hold[b], s.m.waiting[b], s.m.queue[0])

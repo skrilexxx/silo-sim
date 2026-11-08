@@ -260,7 +260,8 @@ rebellion:                        # ODD §6.14 (part 2, draft); used only when `
   rebellionShare: 0.05            # rebellion: at least this share of adults active ...
   rebellionDays: 7                # ... on this many days in a row, with a collective action on one of them
   quietDays: 30                   # unrest and a rebellion end after this many days in a row below unrestShare
-  regimeDays: 30                  # regime change: rebels hold Up Top this many days in a row (§1.2, decision D1)
+  regimeDays: 30                  # regime change: rebels hold Up Top this many days in a row (§1.2, decision D1); the violent march there (§6.14, D15)
+  maxDays: 365                    # a rebellion still running this many days after its start is crushed, its joined rebels arrested (§1.2, §6.14, D15); guess, calibrated in T15.7
   splitDays: 90                   # split: a segment broken in a rebellion still broken this many days later ... (§1.2, decision D1)
   splitPeople: 1000               # ... with at least this many people living on each side; 0 = no people test
   collapseLevel: 0.2              # collapse: air or water below this level ... (§1.2, decision D2)

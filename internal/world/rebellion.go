@@ -14,10 +14,11 @@ const (
 // Rebellion is the rebellion module's state (ODD §6.14, draft); nil when
 // the module is off. Per-person slices are indexed by PersonID.
 type Rebellion struct {
-	LossDay []Tick       // day of the person's last loss in the family, or None
-	Own     []float64    // h_own: own hardship, drawn at birth (ODD §6.14, Hardship)
-	H, G    []float64    // today's hardship and grievance; 0 for children
-	Stage   []RebelStage // today's stage
+	LossDay  []Tick       // day of the person's last loss in the family, or None
+	Own      []float64    // h_own: own hardship, drawn at birth (ODD §6.14, Hardship)
+	H, G     []float64    // today's hardship and grievance; 0 for children
+	Stage    []RebelStage // today's stage
+	Marching []bool       // on the march to Up Top or back home from it (ODD §6.14, March)
 
 	// Zone counts at the end of yesterday's step, read by today's arrest
 	// estimate: adults active or beyond by the zone of their day location,
@@ -100,27 +101,35 @@ type RebellionRecord struct {
 	RebelsKilled      int      `json:"rebelsKilled"`
 	OfficersKilled    int      `json:"officersKilled"`
 	FightArrests      int      `json:"fightArrests"`
+	CrushArrests      int      `json:"crushArrests"`
 	Arrests           int      `json:"arrests"`
 	SegmentsBroken    int      `json:"segmentsBroken"`
 	GeneratorSabotage int      `json:"generatorSabotage"`
 	PumpSabotage      int      `json:"pumpSabotage"`
 	Ending            string   `json:"ending"`
+	Crushed           bool     `json:"crushed"`
 }
 
 // Record sums the running rebellion's days into its record (ODD §6.14,
 // Outputs). It covers the days from its start up to its end day, or the
-// day before when suppressed, as that end day is the first quiet one; end
-// None is a rebellion still running, its record unfinished, covering every
-// day so far. Days is end − start (today + 1 − start while unfinished).
+// day before when it died down, as that end day is the first quiet one;
+// ending "crushed" is a suppressed one whose end day is the crushing day.
+// End None is a rebellion still running, its record unfinished, covering
+// every day so far. Days is end − start (today + 1 − start while
+// unfinished).
 func (r *Rebellion) Record(w *World, end Tick, ending string) RebellionRecord {
 	start := r.RebellionStart
-	rec := RebellionRecord{Start: start, Trigger: r.Trigger, Struck: []string{}, Held: []string{}, Ending: ending}
+	crushed := ending == "crushed"
+	if crushed {
+		ending = "suppressed"
+	}
+	rec := RebellionRecord{Start: start, Trigger: r.Trigger, Struck: []string{}, Held: []string{}, Ending: ending, Crushed: crushed}
 	last := end
 	switch {
 	case end == None:
 		last = w.Day
 		rec.Days = int(w.Day + 1 - start)
-	case ending == "suppressed":
+	case ending == "suppressed" && !crushed:
 		last = end - 1
 		fallthrough
 	default:
@@ -244,7 +253,8 @@ type UnrestEvent struct {
 // RebellionEvent: type "rebellionStart" or "rebellionEnd" (ODD §1.2).
 type RebellionEvent struct {
 	EventHeader
-	Start  Tick   `json:"start"`
-	End    Tick   `json:"end,omitempty"`    // rebellionEnd only: the first of the quiet days
-	Ending string `json:"ending,omitempty"` // rebellionEnd only
+	Start   Tick   `json:"start"`
+	End     Tick   `json:"end,omitempty"`     // rebellionEnd only: the first of the quiet days
+	Ending  string `json:"ending,omitempty"`  // rebellionEnd only
+	Crushed bool   `json:"crushed,omitempty"` // rebellionEnd only: true when the regime crushed it (ODD §1.2)
 }

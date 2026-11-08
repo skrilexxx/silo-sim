@@ -36,6 +36,7 @@ type Module struct {
 	def          config.Rebellion // the definitions of unrest and rebellion (ODD §1.2)
 	officers     []int            // Judicial's and the Sheriff's department indexes
 	courts       []int            // Judicial's office floors
+	marchFloors  []int            // IT's and Administration's office floors, where the violent march (ODD §6.14, March)
 	reach        []bool           // per floor: connected to a court today
 	events       []config.Event   // the scripted events, for triggers (ODD §1.2)
 
@@ -74,6 +75,9 @@ func (m *Module) Init(w *world.World, cfg *config.Scenario, r *rng.Stream) error
 		if dep.Name == "judicial" {
 			m.courts = w.Space.DeptFloors[d] // control checked that there are some
 		}
+		if dep.Name == "it" || dep.Name == "administration" {
+			m.marchFloors = append(m.marchFloors, w.Space.DeptFloors[d]...)
+		}
 		if slices.Contains([]string{"mechanical", "farms", "supply", "medical"}, dep.Name) {
 			m.critical = append(m.critical, d)
 		}
@@ -105,6 +109,7 @@ func (m *Module) step(w *world.World, r *rng.Stream) error {
 	m.hardship(w)
 	m.strikes(w)
 	m.stages(w)
+	m.march(w)
 	m.fights(w, r)
 	m.sabotage(w, r)
 	m.repairs(w, r)
@@ -232,6 +237,7 @@ func (m *Module) newcomers(w *world.World, r *rng.Stream) {
 		b.LossDay, b.H, b.G = append(b.LossDay, world.None), append(b.H, 0), append(b.G, 0)
 		b.Own = append(b.Own, r.Float64())
 		b.Stage = append(b.Stage, world.Calm)
+		b.Marching = append(b.Marching, false)
 	}
 }
 
@@ -443,15 +449,17 @@ func (m *Module) log(w *world.World, share float64) {
 // end ends the running rebellion with its end day and ending: the
 // rebellionEnd event and its record (ODD §1.2, §6.14 Outputs). Every
 // ending but collapse is a trigger for the regime (ODD §6.15).
+// Ending "crushed" is a suppressed one the regime crushed (ODD §1.2).
 func (m *Module) end(w *world.World, end world.Tick, ending string) {
 	b := w.Rebellion
-	w.Events = append(w.Events, world.RebellionEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "rebellionEnd"},
-		Start: b.RebellionStart, End: end, Ending: ending})
 	b.Ended = append(b.Ended, b.Record(w, end, ending))
+	rec := b.Ended[len(b.Ended)-1]
+	w.Events = append(w.Events, world.RebellionEvent{EventHeader: world.EventHeader{Day: w.Day, Type: "rebellionEnd"},
+		Start: b.RebellionStart, End: end, Ending: rec.Ending, Crushed: rec.Crushed})
 	b.RebellionStart = world.None
 	m.teach(w)
-	if ending != "collapse" {
-		b.Fired = append(b.Fired, ending)
+	if rec.Ending != "collapse" {
+		b.Fired = append(b.Fired, rec.Ending)
 	}
 }
 
@@ -536,8 +544,14 @@ func (m *Module) track(w *world.World, share float64, action bool) {
 	case b.RebellionStart != world.None && m.split(w):
 		m.end(w, w.Day, "split")
 	case b.RebellionStart != world.None:
-		if b.Quiet >= d.QuietDays {
+		switch {
+		case b.Quiet >= d.QuietDays:
 			m.end(w, quietSince, "suppressed")
+		case w.Day-b.RebellionStart >= world.Tick(d.MaxDays):
+			n := m.crush(w)
+			m.end(w, w.Day, "crushed")
+			rec := &b.Ended[len(b.Ended)-1]
+			rec.CrushArrests, rec.Arrests = n, rec.Arrests+n
 		}
 	case b.Rising >= d.RebellionDays && b.LastAction != world.None && b.LastAction > w.Day-world.Tick(d.RebellionDays):
 		b.RebellionStart, b.UnrestStart = w.Day-world.Tick(d.RebellionDays)+1, world.None
@@ -575,6 +589,73 @@ func (m *Module) patrols(w *world.World, officers int) [world.NumZones]float64 {
 		}
 	}
 	return p
+}
+
+// ODD §6.14, March (decision D15). While a rebellion runs, every violent
+// rebel on a floor outside Up Top sets off for the nearest IT or
+// Administration office floor connected to it, the lower on a tie; a
+// refused trip is tried again tomorrow. A marcher who is not violent, or
+// whose rebellion has ended, sets off home, and arriving home ends the
+// march; one taken into custody stops marching, and control moves them.
+// Nothing is drawn.
+func (m *Module) march(w *world.World) {
+	b, s := w.Rebellion, w.Space
+	running := b.RebellionStart != world.None
+	for _, id := range w.Alive {
+		f := s.Where(w, id)
+		home := w.Households[w.People[id].Household].Floor
+		if b.Marching[id] && (w.Control.Held(id) || f == home) {
+			b.Marching[id] = false
+		}
+		switch {
+		case f == 0: // on the stairs
+		case running && b.Stage[id] == world.Violent && w.Floors[f-1].Zone != world.UpTop:
+			if to := m.marchFloor(s, f); to != 0 && s.StartTrip(id, w.Day, to) == nil {
+				b.Marching[id] = true
+			}
+		case b.Marching[id] && (!running || b.Stage[id] != world.Violent):
+			_ = s.StartTrip(id, w.Day, home) // refused with the stairs broken: tomorrow
+		}
+	}
+}
+
+// marchFloor is the march floor nearest to floor f among those connected
+// to it, the lower on a tie, or 0 for none.
+func (m *Module) marchFloor(s *world.Space, f int) int {
+	best := 0
+	for _, to := range m.marchFloors {
+		if !s.Connected(f, to) {
+			continue
+		}
+		if d, bd := abs(to-f), abs(best-f); best == 0 || d < bd || d == bd && to < best {
+			best = to
+		}
+	}
+	return best
+}
+
+func abs(x int) int { return max(x, -x) }
+
+// crush arrests every rebel who has joined, on the day the regime crushes
+// their rebellion (ODD §1.2, §6.14): control takes them into custody at
+// its next step, the violent charged with violence and the joined with
+// organise, without a detection draw or arrest capacity. Returns how many
+// it handed over.
+func (m *Module) crush(w *world.World) int {
+	b, c, n := w.Rebellion, w.Control, 0
+	for _, id := range w.Alive {
+		off := world.Organise
+		switch b.Stage[id] {
+		case world.Violent:
+			off = world.Violence
+		case world.Joined:
+		default:
+			continue
+		}
+		c.Seized = append(c.Seized, world.Act{Person: id, Other: world.None, Offence: off})
+		n++
+	}
+	return n
 }
 
 // ODD §6.14, Fights (decision D6). In each zone, Up Top first, where
@@ -619,7 +700,7 @@ func (m *Module) fights(w *world.World, r *rng.Stream) {
 				m.grieve(w, id)
 				b.Tally.RebelsKilled++
 			} else {
-				c.Seized = append(c.Seized, id)
+				c.Seized = append(c.Seized, world.Act{Person: id, Other: world.None, Offence: world.Violence})
 				b.Tally.RebelsArrested++
 			}
 		}

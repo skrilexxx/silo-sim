@@ -292,6 +292,7 @@ type Rebellion struct {
 	RebellionDays  int     `yaml:"rebellionDays"`
 	QuietDays      int     `yaml:"quietDays"`
 	RegimeDays     int     `yaml:"regimeDays"`
+	MaxDays        int     `yaml:"maxDays"` // a rebellion still running this many days after its start is crushed (D15)
 	SplitDays      int     `yaml:"splitDays"`
 	SplitPeople    int     `yaml:"splitPeople"`
 	CollapseLevel  float64 `yaml:"collapseLevel"`

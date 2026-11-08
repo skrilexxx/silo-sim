@@ -67,7 +67,7 @@ type Control struct {
 	Tally  Tally
 	Fear   float64    // F, 0–1: how afraid the silo is of punishment
 	Doomed []PersonID // condemned to cleaning or killed in a fight: they die at the next deaths step (ODD §6.1, §6.14)
-	Seized []PersonID // rebels arrested in a fight, taken into custody at the next control step (ODD §6.14)
+	Seized []Act      // rebels arrested in a fight or a crushing, with the offence they are charged with, taken into custody at the next control step (ODD §6.14)
 
 	// Charges holds, per person, one bit per Pact rule they are charged
 	// under: their open case, or the case they are in custody for. Cases

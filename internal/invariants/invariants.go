@@ -87,7 +87,7 @@ func regime(w *world.World) error {
 
 // ODD §6.14 (draft): H and G lie in 0–1; everyone not calm has a
 // grievance (so is an adult), is free and is not the Head of IT; in a held
-// zone the violent outnumber the patrol.
+// zone the violent outnumber the patrol; every marcher is free (D15).
 func rebellion(w *world.World) error {
 	b := w.Rebellion
 	if b == nil {
@@ -103,6 +103,9 @@ func rebellion(w *world.World) error {
 		}
 		if f := w.Space.Where(w, id); b.Stage[id] == world.Violent && f != 0 {
 			violent[w.Floors[f-1].Zone]++
+		}
+		if b.Marching[id] && w.Control.Held(id) {
+			return fmt.Errorf("day %d: person %d marches while held by Judicial", w.Day, id)
 		}
 	}
 	for z, held := range b.Held {

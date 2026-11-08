@@ -45,7 +45,7 @@ func newTiny(t *testing.T) *tiny {
 	cfg.Rebellion.StrikeShare, cfg.Rebellion.StairRepairDays = 0.1, 60
 	cfg.Rebellion.CollapseLevel, cfg.Rebellion.CollapseDays = 0.2, 30
 	cfg.Rebellion.UnrestShare, cfg.Rebellion.UnrestDays = 0.01, 3
-	cfg.Rebellion.RebellionShare, cfg.Rebellion.RebellionDays, cfg.Rebellion.QuietDays, cfg.Rebellion.RegimeDays = 0.05, 7, 30, 30
+	cfg.Rebellion.RebellionShare, cfg.Rebellion.RebellionDays, cfg.Rebellion.QuietDays, cfg.Rebellion.RegimeDays, cfg.Rebellion.MaxDays = 0.05, 7, 30, 30, 365
 	return &tiny{t: t, w: w, m: New(), r: r, cfg: cfg}
 }
 
@@ -1045,5 +1045,96 @@ func TestFrameMetrics(t *testing.T) {
 		if !slices.Equal(v, want) {
 			t.Errorf("%s: %v, want %v", ms[i].Name, v, want)
 		}
+	}
+}
+
+// marchTiny is tiny with Administration's office on floor 1 (the march
+// floor) and trips sized, the walk short enough that any trip takes a day.
+func marchTiny(t *testing.T) *tiny {
+	s := newTiny(t)
+	s.w.Depts = append(s.w.Depts, world.Department{Name: "administration"})
+	s.w.Space.DeptFloors = append(s.w.Space.DeptFloors, []int{1})
+	s.w.Space.DescentHours, s.w.Space.WalkHours = 12, 8
+	return s
+}
+
+func (s *tiny) trips() {
+	n, sp := len(s.w.People), s.w.Space
+	sp.From, sp.Dest, sp.Arrive, sp.Away = make([]int, n), make([]int, n), make([]world.Tick, n), make([]int, n)
+}
+
+// ODD §6.14, March (decision D15), by hand. While a rebellion runs, a
+// violent Down Deep rebel sets off for the march floor; an Up Top one
+// stays; one cut off by a broken segment can't go; nobody marches without
+// a rebellion. A marcher who is no longer violent sets off home, arriving
+// home ends the march, and custody ends it at once.
+func TestMarch(t *testing.T) {
+	s := marchTiny(t)
+	deep, top, cut, calmed, home, held := s.add(30, 2, 1), s.add(30, 1, 1), s.add(30, 3, 1), s.add(30, 2, 1), s.add(30, 2, 1), s.add(30, 2, 1)
+	s.start()
+	s.trips()
+	w, b, sp := s.w, s.w.Rebellion, s.w.Space
+	if !slices.Equal(s.m.marchFloors, []int{1}) {
+		t.Fatalf("march floors %v, want [1]", s.m.marchFloors)
+	}
+	for _, id := range []world.PersonID{deep, top, cut} {
+		b.Stage[id] = world.Violent
+	}
+	s.m.march(w)
+	if slices.Contains(b.Marching, true) || sp.Travelling != 0 {
+		t.Fatalf("no rebellion: marching %v, %d travelling; want nobody", b.Marching, sp.Travelling)
+	}
+
+	b.RebellionStart = w.Day - 10
+	sp.Broken[1] = true // floor 3 cut off from floor 1
+	sp.Location[calmed], b.Marching[calmed] = 1, true
+	b.Marching[home] = true // back on their home floor
+	sp.Location[held], b.Marching[held] = 1, true
+	w.Control.Hold[held] = world.Custody
+	s.m.march(w)
+	if !b.Marching[deep] || sp.Dest[deep] != 1 || sp.Location[deep] != 0 || sp.Arrive[deep] != w.Day+1 {
+		t.Errorf("deep: marching %v, to %d, location %d, arrives %d; want on the stairs to floor 1, tomorrow", b.Marching[deep], sp.Dest[deep], sp.Location[deep], sp.Arrive[deep]-w.Day)
+	}
+	if b.Marching[top] || b.Marching[cut] || sp.Location[top] != 1 || sp.Location[cut] != 3 {
+		t.Errorf("top marching %v at %d, cut off marching %v at %d; want both where they are", b.Marching[top], sp.Location[top], b.Marching[cut], sp.Location[cut])
+	}
+	if !b.Marching[calmed] || sp.Dest[calmed] != 2 || sp.Location[calmed] != 0 {
+		t.Errorf("calmed marcher: marching %v, to %d; want on the way home to floor 2", b.Marching[calmed], sp.Dest[calmed])
+	}
+	if b.Marching[home] || b.Marching[held] || sp.Location[held] != 1 {
+		t.Errorf("marching: arrived home %v, held %v at %d; want neither, the held one left where they are", b.Marching[home], b.Marching[held], sp.Location[held])
+	}
+}
+
+// ODD §1.2, §6.14 (decision D15): a rebellion still running maxDays after
+// its start is crushed that day, not the day before. It ends as suppressed,
+// marked crushed, with the crushing day as its end; the joined are handed
+// to control charged with organise, the violent with violence, the merely
+// active left alone; the arrests are in its record, and the regime hears
+// "suppressed".
+func TestCrush(t *testing.T) {
+	s := newTiny(t)
+	active, joined, violent := s.add(30, 2, 1), s.add(30, 2, 1), s.add(30, 2, 1)
+	s.start()
+	w, b, c := s.w, s.w.Rebellion, s.w.Control
+	b.Stage[active], b.Stage[joined], b.Stage[violent] = world.Active, world.Joined, world.Violent
+	b.RebellionStart = w.Day - 364
+	s.m.track(w, 1, true)
+	if b.RebellionStart == world.None || len(c.Seized) != 0 {
+		t.Fatalf("day 364: rebellion ended %v, seized %v; want it running", b.RebellionStart == world.None, c.Seized)
+	}
+	w.Day++
+	s.m.track(w, 1, true)
+	want := []world.Act{{Person: joined, Other: world.None, Offence: world.Organise}, {Person: violent, Other: world.None, Offence: world.Violence}}
+	if b.RebellionStart != world.None || !slices.Equal(c.Seized, want) {
+		t.Fatalf("day 365: running %v, seized %v; want ended, %v", b.RebellionStart != world.None, c.Seized, want)
+	}
+	rec := b.Ended[0]
+	if rec.Ending != "suppressed" || !rec.Crushed || rec.End == nil || *rec.End != w.Day || rec.Days != 365 || rec.CrushArrests != 2 || rec.Arrests != 2 {
+		t.Errorf("record %+v", rec)
+	}
+	ev := w.Events[len(w.Events)-1].(world.RebellionEvent)
+	if ev.Ending != "suppressed" || !ev.Crushed || !slices.Contains(b.Fired, "suppressed") {
+		t.Errorf("event %+v, fired %v; want suppressed, crushed", ev, b.Fired)
 	}
 }

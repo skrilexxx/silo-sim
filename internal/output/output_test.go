@@ -204,7 +204,7 @@ func TestRebellionLogAndOutcomes(t *testing.T) {
 	data, _ := os.ReadFile(filepath.Join(dir, "rebellions.jsonl"))
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 	if len(lines) != 2 || !strings.HasPrefix(lines[0], `{"start":380,"end":400,"days":20,`) ||
-		!strings.HasPrefix(lines[1], `{"start":500,"end":null,"days":11,`) || !strings.HasSuffix(lines[1], `"ending":"unfinished"}`) {
+		!strings.HasPrefix(lines[1], `{"start":500,"end":null,"days":11,`) || !strings.HasSuffix(lines[1], `"ending":"unfinished","crushed":false}`) {
 		t.Errorf("rebellions.jsonl:\n%s", data)
 	}
 	got := o.Outcomes()

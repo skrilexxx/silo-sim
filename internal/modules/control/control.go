@@ -424,16 +424,17 @@ func (m *Module) charge(c *world.Control, id world.PersonID, rule int) {
 // releases: ODD §6.13, Penalties. Detained people whose last day has
 // passed are free and start walking home; so do people freed earlier who
 // couldn't, while the stairs were broken.
-// seize takes into custody the rebels arrested in a fight at yesterday's
-// rebellion step (ODD §6.14, Fights): charged with violence without a
-// detection draw, using no arrest capacity, their flat searched and a
-// Flamekeeper unseated, as on any arrest. The trial step sends them to the
-// court. With no active rule listing violence there is nothing to charge
-// them with, and they stay free.
+// seize takes into custody the rebels arrested in a fight or a crushing
+// at yesterday's rebellion step (ODD §6.14, Fights; Unrest, rebellion and
+// endings): charged with their offence (violence, or organise for a joined
+// rebel crushed) without a detection draw, using no arrest capacity, their
+// flat searched and a Flamekeeper unseated, as on any arrest. The trial
+// step sends them to the court. With no active rule listing the offence
+// there is nothing to charge them with, and they stay free.
 func (m *Module) seize(w *world.World, r *rng.Stream) {
 	c := w.Control
-	rule := m.ruleOf[world.Violence]
-	for _, id := range c.Seized {
+	for _, a := range c.Seized {
+		id, rule := a.Person, m.ruleOf[a.Offence]
 		if rule == world.None || !w.People[id].Alive || c.Hold[id] != world.Free {
 			continue
 		}
