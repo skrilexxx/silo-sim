@@ -151,4 +151,14 @@ Every cell is base with one parameter at −50% and at +50%. Base: rate 2.02 (1.
 6. **An output quirk, not fixed.** The first yearly row's control counts include the warm-up, because `o.tally` is only set at yearly rows in `output.go`. The chronicle leaves arrests out because of it, and none of the metrics above use those counts.
 7. **The interval for time in a rebellion.** It is a normal interval on a bounded share. Base's runs bunch near 43–48%, which makes the interval narrow (42.2–44.5). The Order's E3 result and part of E5's rest on that. Should these be checked with a nonparametric interval, such as a bootstrap, before the thesis uses them?
 
-T15.5 (freeze model v2) has not been started: it waits for Adam's answers above.
+### Adam's decisions (2026-11-08)
+
+1. **A rebellion must end: the regime either crushes it or falls and is replaced.** Today a rebellion ends only when fewer than 1% of adults are active for 30 days in a row. A regime change needs rebels to hold Up Top for 30 days, which no run has ever done (ODD §6.14, T12.5). The new ending rule is spec task T15.6, followed by a rerun of M15 (T15.7).
+2. **C1:** left open until the rerun, because today's post-failure rate comes from rebellions that never end.
+3. **The Safeguard stays as it is (D8).** Every failed cleaning is an escape, during a rebellion too. E4's result stands.
+4. **The §8 baseline targets are shown on part-2 runs but not judged** there (T15.8); baseline runs are judged as before.
+5. **T15.2's wording is fixed** in `docs/tasks-part2.md`: it ran on `scenarios/experiments/base.yaml`.
+6. **The first-year control counts are fixed** (T15.9). The control columns are written only with the control module on, so the golden hash should not move; the task checks this.
+7. **Time in a rebellion gets a bootstrap interval** (T15.10), after the rerun, since T15.6 will change those numbers.
+
+T15.5 (freeze model v2) waits for T15.6–T15.10.
