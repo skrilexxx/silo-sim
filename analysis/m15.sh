@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # M15 (lean plan): every batch of docs/experiments.md, seeds 1–30, and both reports of
 # each saved as OUT/<name>.txt; a summary of the key lines in OUT/summary.txt.
-# About 6–7 hours on 8 cores (canon ~30 min, E1–E5 ~3 h, sensitivity ~3 h).
+# About 13–14 hours on the laptop (measured 2026-11-04/05 and 2026-11-10): a run that
+# takes 2 minutes alone takes 4–12 in a batch, as the CPU is held near 2.4 GHz under
+# sustained load. WORKERS defaults to 4, one per physical core: on 2026-11-10 eight seeds
+# took 8.6 min with 4 workers and 11.3–11.6 min with 8 (hyperthreads share a core's cache).
 # A batch whose folder already holds a report is skipped, so the script can be restarted.
-# Usage: analysis/m15.sh [OUT]   (default runs/m15); SEEDS=1-30 by default.
+# Usage: analysis/m15.sh [OUT]   (default runs/m15); SEEDS=1-30 and WORKERS=4 by default.
 set -euo pipefail
 seeds=${SEEDS:-1-30}
+workers=${WORKERS:-4}
 out=${1:-runs/m15}
 make build
 mkdir -p "$out"
@@ -17,7 +21,7 @@ run() { # name scenario
 		return
 	fi
 	echo "== $name ($scen), $(date +%H:%M)"
-	bin/silosim batch --scenario "$scen" --seeds "$seeds" --out "$out/$name"
+	bin/silosim batch --scenario "$scen" --seeds "$seeds" --workers "$workers" --out "$out/$name"
 	{
 		bin/silosim report --batch "$out/$name" || true
 		echo
