@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this model, please cite it as below."
+type: software
+title: "silosim: an agent-based model of Silo 18"
+abstract: >-
+  An agent-based simulation of Silo 18 from the TV series Silo, written in Go.
+  About 10,000 people live under the Pact for centuries in a closed 144-floor
+  silo. A frozen baseline covers demography, health, work, resources and
+  governance; further modules add space, social ties, beliefs, regime control,
+  rebellion, regime response and Silo 1. Runs are deterministic, and the model
+  is specified with the ODD protocol.
+authors:
+  - given-names: Adam
+    family-names: Kopřiva
+repository-code: "https://github.com/skrilexxx/silo-sim"
+license: MIT
+keywords:
+  - agent-based model
+  - social simulation
+  - rebellion
+  - legitimacy
+  - ODD protocol
+  - Go
